@@ -32,6 +32,7 @@ import sqlite3
 import threading
 import time
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DB_PATH = os.environ.get("WILAYA_DB", "/data/wilayadz.sqlite3")
@@ -83,7 +84,12 @@ RESET_TTL = 3600
 # le mecanisme (jetons, expiration, ecrans) sans serveur de mail.
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "25"))
-MAIL_FROM = os.environ.get("MAIL_FROM", "WilayaDZ <wilayadz@bigpc>")
+# L'adresse doit etre celle sous laquelle le relais s'authentifie
+# reellement. Un expediteur en @smnc.win serait invérifiable — la zone
+# n'a ni SPF ni DMARC — et un courriel de reinitialisation qui tombe
+# dans les indesirables ne sert a rien du tout. Changer d'expediteur
+# demande d'abord de publier SPF et DKIM pour le domaine choisi.
+MAIL_FROM = os.environ.get("MAIL_FROM", "WilayaDZ <bigpc.alg@gmail.com>")
 APP_URL = os.environ.get("APP_URL", "https://wilayadz.smnc.win")
 
 SCHEMA_VERSION = 2
@@ -229,6 +235,12 @@ def reset_mail(name, link):
     msg = EmailMessage()
     msg["Subject"] = "WilayaDZ — nouveau mot de passe / كلمة سر جديدة"
     msg["From"] = MAIL_FROM
+    # Sans Date ni Message-ID, le message part avec « message-id=<> » et
+    # nombre de filtres anti-spam le penalisent — au pire moment, celui
+    # ou quelqu'un ne peut plus entrer dans son compte.
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain="wilayadz.smnc.win")
+    msg["Auto-Submitted"] = "auto-generated"
     msg.set_content(
         "Bonjour %s,\n\n"
         "Tu as demande un nouveau mot de passe pour ton compte WilayaDZ.\n"

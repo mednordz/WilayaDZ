@@ -238,7 +238,7 @@ déjà installé sur bigpc**, qui relaie vers Gmail — le même chemin que les
 alertes de la machine. Aucun mot de passe n'est donc stocké dans ce
 déploiement.
 
-Deux choses doivent rester d'accord, sans quoi l'envoi s'arrête en
+**Trois** choses doivent rester d'accord, sans quoi l'envoi s'arrête en
 silence :
 
 1. `deploy/docker-compose.yml` fige l'adresse du conteneur à
@@ -252,7 +252,27 @@ silence :
 
    Posé le 2026-09-11 (sauvegarde `main.cf.bak-20260911-230757`,
    `postfix check` OK, `systemctl reload postfix`). Une seule ligne
-   ajoutée — vérifiée par `diff` contre la sauvegarde.
+   ajoutée — vérifiée par `diff` contre la sauvegarde ;
+3. **ufw** laisse passer cette adresse vers le port 25 — sans quoi la
+   connexion expire sans que postfix voie jamais rien (c'est exactement
+   ce qui est arrivé au premier essai) :
+
+   ```
+   25/tcp   ALLOW   172.28.0.10   # WilayaDZ API -> postfix local
+   ```
+
+   Même forme que les trois règles `relais SMTP` déjà présentes pour
+   `smnc`, `mrdell` et `proxmox`.
+
+### L'adresse d'expéditeur
+
+`MAIL_FROM` vaut **`WilayaDZ <bigpc.alg@gmail.com>`** : le compte sous
+lequel le relais s'authentifie réellement. Ce n'est pas un détail
+cosmétique — la zone `smnc.win` n'a **ni SPF ni DMARC**, donc un
+expéditeur en `@smnc.win` serait invérifiable et finirait dans les
+indésirables. Un courriel de réinitialisation qui n'arrive pas ne sert à
+rien. Pour un expéditeur aux couleurs du domaine, publier d'abord SPF et
+DKIM pour `smnc.win`, puis changer `MAIL_FROM`.
 
 Si les courriels cessent de partir, regarder dans cet ordre :
 

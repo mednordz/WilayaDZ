@@ -56,7 +56,10 @@ services:
     environment:
       SMTP_HOST: hote-bigpc
       SMTP_PORT: "25"
-      MAIL_FROM: "WilayaDZ <wilayadz@smnc.win>"
+      # Le compte sous lequel le relais s'authentifie reellement :
+      # un expediteur @smnc.win serait invérifiable (zone sans SPF ni
+      # DMARC) et finirait en indesirables.
+      MAIL_FROM: "WilayaDZ <bigpc.alg@gmail.com>"
       APP_URL: "https://wilayadz.smnc.win"
     # scrypt réserve ~16 Mio par mot de passe vérifié ; quelques requêtes
     # simultanées tiennent très largement dans 128 Mio.
