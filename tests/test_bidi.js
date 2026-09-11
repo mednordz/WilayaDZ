@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 420, height: 900 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file:///tmp/wilayas/wilaya-v6.html'); await p.waitForTimeout(400);

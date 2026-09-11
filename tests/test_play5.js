@@ -6,7 +6,7 @@ const CODE = {}; DATA.forEach(w => CODE[w.n] = w.c);
 const pad = n => String(n).padStart(2, '0');
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 420, height: 900 } });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));

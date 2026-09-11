@@ -3,7 +3,7 @@ const fs = require('fs');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 420, height: 900 } });
   const page = await ctx.newPage();
   const errs = [];

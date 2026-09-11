@@ -39,7 +39,7 @@ async function runAxe(page, label, results) {
 }
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const results = [];
 
   for (const lang of ['fr', 'ar']) {

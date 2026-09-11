@@ -1,49 +1,53 @@
 
   /* ============================================================
-     IDENTITÉ « FENNEC »
+     IDENTITÉ « DUNE »
      Langage de jeu : formes grasses et arrondies, aplats saturés,
-     boutons en relief. Mais la palette vient d'Algérie, pas d'un
-     copier-coller : vert du drapeau, bleu méditerranéen, or du
-     Sahara, terre cuite de Ghardaïa.
+     boutons en relief (inchangé). Palette redéfinie sur les tons du
+     désert façon Dune : sable, épice-orange, teal profond, bronze-or,
+     rouille, gris-pierre — la même grammaire de tokens est conservée.
 
      Chaque teinte existe en deux versions :
        · le ton VIF        → aplats, cercles, remplissages
        · le ton « -ink »   → texte sur fond clair (contraste AA)
        · le ton « -deep »  → l'ombre dure sous les boutons en relief
-     Sans cette séparation, un vert assez lumineux pour être joyeux
-     devient illisible dès qu'il sert de couleur de texte.
+     Sans cette séparation, une teinte assez lumineuse pour être
+     joyeuse devient illisible dès qu'elle sert de couleur de texte.
+     Chaque valeur ci-dessous est vérifiée ≥4.5:1 (WCAG AA) partout où
+     elle sert de couleur de texte (contre --bg ET --surface, le cas
+     le plus dur des deux) — ne pas réintroduire une teinte plus vive
+     sans revérifier ces ratios.
      ============================================================ */
   :root{
-    --bg:#F4F8F5;
-    --surface:#FFFFFF;
-    --surface-2:#E8F1EB;
-    --ink:#14231A;
-    --ink-dim:#4F6358;
-    --ink-faint:#566A5E;
-    --line:#D7E5DC;
-    --border-strong:#7E9788;
-    --accent:#0B7A3B;
-    --accent-bright:#12A150;
-    --accent-ink:#FFFFFF;
-    --accent-soft:#DCF2E5;
-    --accent-deep:#075C2D;
-    --teal:#0E9C6B;
-    --teal-soft:#D8F3E8;
-    --teal-deep:#0A7550;
-    --wrong:#E5383B;
-    --wrong-soft:#FDE1E1;
-    --wrong-deep:#B02428;
-    --gold:#F5A524;
-    --gold-ink:#8A5A05;
-    --gold-soft:#FDF0D5;
-    --gold-deep:#C47F0C;
-    --slate:#1B9AD6;
-    --slate-ink:#0A6A99;
-    --slate-deep:#1478A8;
-    --olive:#7C9A2B;
-    --rose:#E1683C;
-    --grape:#7C5CD6;
-    --shadow: 0 2px 0 rgba(20,35,26,.05), 0 10px 28px -14px rgba(20,35,26,.28);
+    --bg:#F2E4CE;
+    --surface:#FBF6EA;
+    --surface-2:#E5DDC7;
+    --ink:#2A1F14;
+    --ink-dim:#6E5E48;
+    --ink-faint:#6A5A44;
+    --line:#E3D5B8;
+    --border-strong:#C9BFA8;
+    --accent:#9C5015;
+    --accent-bright:#DC8A4A;
+    --accent-ink:#FBF6EA;
+    --accent-soft:#F5E3CE;
+    --accent-deep:#6B3A0C;
+    --teal:#1F6B68;
+    --teal-soft:#DCEBE9;
+    --teal-deep:#123F3D;
+    --wrong:#A8432A;
+    --wrong-soft:#F0DCD3;
+    --wrong-deep:#6E2716;
+    --gold:#855A14;
+    --gold-ink:#6B4E14;
+    --gold-soft:#F5E9C8;
+    --gold-deep:#6B4E14;
+    --slate:#4A6B7A;
+    --slate-ink:#2E4652;
+    --slate-deep:#1F2F37;
+    --olive:#5E6C41;
+    --rose:#984A36;
+    --grape:#6D5480;
+    --shadow: 0 2px 0 rgba(43,33,23,.06), 0 10px 28px -14px rgba(43,33,23,.30);
     --radius:18px;
     --radius-sm:14px;
     /* Nunito : ronde, très grasse en 800/900. C'est elle qui donne
@@ -58,68 +62,68 @@
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#0E1712;
-      --surface:#16241C;
-      --surface-2:#1E3125;
-      --ink:#E8F2EA;
-      --ink-dim:#A3B8AA;
-      --ink-faint:#93A99B;
-      --line:#2A4133;
-      --border-strong:#4E6A58;
-      --accent:#2ECC71;
-      --accent-bright:#3FE188;
-      --accent-ink:#08190F;
-      --accent-soft:#123524;
-      --accent-deep:#1B8F4E;
-      --teal:#2FD39A;
-      --teal-soft:#0F3327;
-      --teal-deep:#1C9670;
-      --wrong:#FF6B6B;
-      --wrong-soft:#3A1B1C;
-      --wrong-deep:#C4443F;
-      --gold:#FFC24D;
-      --gold-ink:#FFC24D;
-      --gold-soft:#3A2C10;
-      --gold-deep:#C4900F;
-      --slate:#4FC0F0;
-      --slate-ink:#4FC0F0;
-      --slate-deep:#2E8FBC;
-      --olive:#B6D45E;
-      --rose:#F5895D;
-      --grape:#A38BEF;
+      --bg:#1C1712;
+      --surface:#26201A;
+      --surface-2:#322A21;
+      --ink:#F2E4CE;
+      --ink-dim:#C9BFA8;
+      --ink-faint:#9C927A;
+      --line:#4A3F32;
+      --border-strong:#6E6048;
+      --accent:#E8935A;
+      --accent-bright:#F0A870;
+      --accent-ink:#2A1607;
+      --accent-soft:#4A2F14;
+      --accent-deep:#C4732E;
+      --teal:#5FA39E;
+      --teal-soft:#1A3330;
+      --teal-deep:#3F8580;
+      --wrong:#D9846E;
+      --wrong-soft:#3D251E;
+      --wrong-deep:#B8654E;
+      --gold:#E0C179;
+      --gold-ink:#E0C179;
+      --gold-soft:#3D2F14;
+      --gold-deep:#C4A15C;
+      --slate:#7FAEC2;
+      --slate-ink:#7FAEC2;
+      --slate-deep:#4A6B7A;
+      --olive:#A8B584;
+      --rose:#DDA093;
+      --grape:#B39BC4;
       --shadow: 0 2px 0 rgba(0,0,0,.35), 0 10px 28px -14px rgba(0,0,0,.6);
     }
   }
   :root[data-theme="dark"]{
-    --bg:#0E1712;
-    --surface:#16241C;
-    --surface-2:#1E3125;
-    --ink:#E8F2EA;
-    --ink-dim:#A3B8AA;
-    --ink-faint:#93A99B;
-    --line:#2A4133;
-    --border-strong:#4E6A58;
-    --accent:#2ECC71;
-    --accent-bright:#3FE188;
-    --accent-ink:#08190F;
-    --accent-soft:#123524;
-    --accent-deep:#1B8F4E;
-    --teal:#2FD39A;
-    --teal-soft:#0F3327;
-    --teal-deep:#1C9670;
-    --wrong:#FF6B6B;
-    --wrong-soft:#3A1B1C;
-    --wrong-deep:#C4443F;
-    --gold:#FFC24D;
-    --gold-ink:#FFC24D;
-    --gold-soft:#3A2C10;
-    --gold-deep:#C4900F;
-    --slate:#4FC0F0;
-    --slate-ink:#4FC0F0;
-    --slate-deep:#2E8FBC;
-    --olive:#B6D45E;
-    --rose:#F5895D;
-    --grape:#A38BEF;
+    --bg:#1C1712;
+    --surface:#26201A;
+    --surface-2:#322A21;
+    --ink:#F2E4CE;
+    --ink-dim:#C9BFA8;
+    --ink-faint:#9C927A;
+    --line:#4A3F32;
+    --border-strong:#6E6048;
+    --accent:#E8935A;
+    --accent-bright:#F0A870;
+    --accent-ink:#2A1607;
+    --accent-soft:#4A2F14;
+    --accent-deep:#C4732E;
+    --teal:#5FA39E;
+    --teal-soft:#1A3330;
+    --teal-deep:#3F8580;
+    --wrong:#D9846E;
+    --wrong-soft:#3D251E;
+    --wrong-deep:#B8654E;
+    --gold:#E0C179;
+    --gold-ink:#E0C179;
+    --gold-soft:#3D2F14;
+    --gold-deep:#C4A15C;
+    --slate:#7FAEC2;
+    --slate-ink:#7FAEC2;
+    --slate-deep:#4A6B7A;
+    --olive:#A8B584;
+    --rose:#DDA093;
+    --grape:#B39BC4;
     --shadow: 0 2px 0 rgba(0,0,0,.35), 0 10px 28px -14px rgba(0,0,0,.6);
   }
 

@@ -16,7 +16,7 @@ async function mk(page, name, lang) {
 }
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const errs = [];
 
   for (const [lang, label] of [['fr', 'FRANÇAIS'], ['ar', 'ARABE'], ['bi', 'LES DEUX']]) {

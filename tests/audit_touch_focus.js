@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: 'domcontentloaded' });

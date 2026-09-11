@@ -766,7 +766,7 @@
   .hero.key .hero-go{ background:var(--surface); color:var(--accent); }
   .hero.review{ background:var(--surface); border-color:var(--gold); box-shadow:0 5px 0 0 var(--gold); }
   .hero.review .hero-kicker{ color:var(--gold-ink); }
-  .hero.review .hero-go{ background:var(--gold); color:#3A2600; }
+  .hero.review .hero-go{ background:var(--gold); color:var(--gold-soft); }
   .hero:active{ transform:translateY(4px); box-shadow:0 1px 0 0 var(--line); }
   .hero.key:active{ box-shadow:0 1px 0 0 var(--accent-deep); }
   .hero.review:active{ box-shadow:0 1px 0 0 var(--gold); }

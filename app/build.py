@@ -14,5 +14,7 @@ open('_check.js','w',encoding='utf-8').write(re.search(r'<script>(.*)</script>',
 # s'enregistrer depuis un <script> inline) : copié à côté du HTML produit,
 # jamais concaténé dedans.
 target_dir = os.path.dirname(os.path.abspath(target)) or '.'
-shutil.copyfile('sw.js', os.path.join(target_dir, 'sw.js'))
+sw_dest = os.path.join(target_dir, 'sw.js')
+if os.path.abspath(sw_dest) != os.path.abspath('sw.js'):
+    shutil.copyfile('sw.js', sw_dest)
 print("%s : %d octets%s" % (target, len(out), "  (police intégrée)" if face else "  (police NON intégrée)"))

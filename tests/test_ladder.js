@@ -1,9 +1,9 @@
 const { chromium } = require('playwright');
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 420, height: 900 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file:///tmp/wilayas/wilaya-v4.html');
+  await p.goto('file:///tmp/wilayas/wilaya-v6.html');
   await p.waitForTimeout(300);
 
   // Toutes les wilayas 1-10 en boîte 4 => l'échelle doit passer en saisie libre
@@ -31,7 +31,7 @@ const { chromium } = require('playwright');
   console.log('Boîte 4 => saisie libre:', type, '| QCM:', mcq, '| chaîne:', chain);
 
   // Fluence : bonne réponse LENTE ne doit pas promouvoir
-  await p.goto('file:///tmp/wilayas/wilaya-v4.html'); await p.waitForTimeout(300);
+  await p.goto('file:///tmp/wilayas/wilaya-v6.html'); await p.waitForTimeout(300);
   await p.evaluate(() => localStorage.setItem('wilaya-progress-v4', JSON.stringify({
     keyDone: true, progress: {}, confusions: {}, crowns: {}, xp: 0, streak: { count: 0, last: null } })));
   await p.reload(); await p.waitForTimeout(400);
@@ -42,7 +42,7 @@ const { chromium } = require('playwright');
   await p.waitForTimeout(6500);                       // > 5 s => réponse lente
   const opts = await p.locator('.lesson-choice').allInnerTexts();
   // on clique la bonne réponse en la déduisant
-  const html = require('fs').readFileSync('/tmp/wilayas/wilaya-v4.html', 'utf8');
+  const html = require('fs').readFileSync('/tmp/wilayas/wilaya-v6.html', 'utf8');
   const DATA = eval(html.match(/var DATA = (\[[\s\S]*?\]);/)[1].replace(/(\w+):/g, '"$1":').replace(/"(\-?\d)/g, '$1'));
   const N = {}, C = {}; DATA.forEach(w => { N[w.c] = w.n; C[w.n] = w.c; });
   const pad = n => String(n).padStart(2, '0');
