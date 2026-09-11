@@ -44,9 +44,35 @@ jobs:
           done
 
       # Vérifie la chaîne complète telle qu'un téléphone la voit :
-      # nginx doit router /api vers le service de comptes.
-      - name: Vérifier que l'API répond à travers nginx
+      # nginx doit servir l'app ET router /api vers le service de comptes.
+      - name: Vérifier l'app et l'API à travers nginx
         run: |
+          page=$(docker exec wilaya-web wget -qO- http://127.0.0.1:8080/ | head -c 400)
+          echo "$page" | grep -q "WilayaDZ" || { echo "l'app ne se sert pas" >&2; exit 1; }
+          echo "app : ok"
+
           out=$(docker exec wilaya-web wget -qO- http://127.0.0.1:8080/api/health)
-          echo "réponse : $out"
+          echo "API : $out"
           echo "$out" | grep -q '"ok"' || { echo "l'API ne répond pas à travers nginx" >&2; exit 1; }
+
+      # La promesse de l'app est qu'elle fonctionne sans compte : le site
+      # doit donc rester debout même si le service de comptes est éteint.
+      # Sans `resolver` + variable dans nginx.conf, nginx refuserait de
+      # démarrer sans lui et emporterait tout le site.
+      - name: Vérifier que le site survit à l'arrêt de l'API
+        run: |
+          docker stop wilaya-api >/dev/null
+          docker restart wilaya-web >/dev/null
+          sleep 5
+          ok=""
+          for i in $(seq 1 10); do
+            if docker exec wilaya-web wget -qO- http://127.0.0.1:8080/ | grep -q "WilayaDZ"; then ok=1; break; fi
+            sleep 2
+          done
+          docker start wilaya-api >/dev/null
+          if [ -z "$ok" ]; then
+            echo "le site ne survit pas à l'arrêt du service de comptes" >&2
+            docker logs wilaya-web --tail 30
+            exit 1
+          fi
+          echo "le site tient debout sans l'API : ok"
