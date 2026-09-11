@@ -11,6 +11,46 @@
  *   node tests/test_cloud_e2e.js
  */
 const { chromium } = require('playwright');
+const fs = require('fs');
+const zlib = require('zlib');
+const os = require('os');
+const path = require('path');
+
+/* Fabrique une « photo » assez grande pour que le redimensionnement
+ * dans le navigateur soit reellement mis a l'epreuve. Faite ici plutot
+ * que posee a cote : le test ne doit dependre d'aucun fichier qu'on
+ * aurait oublie de fournir. */
+function photoDEssai() {
+  const chemin = path.join(os.tmpdir(), 'wilayadz-photo-essai.png');
+  if (fs.existsSync(chemin)) return chemin;
+  const [w, h] = [1200, 800];
+  const lignes = [];
+  for (let y = 0; y < h; y++) {
+    const row = Buffer.alloc(1 + w * 3);
+    for (let x = 0; x < w; x++) {
+      row[1 + x * 3] = (x * 7 + y * 3) & 255;
+      row[2 + x * 3] = (x * 3 + y * 11) & 255;
+      row[3 + x * 3] = (x * 13 + y * 5) & 255;
+    }
+    lignes.push(row);
+  }
+  const morceau = (type, data) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const corps = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(zlib.crc32(corps) >>> 0);
+    return Buffer.concat([len, corps, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; ihdr[9] = 2;
+  fs.writeFileSync(chemin, Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    morceau('IHDR', ihdr),
+    morceau('IDAT', zlib.deflateSync(Buffer.concat(lignes), { level: 6 })),
+    morceau('IEND', Buffer.alloc(0))
+  ]));
+  return chemin;
+}
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8390/';
 // Surchargeable pour pouvoir viser la production et supprimer ensuite le
@@ -76,6 +116,24 @@ async function courrielLisible() {
   catch (e) { return false; }
 }
 
+/* Chaque contexte a son IP : les compteurs de debit du service sont par
+ * client, et sans cela deux essais lances a la suite s'epuisent
+ * mutuellement le quota d'inscriptions. En production c'est nginx qui
+ * impose cet en-tete, un client ne peut pas le choisir. */
+let _ip = 0;
+/* Tiree au sort a chaque execution, pas seulement par contexte : avec
+ * une adresse fixe, deux lancements successifs du meme essai
+ * s'epuiseraient mutuellement le quota d'inscriptions. */
+const _reseau = '10.' + (1 + Math.floor(Math.random() * 250)) +
+                 '.' + (1 + Math.floor(Math.random() * 250)) + '.';
+function contexteNeuf(browser, extra) {
+  _ip++;
+  return browser.newContext(Object.assign({
+    viewport: { width: 420, height: 900 },
+    extraHTTPHeaders: { 'X-Real-IP': _reseau + ((_ip % 250) + 1) }
+  }, extra || {}));
+}
+
 const countProgress = (page) => page.evaluate(() => {
   const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
   const p = (a.profiles || []).find(x => x.id === a.activeId) || (a.profiles || [])[0];
@@ -91,15 +149,17 @@ const cloudEmail = (page) => page.evaluate(() => {
   const browser = await chromium.launch();
   const errs = [];
 
+  const lisibleTot = await courrielLisible();
+
   /* Depuis que l'adresse doit etre confirmee, le parcours complet exige
      de lire le courriel — ce que seul tests/serve_test.py permet. Contre
      la production on verifie donc ce qui est verifiable de l'exterieur,
      et on le DIT, plutot que d'echouer en laissant croire a un bug. */
-  if (!(await courrielLisible())) {
+  if (!lisibleTot) {
     console.log('\nParcours reduit — le courriel n\'est lisible qu\'avec');
     console.log('tests/serve_test.py. Ce qui suit est tout ce qui se verifie');
     console.log('depuis l\'exterieur.\n');
-    const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
+    const ctx = await contexteNeuf(browser);
     const page = await ctx.newPage();
     page.on('pageerror', e => errs.push('prod: ' + e.message));
     await page.goto(BASE); await page.waitForTimeout(800);
@@ -146,7 +206,7 @@ const cloudEmail = (page) => page.evaluate(() => {
 
   /* ---------------- Appareil A : cree le compte ---------------- */
   console.log('\nAppareil A — creation du compte');
-  const ctxA = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const ctxA = await contexteNeuf(browser);
   const a = await ctxA.newPage();
   a.on('pageerror', e => errs.push('A: ' + e.message));
 
@@ -167,7 +227,28 @@ const cloudEmail = (page) => page.evaluate(() => {
 
   await a.fill('#gate-email', EMAIL);
   await a.fill('#gate-pw', PASSWORD);
+  await a.fill('#gate-pw2', PASSWORD);
   const porteA = () => a.locator('#gate-box').isVisible().catch(() => false).then(v => !v);
+
+  // L'oeil doit reellement devoiler le mot de passe.
+  check('le mot de passe est masque par defaut',
+        (await a.locator('#gate-pw').getAttribute('type')) === 'password');
+  await a.locator(".pw-eye[data-for='gate-pw']").click();
+  check('l oeil l affiche',
+        (await a.locator('#gate-pw').getAttribute('type')) === 'text');
+  await a.locator(".pw-eye[data-for='gate-pw']").click();
+  check('et le remasque',
+        (await a.locator('#gate-pw').getAttribute('type')) === 'password');
+
+  // Deux mots de passe differents doivent etre refuses, sans rien envoyer.
+  await a.fill('#gate-pw2', PASSWORD + 'xyz');
+  await a.locator('#gate-create').click();
+  await a.waitForTimeout(500);
+  check('deux mots de passe differents sont refuses',
+        (await a.locator('#gate-err').innerText()).trim().length > 0);
+  check('et rien n a ete envoye', (await cloudEmail(a)) === null);
+  await a.fill('#gate-pw2', PASSWORD);
+
   await a.locator('#gate-create').click();
 
   // Rien n'est acquis a l'inscription : on attend la confirmation.
@@ -202,7 +283,7 @@ const cloudEmail = (page) => page.evaluate(() => {
 
   /* ---------------- Appareil B : se connecte ---------------- */
   console.log('\nAppareil B — appareil neuf, connexion');
-  const ctxB = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const ctxB = await contexteNeuf(browser);
   const b = await ctxB.newPage();
   b.on('pageerror', e => errs.push('B: ' + e.message));
 
@@ -244,7 +325,7 @@ const cloudEmail = (page) => page.evaluate(() => {
      même compte et déjà plus avancé. */
   console.log('\nRetour : un 3e appareil progresse, A recupere');
   const accB = await b.evaluate(() => localStorage.getItem('wilaya-account-v1'));
-  const ctxB2 = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const ctxB2 = await contexteNeuf(browser);
   const b2 = await ctxB2.newPage();
   b2.on('pageerror', e => errs.push('B2: ' + e.message));
 
@@ -300,9 +381,107 @@ const cloudEmail = (page) => page.evaluate(() => {
   check('le service worker est bien actif (test significatif)', swState.registered, swState);
   check('aucune reponse de l API n est mise en cache', swState.cached.length === 0, swState.cached);
 
+  /* ------------- Inscription depuis zero : accueil et avatar -------------
+     L'appareil A rattachait un profil qui existait deja ; ici personne
+     n'a rien, c'est le vrai premier contact avec l'application. */
+  if (lisibleTot) {
+    console.log('\nInscription depuis zero');
+    const MAIL2 = 'neuf-' + Date.now() + '@example.com';
+    const ctxN = await contexteNeuf(browser);
+    const n = await ctxN.newPage();
+    n.on('pageerror', e => errs.push('N: ' + e.message));
+
+    await n.goto(BASE); await n.waitForTimeout(800);
+    await n.fill('#gate-name', 'Sara');
+    await n.fill('#gate-email', MAIL2);
+    await n.fill('#gate-pw', PASSWORD);
+    await n.fill('#gate-pw2', PASSWORD);
+    await n.locator('#gate-create').click();
+    await waitFor(async () => await n.locator('#gpen-resend').isVisible());
+
+    const lienN = await lienDuMail('confirm');
+    await n.goto(lienN);
+    await waitFor(async () => await n.locator('#gwel-go').isVisible());
+    check('la confirmation mene a l accueil', await n.locator('#gwel-go').isVisible());
+    check('l accueil propose des avatars',
+          (await n.locator('.av-choix').count()) === 5,
+          await n.locator('.av-choix').count());
+    check('et le choix de la langue', await n.locator('.lang-pick').isVisible());
+
+    await n.locator(".av-choix[data-mascotte='fennec']").click();
+    await n.waitForTimeout(500);
+    const av = await n.evaluate(() => {
+      const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+      const p = (a.profiles || []).find(x => x.id === a.activeId);
+      return p ? p.avatar : null;
+    });
+    check('la mascotte choisie est retenue', av && av.k === 'm' && av.v === 'fennec', av);
+
+    // Une vraie photo : c'est le redimensionnement dans le navigateur
+    // qui est en jeu. Sans lui, une photo de telephone depasserait la
+    // taille que la synchronisation accepte.
+    {
+      await n.locator('#av-fichier').setInputFiles(photoDEssai());
+      await waitFor(async () => await n.evaluate(() => {
+        const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+        const p = (a.profiles || []).find(x => x.id === a.activeId);
+        return !!(p && p.avatar && p.avatar.k === 'p');
+      }));
+      const photo = await n.evaluate(() => {
+        const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+        const p = (a.profiles || []).find(x => x.id === a.activeId);
+        return { type: p.avatar.k, octets: p.avatar.v.length,
+                 jpeg: p.avatar.v.slice(0, 23) };
+      });
+      check('la photo envoyee est retenue', photo.type === 'p', photo);
+      check('elle a ete reduite en JPEG',
+            photo.jpeg.indexOf('data:image/jpeg') === 0, photo.jpeg);
+      check('et reste bien en dessous de la limite de synchronisation',
+            photo.octets < 60 * 1024, photo.octets);
+
+      // On repasse a la mascotte pour la suite du test.
+      await n.locator(".av-choix[data-mascotte='fennec']").click();
+      await n.waitForTimeout(500);
+    }
+
+    await n.locator('.lang-opt[data-lang="ar"]').click();
+    await n.waitForTimeout(400);
+    await n.locator('#gwel-go').click();
+    await waitFor(async () => await n.locator('#profile-btn').isVisible());
+    check('« Commencer » fait entrer dans l application',
+          await n.locator('#profile-btn').isVisible());
+    check('l avatar de la barre porte bien la mascotte',
+          (await n.locator('#profile-btn img').count()) === 1);
+    check('la langue choisie est appliquee',
+          (await n.evaluate(() => document.documentElement.getAttribute('data-lang'))) === 'ar');
+
+    // L'avatar doit suivre sur un autre appareil. On attend que la
+    // poussee soit reellement partie : la version du compte avance.
+    await waitFor(async () => await n.evaluate(() => {
+      const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+      const p = (a.profiles || []).find(x => x.id === a.activeId);
+      return !!(p && p.cloud && p.cloud.version >= 2);
+    }));
+    const ctxN2 = await contexteNeuf(browser);
+    const n2 = await ctxN2.newPage();
+    await n2.goto(BASE); await n2.waitForTimeout(700);
+    await n2.locator('#gate-login').click(); await n2.waitForTimeout(400);
+    await n2.fill('#glog-email', MAIL2);
+    await n2.fill('#glog-pw', PASSWORD);
+    await n2.locator('#glog-go').click();
+    await waitFor(async () => await n2.locator('#profile-btn').isVisible());
+    const av2 = await n2.evaluate(() => {
+      const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+      const p = (a.profiles || []).find(x => x.id === a.activeId);
+      return p ? p.avatar : null;
+    });
+    check('l avatar a suivi sur l autre appareil',
+          av2 && av2.k === 'm' && av2.v === 'fennec', av2);
+  }
+
   /* ------------- Mauvais mot de passe ------------- */
   console.log('\nRefus');
-  const ctxC = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const ctxC = await contexteNeuf(browser);
   const c = await ctxC.newPage();
   c.on('pageerror', e => errs.push('C: ' + e.message));
   await c.goto(BASE); await c.waitForTimeout(700);
@@ -319,7 +498,7 @@ const cloudEmail = (page) => page.evaluate(() => {
      Le lien est relu dans le message capture par le serveur d'essai,
      exactement comme le ferait un client de messagerie. */
   console.log('\nMot de passe oublie');
-  const ctxD = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const ctxD = await contexteNeuf(browser);
   const d = await ctxD.newPage();
   d.on('pageerror', e => errs.push('D: ' + e.message));
 
@@ -358,6 +537,12 @@ const cloudEmail = (page) => page.evaluate(() => {
         !d.url().includes('reset='), d.url());
 
   await d.fill('#gres-pw', NEW_PASSWORD);
+  await d.fill('#gres-pw2', NEW_PASSWORD + 'zzz');
+  await d.locator('#gres-go').click();
+  await d.waitForTimeout(400);
+  check('la reinitialisation refuse deux mots de passe differents',
+        (await d.locator('#gres-err').innerText()).trim().length > 0);
+  await d.fill('#gres-pw2', NEW_PASSWORD);
   await d.locator('#gres-go').click();
   await waitFor(async () => (await cloudEmail(d)) === EMAIL);
   check('la reinitialisation connecte directement',
@@ -373,11 +558,12 @@ const cloudEmail = (page) => page.evaluate(() => {
   }
 
   /* ------------- Un lien perime ------------- */
-  const ctxE = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const ctxE = await contexteNeuf(browser);
   const e2 = await ctxE.newPage();
   await e2.goto(BASE + '#reset=' + 'z'.repeat(43));
   await e2.waitForTimeout(900);
   await e2.fill('#gres-pw', 'unautremotdepasse');
+  await e2.fill('#gres-pw2', 'unautremotdepasse');
   await e2.locator('#gres-go').click();
   await waitFor(async () => (await e2.locator('#gres-err').innerText()).trim().length > 0);
   check('un lien invalide est refuse et propose d en redemander un',

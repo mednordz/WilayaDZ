@@ -323,6 +323,56 @@
   }
   .gate-pin{ text-align:center; letter-spacing:.5em; font-family:var(--font-mono); font-size:1.3rem; }
 
+  /* ---- Mot de passe : le champ et son œil ----
+     Propriétés logiques (inline-end) plutôt que `right` : l'œil passe
+     tout seul de l'autre côté en arabe, sans règle [dir] en double. */
+  .pw-field{ position:relative; }
+  .pw-field .gate-input{ padding-inline-end:54px; }
+  .pw-eye{
+    position:absolute; inset-inline-end:6px; top:0; height:52px; width:46px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; cursor:pointer; color:var(--ink-dim);
+    border-radius:10px;
+  }
+  .pw-eye .icon{ width:21px; height:21px; }
+  .pw-eye:active{ background:var(--surface-2); }
+  .pw-eye[aria-pressed="true"]{ color:var(--accent); }
+
+  /* ---- Continuer avec Google ---- */
+  .google-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top:9px;
+  }
+  .google-btn .icon{ width:20px; height:20px; flex:none; }
+
+  /* ---- Avatars ----
+     Une photo est posée en fond (recadrée, jamais déformée) ; une
+     mascotte est une image posée sur le rond de couleur. */
+  .av-photo{ background-size:cover; background-position:center; color:transparent; }
+  .av-mascotte{ overflow:hidden; }
+  .av-mascotte img{
+    width:100%; height:100%; object-fit:contain; object-position:center bottom;
+    display:block;
+  }
+  .profile-btn.av-mascotte img{ transform:scale(1.15); }
+
+  .av-grille{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:14px 0 12px;
+  }
+  .av-choix{
+    background:none; border:none; padding:3px; cursor:pointer; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .av-choix .av{
+    width:100%; aspect-ratio:1; border-radius:50%; color:#fff; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.05rem;
+    border:2.5px solid transparent;
+  }
+  .av-choix.on .av{ border-color:var(--accent); }
+  .av-choix:active{ transform:scale(.94); }
+  .av-envoi{ display:block; text-align:center; cursor:pointer; }
+
   /* ---- Compte en ligne ----
      La pastille sur l'avatar n'est jamais la seule information : la
      feuille « Profil » dit toujours en toutes lettres si le profil est

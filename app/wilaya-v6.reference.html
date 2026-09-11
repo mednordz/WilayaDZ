@@ -1056,6 +1056,56 @@
   }
   .gate-pin{ text-align:center; letter-spacing:.5em; font-family:var(--font-mono); font-size:1.3rem; }
 
+  /* ---- Mot de passe : le champ et son œil ----
+     Propriétés logiques (inline-end) plutôt que `right` : l'œil passe
+     tout seul de l'autre côté en arabe, sans règle [dir] en double. */
+  .pw-field{ position:relative; }
+  .pw-field .gate-input{ padding-inline-end:54px; }
+  .pw-eye{
+    position:absolute; inset-inline-end:6px; top:0; height:52px; width:46px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; cursor:pointer; color:var(--ink-dim);
+    border-radius:10px;
+  }
+  .pw-eye .icon{ width:21px; height:21px; }
+  .pw-eye:active{ background:var(--surface-2); }
+  .pw-eye[aria-pressed="true"]{ color:var(--accent); }
+
+  /* ---- Continuer avec Google ---- */
+  .google-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top:9px;
+  }
+  .google-btn .icon{ width:20px; height:20px; flex:none; }
+
+  /* ---- Avatars ----
+     Une photo est posée en fond (recadrée, jamais déformée) ; une
+     mascotte est une image posée sur le rond de couleur. */
+  .av-photo{ background-size:cover; background-position:center; color:transparent; }
+  .av-mascotte{ overflow:hidden; }
+  .av-mascotte img{
+    width:100%; height:100%; object-fit:contain; object-position:center bottom;
+    display:block;
+  }
+  .profile-btn.av-mascotte img{ transform:scale(1.15); }
+
+  .av-grille{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:14px 0 12px;
+  }
+  .av-choix{
+    background:none; border:none; padding:3px; cursor:pointer; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .av-choix .av{
+    width:100%; aspect-ratio:1; border-radius:50%; color:#fff; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.05rem;
+    border:2.5px solid transparent;
+  }
+  .av-choix.on .av{ border-color:var(--accent); }
+  .av-choix:active{ transform:scale(.94); }
+  .av-envoi{ display:block; text-align:center; cursor:pointer; }
+
   /* ---- Compte en ligne ----
      La pastille sur l'avatar n'est jamais la seule information : la
      feuille « Profil » dit toujours en toutes lettres si le profil est
@@ -5184,7 +5234,10 @@ var qrcode = function() {
       v:1, n:p.name, x:d.xp||0,
       sc:(d.streak&&d.streak.count)||0, sl:(d.streak&&d.streak.last)||null,
       k:d.keyDone?1:0, bb:d.bestBlitz||0,
-      cr:d.crowns||{}, p:packed, cf:d.confusions||{}
+      cr:d.crowns||{}, p:packed, cf:d.confusions||{},
+      /* L'avatar n'est pas cumulable comme une progression : c'est le
+         plus récent qui gagne, d'où l'horodatage qui l'accompagne. */
+      av:p.avatar||null, avt:p.avatarAt||0
     };
   }
 
@@ -5239,6 +5292,9 @@ var qrcode = function() {
         d.confusions[a][b] = Math.max(d.confusions[a][b]||0, obj.cf[a][b]||0);
       });
     });
+    if(obj.av && (obj.avt||0) > (p.avatarAt||0)){
+      p.avatar = obj.av; p.avatarAt = obj.avt;
+    }
     d.streak = d.streak || {count:0,last:null};
     if(obj.sl && (!d.streak.last || obj.sl > d.streak.last)){
       d.streak = {count:obj.sc||0, last:obj.sl};
@@ -6376,8 +6432,7 @@ var qrcode = function() {
     var p = activeProfile();
     if(!p){ btn.style.display = "none"; return; }
     btn.style.display = "flex";
-    btn.style.background = PROFILE_COLORS[p.color || 0];
-    btn.textContent = profileInitial(p);
+    applyAvatar(btn, p);
     btn.setAttribute("aria-label", TL("Profil de " + p.name + ", changer de profil",
                                       "ملف " + p.name + "، تغيير الملف"));
     renderCloudBadge();
@@ -6405,7 +6460,7 @@ var qrcode = function() {
     if(mode === "pin"){
       gate.innerHTML =
         "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
-          "<div class='gate-avatar' style='background:" + PROFILE_COLORS[targetProfile.color||0] + "'>" + profileInitial(targetProfile) + "</div>" +
+          avatarHtml(targetProfile, "gate-avatar") +
           "<h2 id='gate-title'>" + esc(targetProfile.name) + "</h2>" +
           "<p class='gate-sub'>" + TS("Entre ton code d'accès.", "أدخل رمز الدخول.") + "</p>" +
           "<label class='sr-only' for='gate-pin'>" + TL("Code d'accès à 4 chiffres","رمز الدخول من 4 أرقام") + "</label>" +
@@ -6452,9 +6507,13 @@ var qrcode = function() {
           cloudFieldsHtml("glog", {}) +
           "<p class='gate-err' id='glog-err' role='alert'></p>" +
           "<button class='btn' id='glog-go'>" + T("Se connecter","ادخل") + "</button>" +
+          googleButtonHtml("glog") +
           "<button class='btn ghost' id='glog-forgot' style='margin-top:9px;'>" + T("Mot de passe oublié ?","نسيت كلمة السر؟") + "</button>" +
           "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
         "</div>";
+      var glogBox = document.getElementById("gate-box");
+      wirePasswordEyes(glogBox);
+      wireGoogleButton(glogBox, loginInto);
       var glogBtn = document.getElementById("glog-go");
       function doGateLogin(){
         var f = cloudReadFields("glog");
@@ -6549,6 +6608,70 @@ var qrcode = function() {
       return;
     }
 
+    /* Premier pas dans l'application, une fois l'adresse confirmée.
+       C'est ici que l'avatar et la langue trouvent leur place : au
+       moment où ça fait plaisir de choisir, pas au moment où ça
+       retarde l'inscription. Tout y est facultatif. */
+    if(mode === "welcome"){
+      var pw = targetProfile || activeProfile();
+      if(!pw){ hideGate(); return bootProfile(); }
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<h2 id='gate-title'>" + T("Bienvenue, " + esc(pw.name),
+                                     "مرحبا، " + esc(pw.name)) + "</h2>" +
+          "<p class='gate-sub'>" + TS("Deux réglages, et on commence. Tu pourras les changer quand tu veux.",
+                                      "إعدادان، ثم نبدأ. يمكنك تغييرهما متى شئت.") + "</p>" +
+          "<p class='sub' style='margin:14px 0 2px'>" + TL("Ta photo","صورتك") + "</p>" +
+          avatarPickerHtml(pw) +
+          "<p class='sub' style='margin:18px 0 2px'>" + TL("Langue de l'interface","لغة الواجهة") + "</p>" +
+          langPickerHtml(pw.lang || "bi") +
+          "<p class='gate-note'>" + TS("Les noms de wilayas resteront écrits dans les deux langues quel que soit ton choix — c'est ce que tu apprends.",
+                                       "ستبقى أسماء الولايات مكتوبة باللغتين مهما كان اختيارك — فهي مادة التعلّم نفسها.") + "</p>" +
+          "<button class='btn' id='gwel-go' style='margin-top:10px;'>" + T("Commencer","لنبدأ") + "</button>" +
+        "</div>";
+      var wb = document.getElementById("gate-box");
+      wireAvatarPicker(wb, pw, function(){ showGate("welcome", pw); });
+      wireLangPicker(wb, function(l){ pw.lang = l; saveAccount(); applyLang(l); });
+      document.getElementById("gwel-go").addEventListener("click", function(){
+        hideGate(); bootProfile();
+      });
+      wb.focus();
+      return;
+    }
+
+    /* Retour de Google. targetProfile porte ici ce que la redirection a
+       rapporté, déjà retiré de la barre d'adresse. */
+    if(mode === "googling"){
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<h2 id='gate-title'>" + T("Connexion…","جارٍ الاتصال…") + "</h2>" +
+          "<p class='gate-sub' id='ggo-msg' role='status'>" +
+            TS("On termine avec Google, ça prend deux secondes.",
+               "ننهي الاتصال مع Google، لن يطول الأمر.") + "</p>" +
+          "<p class='gate-err' id='ggo-err' role='alert'></p>" +
+          "<button class='btn ghost' id='ggo-back' style='display:none'>" + T("Retour","رجوع") + "</button>" +
+        "</div>";
+      cloudGoogle(targetProfile).then(function(r){
+        if(r.ok){
+          if(r.cree) return showGate("welcome", r.profile);
+          hideGate(); bootProfile();
+          toast(TL("Bienvenue, " + esc(r.profile.name) + ".","مرحبا، " + esc(r.profile.name) + "."));
+          return;
+        }
+        document.getElementById("ggo-msg").style.display = "none";
+        cloudErrInto("ggo-err", r.message);
+        var b = document.getElementById("ggo-back");
+        b.style.display = "";
+        b.addEventListener("click", function(){
+          showGate(account.profiles.length ? "pick" : "create");
+        });
+      });
+      document.getElementById("gate-box").focus();
+      return;
+    }
+
     /* Arrivée par le lien de confirmation. targetProfile porte ici le
        jeton, déjà retiré de la barre d'adresse. */
     if(mode === "confirming"){
@@ -6565,6 +6688,7 @@ var qrcode = function() {
         "</div>";
       cloudConfirm(targetProfile).then(function(r){
         if(r.ok){
+          if(r.cree) return showGate("welcome", r.profile);
           hideGate(); bootProfile();
           toast(TL("Adresse confirmée — bienvenue, " + esc(r.profile.name) + ".",
                    "تم تأكيد البريد — مرحبا، " + esc(r.profile.name) + "."));
@@ -6646,9 +6770,10 @@ var qrcode = function() {
           "<h2 id='gate-title'>" + T("Nouveau mot de passe","كلمة سر جديدة") + "</h2>" +
           "<p class='gate-sub'>" + TS("Choisis-en un nouveau : tu seras connecté dans la foulée.",
                                       "اختر كلمة سر جديدة: ستدخل مباشرة بعدها.") + "</p>" +
-          "<label class='sr-only' for='gres-pw'>" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "</label>" +
-          "<input class='gate-input' id='gres-pw' type='password' autocomplete='new-password' " +
-            "placeholder='Mot de passe (8 min.) · كلمة السر' aria-label=\"" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "\" />" +
+          passwordFieldHtml("gres-pw", "Mot de passe (8 min.) · كلمة السر",
+                            "new-password", TL("Nouveau mot de passe","كلمة السر الجديدة")) +
+          passwordFieldHtml("gres-pw2", "Répéter le mot de passe · كرّر كلمة السر",
+                            "new-password", TL("Répéter le mot de passe","كرّر كلمة السر")) +
           "<p class='gate-note'>" + TS("Tous les appareils déjà connectés à ce compte devront se reconnecter.",
                                        "ستحتاج كل الأجهزة المتصلة بهذا الحساب إلى إعادة الاتصال.") + "</p>" +
           "<p class='gate-err' id='gres-err' role='alert'></p>" +
@@ -6656,12 +6781,15 @@ var qrcode = function() {
           "<button class='btn ghost' id='gres-again' style='margin-top:9px;display:none'>" + T("Demander un nouveau lien","اطلب رابطا جديدا") + "</button>" +
           "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
         "</div>";
+      wirePasswordEyes(document.getElementById("gate-box"));
       var resPw = document.getElementById("gres-pw");
       var resBtn = document.getElementById("gres-go");
       function doReset(){
         var pw = resPw.value || "";
+        var pw2 = document.getElementById("gres-pw2").value || "";
         cloudErrInto("gres-err", "");
-        if(pw.length < 8){ return cloudErrInto("gres-err", cloudErrorText("weak_password")); }
+        var souci = passwordProblem(pw, pw2);
+        if(souci){ return cloudErrInto("gres-err", souci); }
         cloudBusy(resBtn, true, TL("Patiente…","انتظر…"));
         cloudResetWithToken(targetProfile, pw).then(function(r){
           cloudBusy(resBtn, false);
@@ -6676,7 +6804,7 @@ var qrcode = function() {
         });
       }
       resBtn.addEventListener("click", doReset);
-      resPw.addEventListener("keydown", function(e){ if(e.key === "Enter") doReset(); });
+      document.getElementById("gres-pw2").addEventListener("keydown", function(e){ if(e.key === "Enter") doReset(); });
       document.getElementById("gres-again").addEventListener("click", function(){ showGate("forgot"); });
       document.getElementById("gate-back").addEventListener("click", function(){
         showGate(account.profiles.length ? "pick" : "create");
@@ -6690,6 +6818,11 @@ var qrcode = function() {
          existe deja sur cet appareil et qu'il faut rattacher au compte
          qu'on va creer — surtout pas remplacer par un compte vide. */
       var attachTo = (targetProfile && typeof targetProfile === "object") ? targetProfile : null;
+      /* Trois champs, rien de plus. La langue se choisit déjà dans le
+         profil et l'application est bilingue de toute façon ; le code
+         d'accès est un verrou local qui n'a rien à faire ici. Les deux
+         prenaient 60 % de la hauteur d'un écran que tout le monde voit
+         en premier — et qu'il fallait faire défiler pour rien. */
       gate.innerHTML =
         "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
           "<div class='gate-avatar'>" + USER_ICON + "</div>" +
@@ -6697,24 +6830,19 @@ var qrcode = function() {
           "<p class='gate-sub'>" + (attachTo
             ? TS("La progression de « " + esc(attachTo.name) + " » déjà sur cet appareil sera envoyée sur ce compte. Rien n'est effacé.",
                  "سيُرسل تقدّم « " + esc(attachTo.name) + " » الموجود على هذا الجهاز إلى هذا الحساب. لا شيء يُمحى.")
-            : TS("Ta progression sera rattachée à ce compte : tu la retrouveras sur n'importe quel appareil où tu te connectes.",
-                 "سيُربط تقدّمك بهذا الحساب: ستجده على أي جهاز تتصل منه.")) + "</p>" +
-          cloudFieldsHtml("gate", {name:true, newPassword:true}) +
-          langPickerHtml(attachTo ? (attachTo.lang || "bi") : "bi") +
-          "<p class='gate-note'>" + TS("Les noms de wilayas resteront écrits dans les deux langues quel que soit ton choix — c'est ce que tu apprends.",
-                                       "ستبقى أسماء الولايات مكتوبة باللغتين مهما كان اختيارك — فهي مادة التعلّم نفسها.") + "</p>" +
-          "<label class='sr-only' for='gate-newpin'>" + TL("Code d'accès à 4 chiffres, facultatif","رمز دخول من 4 أرقام، اختياري") + "</label>" +
-          "<input class='gate-input' id='gate-newpin' type='password' inputmode='numeric' maxlength='6' autocomplete='off' placeholder=\"Code 4 chiffres (facultatif)\" aria-label=\"" + TL("Code d'accès facultatif","رمز دخول اختياري") + "\" />" +
-          "<p class='gate-note'>" + TS("Ce code verrouille ton profil sur CET appareil, pour que personne d'autre ne l'ouvre ici. Il ne remplace pas ton mot de passe et ne se récupère pas.",
-                                       "هذا الرمز يقفل ملفك على هذا الجهاز فقط. لا يحل محل كلمة السر ولا يمكن استرجاعه.") + "</p>" +
+            : TS("Tu la retrouveras sur n'importe quel appareil où tu te connectes.",
+                 "ستجد تقدّمك على أي جهاز تتصل منه.")) + "</p>" +
+          cloudFieldsHtml("gate", {name:true, newPassword:true, confirm:true}) +
+          cloudRecoveryNote() +
           "<p class='gate-err' id='gate-err' role='alert'></p>" +
           "<button class='btn' id='gate-create'>" + T("Créer le compte","أنشئ الحساب") + "</button>" +
+          googleButtonHtml("gate") +
           "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" +
           (account.profiles.length ? "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" : "") +
         "</div>";
       var gateBox = document.getElementById("gate-box");
-      /* aperçu immédiat : on applique la langue dès le clic */
-      wireLangPicker(gateBox, function(l){ applyLang(l); });
+      wirePasswordEyes(gateBox);
+      wireGoogleButton(gateBox, attachTo);
       var nameInp = document.getElementById("gate-name");
       var createBtn = document.getElementById("gate-create");
       if(attachTo) nameInp.value = attachTo.name;
@@ -6724,49 +6852,27 @@ var qrcode = function() {
         cloudErrInto("gate-err", "");
         if(!f.name){ cloudErrInto("gate-err", TL("Écris un prénom.","اكتب اسما.")); nameInp.focus(); return; }
         if(!f.email){ cloudErrInto("gate-err", cloudErrorText("bad_email")); return; }
-        if(f.pw.length < 8){ cloudErrInto("gate-err", cloudErrorText("weak_password")); return; }
-        var pin = document.getElementById("gate-newpin").value.trim();
-        if(pin && !/^\d{4,6}$/.test(pin)){
-          cloudErrInto("gate-err", TL("Le code doit faire 4 à 6 chiffres.","الرمز من 4 إلى 6 أرقام."));
-          return;
-        }
-        var lang = pickedLang(gateBox);
-        cloudBusy(createBtn, true, TL("Création…","جارٍ الإنشاء…"));
+        var souci = passwordProblem(f.pw, f.pw2);
+        if(souci){ cloudErrInto("gate-err", souci); return; }
 
+        cloudBusy(createBtn, true, TL("Création…","جارٍ الإنشاء…"));
         var demarche;
         if(attachTo){
           attachTo.name = f.name;
-          attachTo.lang = lang;
           account.activeId = attachTo.id;
           saveAccount();
-          demarche = cloudRegister(attachTo, f.email, f.name, f.pw)
-            .then(function(r){ r.profile = attachTo; return r; });
+          demarche = cloudRegister(attachTo, f.email, f.name, f.pw);
         }else{
-          demarche = cloudRegisterNew(f.name, f.email, f.pw, lang);
+          demarche = cloudRegisterNew(f.name, f.email, f.pw, "bi");
         }
-
         demarche.then(function(r){
           cloudBusy(createBtn, false);
           if(!r.ok){ cloudErrInto("gate-err", r.message); return; }
-          if(pin){
-            if(attachTo){
-              attachTo.pin = hashPin(pin, attachTo.salt);
-              saveAccount();
-            }else if(cloudPending()){
-              /* Le profil n'existe pas encore — il ne naîtra qu'à la
-                 confirmation. On range donc l'empreinte du code, jamais
-                 le code lui-même, et le profil la reprendra en naissant. */
-              var sel = Math.random().toString(36).slice(2);
-              account.pending.pinSalt = sel;
-              account.pending.pinHash = hashPin(pin, sel);
-              saveAccount();
-            }
-          }
           showGate("pending", f.email);
         });
       }
       createBtn.addEventListener("click", doCreate);
-      document.getElementById("gate-pw").addEventListener("keydown", function(e){
+      document.getElementById("gate-pw2").addEventListener("keydown", function(e){
         if(e.key === "Enter") doCreate();
       });
       document.getElementById("gate-login").addEventListener("click", function(){ showGate("login", attachTo); });
@@ -6792,7 +6898,7 @@ var qrcode = function() {
                     + (p.pin ? ", protégé par un code" : ""),
                 p.name + "، " + s.tracked + " ولاية، " + s.xp + " نقطة"
                     + (orphan ? "، بحاجة إلى ربط بحساب" : ""))) + "\">" +
-               "<span class='gate-profile-av' style='background:" + PROFILE_COLORS[p.color||0] + "'>" + profileInitial(p) + "</span>" +
+               avatarHtml(p, "gate-profile-av") +
                "<span class='gate-profile-body'>" +
                  "<b>" + esc(p.name) + "</b>" +
                  "<span>" + ligne + "</span>" +
@@ -6869,7 +6975,7 @@ var qrcode = function() {
     openSheet(
       "<h2 id='sheet-title'>" + T("Profil","الملف") + "</h2>" +
       "<div class='profile-head'>" +
-        "<span class='profile-av' style='background:" + PROFILE_COLORS[p.color||0] + "'>" + profileInitial(p) + "</span>" +
+        avatarHtml(p, "profile-av") +
         "<span class='profile-name'>" + esc(p.name) + (p.pin ? " " + LOCKSM_ICON : "") + "</span>" +
       "</div>" +
       "<div class='sheet-grid'>" +
@@ -6881,7 +6987,7 @@ var qrcode = function() {
         ? "<p class='sub' style='margin:16px 0 8px;'>" + TL("Changer de profil","تغيير الملف") + "</p>" +
           others.map(function(o){
             return "<button class='profile-row' data-id='" + o.id + "'>" +
-                     "<span class='gate-profile-av' style='background:" + PROFILE_COLORS[o.color||0] + "'>" + profileInitial(o) + "</span>" +
+                     avatarHtml(o, "gate-profile-av") +
                      "<span class='gate-profile-body'><b>" + esc(o.name) + "</b><span>" + profileStats(o).tracked + " wilayas · " + profileStats(o).xp + " XP</span></span>" +
                      (o.pin ? "<span class='gate-profile-lock' aria-hidden='true'>" + LOCKSM_ICON + "</span>" : "") +
                    "</button>";
@@ -6890,7 +6996,24 @@ var qrcode = function() {
       "<p class='sub' style='margin:18px 0 8px;'>" + TL("Langue de l'interface","لغة الواجهة") + "</p>" +
       langPickerHtml(p.lang || "bi") +
       cloudRowHtml(p) +
-      "<button class='btn ghost' id='prof-new' style='margin-top:12px;'>" + T("+ Nouveau profil","+ ملف جديد") + "</button>" +
+      "<button class='profile-row' id='prof-avatar' style='margin-top:14px'>" +
+        avatarHtml(p, "gate-profile-av") +
+        "<span class='gate-profile-body'>" +
+          "<b>" + TL("Ta photo","صورتك") + "</b>" +
+          "<span>" + TL("Une mascotte, ou ta propre photo","شخصية، أو صورتك") + "</span>" +
+        "</span>" +
+      "</button>" +
+      "<p class='sub' style='margin:18px 0 8px;'>" + TL("Sur cet appareil","على هذا الجهاز") + "</p>" +
+      "<button class='profile-row' id='prof-pin'>" +
+        "<span class='cloud-row-icon'>" + LOCKSM_ICON + "</span>" +
+        "<span class='gate-profile-body'>" +
+          "<b>" + TL("Code d'accès","رمز الدخول") + "</b>" +
+          "<span>" + (p.pin
+            ? TL("Ton profil est verrouillé ici","ملفك مقفل هنا")
+            : TL("Personne n'a besoin de code pour l'ouvrir","لا حاجة لرمز لفتحه")) + "</span>" +
+        "</span>" +
+      "</button>" +
+      "<button class='btn ghost' id='prof-new' style='margin-top:12px;'>" + T("+ Nouveau compte","+ حساب جديد") + "</button>" +
       "<button class='btn ghost' id='prof-sync' style='margin-top:9px;'>" + T("Synchroniser un autre appareil","مزامنة جهاز آخر") + "</button>" +
       (account.profiles.length > 1
         ? "<button class='btn ghost danger' id='prof-del' style='margin-top:9px;'>" + T("Supprimer ce profil","احذف هذا الملف") + "</button>"
@@ -6920,6 +7043,8 @@ var qrcode = function() {
     });
     var cloudRow = document.getElementById("prof-cloud");
     if(cloudRow) cloudRow.addEventListener("click", function(){ openCloudSheet(); });
+    document.getElementById("prof-avatar").addEventListener("click", openAvatarSheet);
+    document.getElementById("prof-pin").addEventListener("click", openPinSheet);
     document.getElementById("prof-new").addEventListener("click", function(){ closeSheet(); showGate("create"); });
     document.getElementById("prof-sync").addEventListener("click", function(){
       closeSheet(); switchTab("info");
@@ -6937,6 +7062,60 @@ var qrcode = function() {
           saveAccount(); closeSheet();
           if(account.activeId) bootProfile(); else showGate("pick");
         });
+    });
+    document.getElementById("sheet-close").addEventListener("click", closeSheet);
+  }
+
+  /* ---------------- Code d'accès local ----------------
+     Il a quitté l'inscription : c'est un verrou propre à cet appareil,
+     sans rapport avec le compte, et il encombrait le premier écran que
+     tout le monde voit. Sa place est ici, où l'on vient quand on décide
+     de partager son téléphone. */
+  function openPinSheet(){
+    var p = activeProfile();
+    if(!p) return;
+    var aDeja = !!p.pin;
+    openSheet(
+      "<h2 id='sheet-title'>" + T("Code d'accès","رمز الدخول") + "</h2>" +
+      "<p class='sub'>" + TS(
+        "Il verrouille « " + esc(p.name) + " » sur CET appareil, pour que personne d'autre ne l'ouvre ici. Il ne remplace pas ton mot de passe et ne se récupère pas — mais ton compte, lui, reste accessible ailleurs.",
+        "يقفل « " + esc(p.name) + " » على هذا الجهاز فقط. لا يحل محل كلمة السر ولا يمكن استرجاعه — لكن حسابك يبقى متاحا في مكان آخر.") + "</p>" +
+      (aDeja
+        ? "<label class='sr-only' for='pin-old'>" + TL("Code actuel","الرمز الحالي") + "</label>" +
+          "<input class='gate-pin' id='pin-old' type='password' inputmode='numeric' maxlength='6' " +
+            "autocomplete='off' placeholder='••••' aria-label=\"" + TL("Code actuel","الرمز الحالي") + "\" />"
+        : "") +
+      "<label class='sr-only' for='pin-new'>" + TL("Nouveau code, 4 à 6 chiffres","رمز جديد من 4 إلى 6 أرقام") + "</label>" +
+      "<input class='gate-pin' id='pin-new' type='password' inputmode='numeric' maxlength='6' " +
+        "autocomplete='off' placeholder='••••' aria-label=\"" + TL("Nouveau code, 4 à 6 chiffres","رمز جديد من 4 إلى 6 أرقام") + "\" />" +
+      "<p class='gate-err' id='pin-err' role='alert'></p>" +
+      "<button class='btn' id='pin-save'>" + (aDeja ? T("Changer le code","غيّر الرمز") : T("Activer le code","فعّل الرمز")) + "</button>" +
+      (aDeja ? "<button class='btn ghost danger' id='pin-off' style='margin-top:9px;'>" + T("Retirer le code","أزل الرمز") + "</button>" : "") +
+      "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Fermer","إغلاق") + "</button>"
+    );
+
+    function codeActuelBon(){
+      if(!aDeja) return true;
+      var v = (document.getElementById("pin-old").value || "").trim();
+      return hashPin(v, p.salt) === p.pin;
+    }
+    document.getElementById("pin-save").addEventListener("click", function(){
+      cloudErrInto("pin-err", "");
+      if(!codeActuelBon()){ return cloudErrInto("pin-err", TL("Code actuel incorrect.","الرمز الحالي غير صحيح.")); }
+      var n = (document.getElementById("pin-new").value || "").trim();
+      if(!/^\d{4,6}$/.test(n)){
+        return cloudErrInto("pin-err", TL("Le code doit faire 4 à 6 chiffres.","الرمز من 4 إلى 6 أرقام."));
+      }
+      p.pin = hashPin(n, p.salt);
+      saveAccount(); closeSheet();
+      toast(TL("Code d'accès enregistré.","حُفظ رمز الدخول."));
+    });
+    var off = document.getElementById("pin-off");
+    if(off) off.addEventListener("click", function(){
+      cloudErrInto("pin-err", "");
+      if(!codeActuelBon()){ return cloudErrInto("pin-err", TL("Code actuel incorrect.","الرمز الحالي غير صحيح.")); }
+      p.pin = null; saveAccount(); closeSheet();
+      toast(TL("Code retiré.","أُزيل الرمز."));
     });
     document.getElementById("sheet-close").addEventListener("click", closeSheet);
   }
@@ -7448,6 +7627,7 @@ var qrcode = function() {
      déjà un sur cet appareil, un neuf sinon — puis on synchronise. */
   function adoptSession(acc, token, cible){
     var existing = cible || profileForEmail(acc.email);
+    var neuf = !existing;
     var p;
     if(existing){
       account.activeId = existing.id;
@@ -7463,7 +7643,7 @@ var qrcode = function() {
     }
     cloudBooted[p.id] = true;
     return cloudSync(p).then(function(r){
-      return {ok:true, profile:p, added:(r && r.added) || 0,
+      return {ok:true, profile:p, cree:neuf, added:(r && r.added) || 0,
               improved:(r && r.improved) || 0};
     });
   }
@@ -7612,6 +7792,353 @@ var qrcode = function() {
   }
 
   /* ============================================================
+     CONTINUER AVEC GOOGLE
+
+     Volontairement SANS le script de Google (accounts.google.com/gsi).
+     L'application est un fichier unique et autonome : y greffer un
+     script tiers la rendrait dépendante d'un serveur extérieur pour
+     s'afficher, et ferait suivre chaque ouverture à Google — y compris
+     pour quelqu'un qui ne veut rien avoir à faire avec lui.
+
+     À la place, la redirection OAuth, qui ne demande rien de plus que
+     le navigateur : on envoie la personne chez Google, elle revient
+     avec un jeton d'identité dans le FRAGMENT de l'adresse (jamais
+     envoyé à un serveur), et c'est notre service qui le fait vérifier
+     par Google.
+     ============================================================ */
+
+  var GOOGLE_ICON = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path fill="#4285F4" d="M21.6 12.2c0-.7-.06-1.35-.18-2H12v3.8h5.4a4.6 4.6 0 01-2 3v2.5h3.2c1.9-1.75 3-4.32 3-7.3z"/>' +
+    '<path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.6-2.43l-3.2-2.5c-.9.6-2.04.95-3.4.95-2.6 0-4.8-1.76-5.6-4.12H3.1v2.58A10 10 0 0012 22z"/>' +
+    '<path fill="#FBBC05" d="M6.4 13.9a6 6 0 010-3.83V7.5H3.1a10 10 0 000 9l3.3-2.6z"/>' +
+    '<path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.83 1.5l2.84-2.84C16.95 2.98 14.7 2 12 2A10 10 0 003.1 7.5l3.3 2.57C7.2 7.7 9.4 5.95 12 5.95z"/>' +
+    '</svg>';
+
+  /* null = pas encore su, "" = pas configuré, sinon l'identifiant. */
+  var googleClientId = null;
+  var googleWaiters = [];
+
+  function googleUsable(){
+    /* La redirection suppose une vraie adresse : dans l'APK (file://)
+       il n'y a pas d'origine à laquelle revenir. */
+    return /^https?:$/.test(location.protocol) && cloudAvailable();
+  }
+
+  function googleReady(cb){
+    if(googleClientId !== null) return cb(googleClientId);
+    googleWaiters.push(cb);
+  }
+
+  function loadCloudConfig(){
+    if(!googleUsable()){ googleClientId = ""; return; }
+    cloudCall("GET", "/config", null, null).then(function(res){
+      googleClientId = (res.status === 200 && res.data && res.data.google) || "";
+      var attente = googleWaiters; googleWaiters = [];
+      attente.forEach(function(cb){ try{ cb(googleClientId); }catch(e){} });
+    });
+  }
+
+  /* ---------------- Le bouton ---------------- */
+
+  /* Rendu masqué : on ne sait pas encore si Google est configuré, et un
+     bouton qui apparaît puis disparaît est pire qu'un bouton qui arrive
+     une demi-seconde plus tard. */
+  function googleButtonHtml(prefix){
+    if(!googleUsable()) return "";
+    return "<button class='btn ghost google-btn' id='" + prefix + "-google' " +
+             "style='display:none' type='button'>" +
+             GOOGLE_ICON + "<span>" + TL("Continuer avec Google","تابع مع Google") + "</span>" +
+           "</button>";
+  }
+
+  function wireGoogleButton(root, attachTo){
+    var b = root.querySelector(".google-btn");
+    if(!b) return;
+    googleReady(function(id){ if(id) b.style.display = ""; });
+    b.addEventListener("click", function(){
+      googleStart(attachTo ? attachTo.id : null);
+    });
+  }
+
+  /* ---------------- Aller et retour ---------------- */
+
+  var GOOGLE_STATE_KEY = "wilaya-google-v1";
+
+  function googleStart(profileId){
+    googleReady(function(id){
+      if(!id) return;
+      var nonce = randomToken();
+      var state = randomToken();
+      try{
+        sessionStorage.setItem(GOOGLE_STATE_KEY,
+          JSON.stringify({nonce:nonce, state:state, profileId:profileId || null}));
+      }catch(e){ /* navigation privée : on continue, le contrôle sautera */ }
+
+      var retour = location.origin + location.pathname;
+      location.href = "https://accounts.google.com/o/oauth2/v2/auth" +
+        "?client_id="     + encodeURIComponent(id) +
+        "&redirect_uri="  + encodeURIComponent(retour) +
+        "&response_type=id_token" +
+        "&scope="         + encodeURIComponent("openid email profile") +
+        "&nonce="         + encodeURIComponent(nonce) +
+        "&state="         + encodeURIComponent(state) +
+        "&prompt=select_account";
+    });
+  }
+
+  function randomToken(){
+    if(window.crypto && crypto.getRandomValues){
+      var a = new Uint8Array(24);
+      crypto.getRandomValues(a);
+      return Array.prototype.map.call(a, function(x){
+        return ("0" + x.toString(16)).slice(-2);
+      }).join("");
+    }
+    return String(Date.now()) + Math.random().toString(36).slice(2);
+  }
+
+  /* Le retour de Google : #state=...&id_token=... */
+  function googlePendingReturn(){
+    var h = String(location.hash || "");
+    if(h.indexOf("id_token=") < 0) return null;
+    var params = {};
+    h.replace(/^#/, "").split("&").forEach(function(bout){
+      var i = bout.indexOf("=");
+      if(i > 0) params[decodeURIComponent(bout.slice(0, i))] = decodeURIComponent(bout.slice(i + 1));
+    });
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+    if(!params.id_token) return null;
+
+    var garde = null;
+    try{ garde = JSON.parse(sessionStorage.getItem(GOOGLE_STATE_KEY) || "null"); }catch(e){}
+    try{ sessionStorage.removeItem(GOOGLE_STATE_KEY); }catch(e){}
+
+    /* `state` doit revenir tel qu'on l'a envoyé : c'est ce qui
+       distingue un retour de NOTRE demande d'un jeton qu'on nous
+       glisserait par un lien fabriqué. */
+    if(garde && garde.state && params.state !== garde.state) return null;
+    return { credential: params.id_token,
+             nonce: garde ? garde.nonce : "",
+             profileId: garde ? garde.profileId : null };
+  }
+
+  function cloudGoogle(retour){
+    return cloudCall("POST", "/auth/google",
+                     {credential:retour.credential, nonce:retour.nonce})
+      .then(function(res){
+        if(res.status !== 200){
+          var code = res.data && res.data.error;
+          if(code === "google_off"){
+            return {ok:false, message:TL("La connexion Google n'est pas configurée ici.",
+                                         "الدخول عبر Google غير مُعدّ هنا.")};
+          }
+          return {ok:false, message:TL(
+            "Google n'a pas pu confirmer ton identité. Réessaie.",
+            "تعذّر على Google تأكيد هويتك. أعد المحاولة.")};
+        }
+        var cible = null;
+        if(retour.profileId){
+          for(var i=0;i<account.profiles.length;i++){
+            if(account.profiles[i].id === retour.profileId) cible = account.profiles[i];
+          }
+        }
+        return adoptSession(res.data.account, res.data.token, cible)
+          .then(function(r){ clearPending(); return r; });
+      });
+  }
+
+  /* ============================================================
+     AVATARS
+
+     Trois formes, dans cet ordre de préférence :
+       · une photo envoyée par la personne ;
+       · une des quatre mascottes déjà embarquées — elles ne coûtent
+         pas un octet de plus, leurs têtes sont déjà dans le fichier ;
+       · à défaut, l'initiale sur un rond de couleur, comme avant.
+
+     Une photo est redimensionnée DANS LE NAVIGATEUR avant d'être
+     gardée. Sans cela, une photo de téléphone de 4 Mo partirait telle
+     quelle dans la synchronisation, qui refuse au-delà de 512 Kio —
+     et la personne ne comprendrait pas pourquoi.
+     ============================================================ */
+
+  var AVATAR_MASCOTTES = ["fennec", "chameau", "cigogne", "palmier"];
+
+  /* 160 px suffisent : le plus grand endroit où un avatar s'affiche
+     fait 66 px, soit 132 px sur un écran à double densité. */
+  var AVATAR_TAILLE = 160;
+  var AVATAR_QUALITE = 0.82;
+  var AVATAR_MAX_OCTETS = 60 * 1024;
+
+  function avatarDe(p){ return (p && p.avatar) || null; }
+
+  /* Pose l'avatar sur un élément déjà rond (bouton, span…). */
+  function applyAvatar(el, p){
+    if(!el) return;
+    var a = avatarDe(p);
+    el.classList.remove("av-photo", "av-mascotte");
+    if(a && a.k === "p"){
+      el.classList.add("av-photo");
+      el.style.background = "";
+      el.style.backgroundImage = "url(" + a.v + ")";
+      el.innerHTML = "";
+      return;
+    }
+    el.style.backgroundImage = "";
+    el.style.background = PROFILE_COLORS[(p && p.color) || 0];
+    if(a && a.k === "m" && typeof MASCOTS !== "undefined" && MASCOTS[a.v]){
+      el.classList.add("av-mascotte");
+      el.innerHTML = "<img alt='' src='" + MASCOTS[a.v].head + "' />";
+      return;
+    }
+    el.textContent = profileInitial(p);
+  }
+
+  /* La même chose en chaîne, pour les listes construites d'un bloc. */
+  function avatarHtml(p, cls){
+    var a = avatarDe(p);
+    var base = "class='" + cls + (a && a.k === "p" ? " av-photo" : (a && a.k === "m" ? " av-mascotte" : "")) + "'";
+    if(a && a.k === "p"){
+      return "<span " + base + " style=\"background-image:url(" + a.v + ")\"></span>";
+    }
+    var fond = "style='background:" + PROFILE_COLORS[(p && p.color) || 0] + "'";
+    if(a && a.k === "m" && typeof MASCOTS !== "undefined" && MASCOTS[a.v]){
+      return "<span " + base + " " + fond + "><img alt='' src='" + MASCOTS[a.v].head + "' /></span>";
+    }
+    return "<span " + base + " " + fond + ">" + profileInitial(p) + "</span>";
+  }
+
+  /* L'horodatage sert à trancher entre deux appareils : c'est le plus
+     récent qui gagne, comme pour tout ce qui n'est pas cumulable. */
+  function setAvatar(p, avatar){
+    if(!p) return;
+    p.avatar = avatar;
+    p.avatarAt = Date.now();
+    saveAccount();
+    renderAvatar();
+    /* Tout de suite, pas dans dix secondes : c'est un geste délibéré et
+       unique, pas une réponse de quiz. Quelqu'un qui choisit son avatar
+       puis ouvre l'application sur sa tablette doit l'y retrouver. */
+    if(typeof cloudFlushNow === "function") cloudFlushNow();
+  }
+
+  /* ---------------- Envoi d'une photo ---------------- */
+
+  /* Renvoie une promesse de {ok, data} ou {ok:false, message}. */
+  function avatarDepuisFichier(file){
+    return new Promise(function(resolve){
+      if(!file) return resolve({ok:false, message:TL("Aucune image choisie.","لم تُختر صورة.")});
+      if(!/^image\//.test(file.type)){
+        return resolve({ok:false, message:TL("Choisis une image.","اختر صورة.")});
+      }
+      /* 25 Mio : au-delà, c'est le décodage lui-même qui ferait
+         trébucher un téléphone modeste — autant refuser tout de suite. */
+      if(file.size > 25 * 1024 * 1024){
+        return resolve({ok:false, message:TL("Cette image est trop lourde.","هذه الصورة ثقيلة جدا.")});
+      }
+
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        URL.revokeObjectURL(url);
+        try{
+          var c = document.createElement("canvas");
+          c.width = AVATAR_TAILLE; c.height = AVATAR_TAILLE;
+          var ctx = c.getContext("2d");
+          /* Recadrage centré : on garde le carré du milieu plutôt que
+             d'écraser la photo pour la faire entrer. */
+          var cote = Math.min(img.width, img.height);
+          ctx.drawImage(img, (img.width - cote) / 2, (img.height - cote) / 2,
+                        cote, cote, 0, 0, AVATAR_TAILLE, AVATAR_TAILLE);
+          var data = c.toDataURL("image/jpeg", AVATAR_QUALITE);
+          if(data.length > AVATAR_MAX_OCTETS){
+            data = c.toDataURL("image/jpeg", 0.6);
+          }
+          if(data.length > AVATAR_MAX_OCTETS){
+            return resolve({ok:false, message:TL("Cette image ne peut pas être réduite assez.",
+                                                 "تعذّر تصغير هذه الصورة بما يكفي.")});
+          }
+          resolve({ok:true, data:data});
+        }catch(e){
+          resolve({ok:false, message:TL("Cette image n'a pas pu être lue.","تعذّرت قراءة هذه الصورة.")});
+        }
+      };
+      img.onerror = function(){
+        URL.revokeObjectURL(url);
+        resolve({ok:false, message:TL("Cette image n'a pas pu être lue.","تعذّرت قراءة هذه الصورة.")});
+      };
+      img.src = url;
+    });
+  }
+
+  /* ---------------- Le choix ---------------- */
+
+  /* La grille, réutilisée par la feuille du profil ET par l'accueil qui
+     suit la confirmation : un seul endroit à corriger. */
+  function avatarPickerHtml(p){
+    var a = avatarDe(p);
+    var choisi = function(k, v){
+      return (a && a.k === k && (v === undefined || a.v === v)) ? " on" : "";
+    };
+    var cases = AVATAR_MASCOTTES.map(function(nom){
+      return "<button type='button' class='av-choix" + choisi("m", nom) + "' data-mascotte='" + nom + "' " +
+        "aria-pressed='" + (a && a.k === "m" && a.v === nom ? "true" : "false") + "' " +
+        "aria-label=\"" + TL("Mascotte " + nom, "شخصية " + nom) + "\">" +
+        "<span class='av av-mascotte' style='background:" + PROFILE_COLORS[(p && p.color) || 0] + "'>" +
+          "<img alt='' src='" + MASCOTS[nom].head + "' /></span>" +
+      "</button>";
+    }).join("");
+
+    var initiale = "<button type='button' class='av-choix" + (!a ? " on" : "") + "' data-lettre='1' " +
+      "aria-pressed='" + (!a ? "true" : "false") + "' " +
+      "aria-label=\"" + TL("Ton initiale sur un rond de couleur","الحرف الأول على دائرة ملونة") + "\">" +
+      "<span class='av' style='background:" + PROFILE_COLORS[(p && p.color) || 0] + "'>" +
+        profileInitial(p) + "</span></button>";
+
+    return "<div class='av-grille'>" + initiale + cases + "</div>" +
+      "<label class='btn ghost av-envoi' for='av-fichier'>" +
+        T("Envoyer une photo","أرسل صورة") + "</label>" +
+      "<input type='file' id='av-fichier' accept='image/*' class='sr-only' />" +
+      "<p class='gate-err' id='av-err' role='alert'></p>";
+  }
+
+  function wireAvatarPicker(root, p, onChange){
+    Array.prototype.forEach.call(root.querySelectorAll(".av-choix"), function(b){
+      b.addEventListener("click", function(){
+        var m = b.getAttribute("data-mascotte");
+        setAvatar(p, m ? {k:"m", v:m} : null);
+        if(onChange) onChange();
+      });
+    });
+    var champ = root.querySelector("#av-fichier");
+    if(champ) champ.addEventListener("change", function(){
+      var f = champ.files && champ.files[0];
+      champ.value = "";
+      cloudErrInto("av-err", "");
+      avatarDepuisFichier(f).then(function(r){
+        if(!r.ok) return cloudErrInto("av-err", r.message);
+        setAvatar(p, {k:"p", v:r.data});
+        if(onChange) onChange();
+      });
+    });
+  }
+
+  function openAvatarSheet(){
+    var p = activeProfile();
+    if(!p) return;
+    openSheet(
+      "<h2 id='sheet-title'>" + T("Ta photo","صورتك") + "</h2>" +
+      "<p class='sub'>" + TS("Elle te suit sur tous tes appareils.",
+                             "ستتبعك على كل أجهزتك.") + "</p>" +
+      avatarPickerHtml(p) +
+      "<button class='btn' id='sheet-close' style='margin-top:12px;'>" + T("Terminé","تم") + "</button>"
+    );
+    var boite = document.getElementById("sheet-box");
+    wireAvatarPicker(boite, p, function(){ openAvatarSheet(); });
+    document.getElementById("sheet-close").addEventListener("click", closeSheet);
+  }
+
+  /* ============================================================
      INTERFACE DU COMPTE EN LIGNE
      Le vocabulaire reste celui de l'application : on ne parle ni de
      « cloud », ni de « backend », ni de « token ». On dit ce que ça
@@ -7643,6 +8170,40 @@ var qrcode = function() {
       "إن نسيتها، سيرسل لك « نسيت كلمة السر؟ » رابطا إلى هذا البريد — تأكّد إذن من صحّته.") + "</p>";
   }
 
+  var EYE_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
+  var EYE_OFF_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4l16 16"/><path d="M9.6 6.1A9.6 9.6 0 0112 5.5c6.2 0 10 6.5 10 6.5a17 17 0 01-3.6 4.2"/><path d="M6.3 8.1A17 17 0 002 12s3.8 6.5 10 6.5c1.2 0 2.3-.2 3.3-.6"/></svg>';
+
+  /* Un champ de mot de passe avec l'œil qui l'affiche. C'est ce qui
+     évite le plus de fautes de frappe — davantage qu'un second champ à
+     recopier, qu'on remplit souvent par copier-coller du premier. */
+  function passwordFieldHtml(id, placeholder, autocomplete, label){
+    return "<div class='pw-field'>" +
+      "<label class='sr-only' for='" + id + "'>" + label + "</label>" +
+      "<input class='gate-input' id='" + id + "' type='password' autocomplete='" + autocomplete + "' " +
+        "placeholder='" + placeholder + "' aria-label=\"" + label + "\" />" +
+      "<button type='button' class='pw-eye' data-for='" + id + "' aria-pressed='false' " +
+        "aria-label=\"" + TL("Afficher le mot de passe","أظهر كلمة السر") + "\">" + EYE_ICON + "</button>" +
+    "</div>";
+  }
+
+  /* À brancher après chaque insertion d'un champ de mot de passe. */
+  function wirePasswordEyes(root){
+    Array.prototype.forEach.call((root || document).querySelectorAll(".pw-eye"), function(b){
+      b.addEventListener("click", function(){
+        var champ = document.getElementById(b.getAttribute("data-for"));
+        if(!champ) return;
+        var montre = champ.type === "password";
+        champ.type = montre ? "text" : "password";
+        b.setAttribute("aria-pressed", montre ? "true" : "false");
+        b.innerHTML = montre ? EYE_OFF_ICON : EYE_ICON;
+        b.setAttribute("aria-label", montre
+          ? TL("Masquer le mot de passe","أخفِ كلمة السر")
+          : TL("Afficher le mot de passe","أظهر كلمة السر"));
+        champ.focus();
+      });
+    });
+  }
+
   function cloudFieldsHtml(prefix, opts){
     opts = opts || {};
     return (opts.name
@@ -7654,19 +8215,34 @@ var qrcode = function() {
       "<input class='gate-input' id='" + prefix + "-email' type='email' inputmode='email' " +
         "autocomplete='email' autocapitalize='off' spellcheck='false' " +
         "placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
-      "<label class='sr-only' for='" + prefix + "-pw'>" + TL("Mot de passe","كلمة السر") + "</label>" +
-      "<input class='gate-input' id='" + prefix + "-pw' type='password' " +
-        "autocomplete='" + (opts.newPassword ? "new-password" : "current-password") + "' " +
-        "placeholder='" + (opts.newPassword ? "Mot de passe (8 min.) · كلمة السر" : "Mot de passe · كلمة السر") + "' " +
-        "aria-label=\"" + TL("Mot de passe","كلمة السر") + "\" />";
+      passwordFieldHtml(prefix + "-pw",
+        opts.newPassword ? "Mot de passe (8 min.) · كلمة السر" : "Mot de passe · كلمة السر",
+        opts.newPassword ? "new-password" : "current-password",
+        TL("Mot de passe","كلمة السر")) +
+      (opts.confirm
+        ? passwordFieldHtml(prefix + "-pw2", "Répéter le mot de passe · كرّر كلمة السر",
+                            "new-password", TL("Répéter le mot de passe","كرّر كلمة السر"))
+        : "");
   }
   function cloudReadFields(prefix){
     var nameEl = document.getElementById(prefix + "-name");
+    var pw2El = document.getElementById(prefix + "-pw2");
     return {
       name: nameEl ? nameEl.value.trim() : "",
       email: (document.getElementById(prefix + "-email").value || "").trim(),
-      pw: document.getElementById(prefix + "-pw").value || ""
+      pw: document.getElementById(prefix + "-pw").value || "",
+      pw2: pw2El ? (pw2El.value || "") : null
     };
+  }
+
+  /* Renvoie le message d'erreur, ou "" si le mot de passe est bon. */
+  function passwordProblem(pw, pw2){
+    if(pw.length < 8) return cloudErrorText("weak_password");
+    if(pw2 !== null && pw2 !== undefined && pw !== pw2){
+      return TL("Les deux mots de passe ne sont pas identiques.",
+                "كلمتا السر غير متطابقتين.");
+    }
+    return "";
   }
 
   /* La ligne affichée dans la feuille « Profil » : elle dit d'un coup
@@ -7676,8 +8252,11 @@ var qrcode = function() {
     var c = cloudOf(p);
     var linked = !!(c && c.token);
     var ago = linked ? cloudSyncedAgo(c) : null;
+    /* L'adresse ne se traduit pas : elle s'écrit une fois, et seule la
+       durée passe dans les deux langues. La répéter donnait une ligne
+       deux fois trop longue pour ne rien dire de plus. */
     var sub = linked
-      ? TL(esc(c.email) + " · " + ago.fr, esc(c.email) + " · " + ago.ar)
+      ? esc(c.email) + " · " + TL(ago.fr, ago.ar)
       : TL("Retrouve ta progression sur un autre appareil",
            "استعد تقدّمك على جهاز آخر");
     return "<p class='sub' style='margin:18px 0 8px;'>" + TL("Compte en ligne","الحساب على الإنترنت") + "</p>" +
@@ -8356,10 +8935,14 @@ var qrcode = function() {
   /* Un lien de réinitialisation reçu par courriel passe avant tout le
      reste : la personne est bloquée dehors, c'est la seule chose qui
      l'intéresse en ouvrant l'application. */
+  loadCloudConfig();
+  var googleBack = googlePendingReturn();
   var pendingConfirm = cloudPendingConfirm();
   var pendingReset = cloudPendingReset();
   var startProfile = activeProfile();
-  if(pendingConfirm){
+  if(googleBack){
+    showGate("googling", googleBack);
+  }else if(pendingConfirm){
     showGate("confirming", pendingConfirm);
   }else if(pendingReset){
     showGate("reset", pendingReset);

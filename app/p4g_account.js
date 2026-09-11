@@ -170,7 +170,10 @@
       v:1, n:p.name, x:d.xp||0,
       sc:(d.streak&&d.streak.count)||0, sl:(d.streak&&d.streak.last)||null,
       k:d.keyDone?1:0, bb:d.bestBlitz||0,
-      cr:d.crowns||{}, p:packed, cf:d.confusions||{}
+      cr:d.crowns||{}, p:packed, cf:d.confusions||{},
+      /* L'avatar n'est pas cumulable comme une progression : c'est le
+         plus récent qui gagne, d'où l'horodatage qui l'accompagne. */
+      av:p.avatar||null, avt:p.avatarAt||0
     };
   }
 
@@ -225,6 +228,9 @@
         d.confusions[a][b] = Math.max(d.confusions[a][b]||0, obj.cf[a][b]||0);
       });
     });
+    if(obj.av && (obj.avt||0) > (p.avatarAt||0)){
+      p.avatar = obj.av; p.avatarAt = obj.avt;
+    }
     d.streak = d.streak || {count:0,last:null};
     if(obj.sl && (!d.streak.last || obj.sl > d.streak.last)){
       d.streak = {count:obj.sc||0, last:obj.sl};

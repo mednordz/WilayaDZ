@@ -370,10 +370,14 @@
   /* Un lien de réinitialisation reçu par courriel passe avant tout le
      reste : la personne est bloquée dehors, c'est la seule chose qui
      l'intéresse en ouvrant l'application. */
+  loadCloudConfig();
+  var googleBack = googlePendingReturn();
   var pendingConfirm = cloudPendingConfirm();
   var pendingReset = cloudPendingReset();
   var startProfile = activeProfile();
-  if(pendingConfirm){
+  if(googleBack){
+    showGate("googling", googleBack);
+  }else if(pendingConfirm){
     showGate("confirming", pendingConfirm);
   }else if(pendingReset){
     showGate("reset", pendingReset);

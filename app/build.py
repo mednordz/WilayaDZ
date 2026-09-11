@@ -6,7 +6,7 @@ out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_
   R('p3_body.html'), "\n\n<script>\n(function(){\n  \"use strict\";\n",
   R('part_data.js'), R('p4i_mascots.js'), R('qr_lib.js'), R('p4a_core.js'), R('p4f_i18n.js'), R('p4g_account.js'),
   R('p4b_exercises.js'), R('p4c_session.js'), R('p4d_path.js'), R('p4h_profileui.js'),
-  R('p4k_cloud.js'), R('p4l_cloudui.js'),
+  R('p4k_cloud.js'), R('p4m_google.js'), R('p4n_avatar.js'), R('p4l_cloudui.js'),
   R('p4e_practice.js'), R('p4j_pwa.js'), "\n})();\n</script>\n"])
 target = sys.argv[1] if len(sys.argv) > 1 else 'wilaya-v6.html'
 open(target,'w',encoding='utf-8').write(out)

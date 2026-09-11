@@ -31,6 +31,40 @@
       "إن نسيتها، سيرسل لك « نسيت كلمة السر؟ » رابطا إلى هذا البريد — تأكّد إذن من صحّته.") + "</p>";
   }
 
+  var EYE_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
+  var EYE_OFF_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4l16 16"/><path d="M9.6 6.1A9.6 9.6 0 0112 5.5c6.2 0 10 6.5 10 6.5a17 17 0 01-3.6 4.2"/><path d="M6.3 8.1A17 17 0 002 12s3.8 6.5 10 6.5c1.2 0 2.3-.2 3.3-.6"/></svg>';
+
+  /* Un champ de mot de passe avec l'œil qui l'affiche. C'est ce qui
+     évite le plus de fautes de frappe — davantage qu'un second champ à
+     recopier, qu'on remplit souvent par copier-coller du premier. */
+  function passwordFieldHtml(id, placeholder, autocomplete, label){
+    return "<div class='pw-field'>" +
+      "<label class='sr-only' for='" + id + "'>" + label + "</label>" +
+      "<input class='gate-input' id='" + id + "' type='password' autocomplete='" + autocomplete + "' " +
+        "placeholder='" + placeholder + "' aria-label=\"" + label + "\" />" +
+      "<button type='button' class='pw-eye' data-for='" + id + "' aria-pressed='false' " +
+        "aria-label=\"" + TL("Afficher le mot de passe","أظهر كلمة السر") + "\">" + EYE_ICON + "</button>" +
+    "</div>";
+  }
+
+  /* À brancher après chaque insertion d'un champ de mot de passe. */
+  function wirePasswordEyes(root){
+    Array.prototype.forEach.call((root || document).querySelectorAll(".pw-eye"), function(b){
+      b.addEventListener("click", function(){
+        var champ = document.getElementById(b.getAttribute("data-for"));
+        if(!champ) return;
+        var montre = champ.type === "password";
+        champ.type = montre ? "text" : "password";
+        b.setAttribute("aria-pressed", montre ? "true" : "false");
+        b.innerHTML = montre ? EYE_OFF_ICON : EYE_ICON;
+        b.setAttribute("aria-label", montre
+          ? TL("Masquer le mot de passe","أخفِ كلمة السر")
+          : TL("Afficher le mot de passe","أظهر كلمة السر"));
+        champ.focus();
+      });
+    });
+  }
+
   function cloudFieldsHtml(prefix, opts){
     opts = opts || {};
     return (opts.name
@@ -42,19 +76,34 @@
       "<input class='gate-input' id='" + prefix + "-email' type='email' inputmode='email' " +
         "autocomplete='email' autocapitalize='off' spellcheck='false' " +
         "placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
-      "<label class='sr-only' for='" + prefix + "-pw'>" + TL("Mot de passe","كلمة السر") + "</label>" +
-      "<input class='gate-input' id='" + prefix + "-pw' type='password' " +
-        "autocomplete='" + (opts.newPassword ? "new-password" : "current-password") + "' " +
-        "placeholder='" + (opts.newPassword ? "Mot de passe (8 min.) · كلمة السر" : "Mot de passe · كلمة السر") + "' " +
-        "aria-label=\"" + TL("Mot de passe","كلمة السر") + "\" />";
+      passwordFieldHtml(prefix + "-pw",
+        opts.newPassword ? "Mot de passe (8 min.) · كلمة السر" : "Mot de passe · كلمة السر",
+        opts.newPassword ? "new-password" : "current-password",
+        TL("Mot de passe","كلمة السر")) +
+      (opts.confirm
+        ? passwordFieldHtml(prefix + "-pw2", "Répéter le mot de passe · كرّر كلمة السر",
+                            "new-password", TL("Répéter le mot de passe","كرّر كلمة السر"))
+        : "");
   }
   function cloudReadFields(prefix){
     var nameEl = document.getElementById(prefix + "-name");
+    var pw2El = document.getElementById(prefix + "-pw2");
     return {
       name: nameEl ? nameEl.value.trim() : "",
       email: (document.getElementById(prefix + "-email").value || "").trim(),
-      pw: document.getElementById(prefix + "-pw").value || ""
+      pw: document.getElementById(prefix + "-pw").value || "",
+      pw2: pw2El ? (pw2El.value || "") : null
     };
+  }
+
+  /* Renvoie le message d'erreur, ou "" si le mot de passe est bon. */
+  function passwordProblem(pw, pw2){
+    if(pw.length < 8) return cloudErrorText("weak_password");
+    if(pw2 !== null && pw2 !== undefined && pw !== pw2){
+      return TL("Les deux mots de passe ne sont pas identiques.",
+                "كلمتا السر غير متطابقتين.");
+    }
+    return "";
   }
 
   /* La ligne affichée dans la feuille « Profil » : elle dit d'un coup
@@ -64,8 +113,11 @@
     var c = cloudOf(p);
     var linked = !!(c && c.token);
     var ago = linked ? cloudSyncedAgo(c) : null;
+    /* L'adresse ne se traduit pas : elle s'écrit une fois, et seule la
+       durée passe dans les deux langues. La répéter donnait une ligne
+       deux fois trop longue pour ne rien dire de plus. */
     var sub = linked
-      ? TL(esc(c.email) + " · " + ago.fr, esc(c.email) + " · " + ago.ar)
+      ? esc(c.email) + " · " + TL(ago.fr, ago.ar)
       : TL("Retrouve ta progression sur un autre appareil",
            "استعد تقدّمك على جهاز آخر");
     return "<p class='sub' style='margin:18px 0 8px;'>" + TL("Compte en ligne","الحساب على الإنترنت") + "</p>" +

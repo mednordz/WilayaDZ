@@ -185,6 +185,8 @@ Routes, toutes sous `/api` :
 
 | Route | Effet |
 |---|---|
+| `GET /config` | ce que l'app doit savoir avant d'afficher quoi que ce soit |
+| `POST /auth/google` | connexion par Google — crée le compte au besoin |
 | `POST /auth/register` | ouvre un compte **non confirmé** — 202, aucun jeton |
 | `POST /auth/confirm` | confirme l'adresse et ouvre une session |
 | `POST /auth/resend` | renvoie le lien de confirmation — **toujours 204** |
@@ -218,6 +220,51 @@ Ce qui protège quoi :
 - **Fusion, jamais écrasement** : côté client, exactement la même
   fonction que les codes de transfert (`mergeInto`) — pour chaque wilaya,
   la meilleure des deux mémoires gagne.
+
+### Se connecter avec Google (à activer)
+
+Le code est en place et n'attend qu'un identifiant client OAuth. Tant
+que `GOOGLE_CLIENT_ID` est vide, **le bouton n'apparaît simplement
+pas** : rien à reconstruire le jour où on le renseigne, l'application
+demande la configuration au démarrage (`GET /api/config`).
+
+Pour l'activer :
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) → créer
+   un projet (ou en réutiliser un) ;
+2. **APIs & Services → OAuth consent screen** : type « External »,
+   renseigner le nom de l'app et l'adresse de contact ;
+3. **APIs & Services → Credentials → Create credentials → OAuth client
+   ID**, type **Web application** ;
+4. dans **Authorized JavaScript origins** : `https://wilayadz.smnc.win`
+5. dans **Authorized redirect URIs** : `https://wilayadz.smnc.win/`
+   — **avec la barre oblique finale**, c'est exactement ce que
+   l'application envoie (`location.origin + location.pathname`) ;
+6. copier l'identifiant (`…apps.googleusercontent.com`) dans
+   `deploy/docker-compose.yml`, service `wilaya-api` :
+
+   ```yaml
+       environment:
+         GOOGLE_CLIENT_ID: "xxxxx.apps.googleusercontent.com"
+   ```
+
+7. pousser : le déploiement reconstruit et le bouton apparaît.
+
+Ce n'est pas un secret — un identifiant client OAuth est public par
+construction, il est visible dans l'URL de redirection. Ce qui protège,
+c'est que le service vérifie que le jeton a bien été **émis pour nous**
+(`aud`), sans quoi un jeton obtenu par n'importe quelle autre
+application Google ouvrirait un compte ici.
+
+Le jeton est vérifié **auprès de Google** (`oauth2.googleapis.com/tokeninfo`)
+plutôt que localement : vérifier une signature RS256 demanderait une
+bibliothèque de cryptographie, et ce service tient à n'en avoir aucune.
+Une adresse Google étant déjà vérifiée, **ces comptes n'ont pas d'étape
+de confirmation**.
+
+Côté application, aucun script de Google n'est chargé : la redirection
+OAuth suffit. L'app reste un fichier autonome, et personne n'est suivi
+par Google pour avoir simplement ouvert l'application.
 
 ### Confirmation de l'adresse
 
@@ -326,8 +373,9 @@ le lien : c'est le mode de mise au point, jamais la production.
 ```bash
 python3 tests/test_api.py              # 111 vérifications, service jetable + faux SMTP
 python3 tests/serve_test.py 8390 &     # l'app + son API sur une même origine
-node tests/test_cloud_e2e.js           # 42 : confirmation, migration, mot de passe oublié
-node tests/audit_a11y_cloud.js         # 20 écrans de compte audités
+node tests/test_cloud_e2e.js           # 59 : confirmation, migration, avatar, mot de passe oublié
+node tests/audit_a11y_cloud.js         # 22 écrans de compte audités
+node tests/test_gate_scroll.js         # défilement des portes, clavier ouvert (sans serveur)
 ```
 
 ## Pourquoi ces choix

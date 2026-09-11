@@ -341,6 +341,7 @@
      déjà un sur cet appareil, un neuf sinon — puis on synchronise. */
   function adoptSession(acc, token, cible){
     var existing = cible || profileForEmail(acc.email);
+    var neuf = !existing;
     var p;
     if(existing){
       account.activeId = existing.id;
@@ -356,7 +357,7 @@
     }
     cloudBooted[p.id] = true;
     return cloudSync(p).then(function(r){
-      return {ok:true, profile:p, added:(r && r.added) || 0,
+      return {ok:true, profile:p, cree:neuf, added:(r && r.added) || 0,
               improved:(r && r.improved) || 0};
     });
   }

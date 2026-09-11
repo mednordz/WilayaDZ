@@ -29,6 +29,8 @@ import re
 import secrets
 import smtplib
 import sqlite3
+import urllib.parse
+import urllib.request
 import threading
 import time
 from email.message import EmailMessage
@@ -101,6 +103,17 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "25"))
 # demande d'abord de publier SPF et DKIM pour le domaine choisi.
 MAIL_FROM = os.environ.get("MAIL_FROM", "WilayaDZ <bigpc.alg@gmail.com>")
 APP_URL = os.environ.get("APP_URL", "https://wilayadz.smnc.win")
+
+# Identifiant client OAuth Google. Vide = le bouton « Continuer avec
+# Google » n'apparait simplement pas : rien a reconstruire le jour ou on
+# le renseigne, l'application demande la configuration au demarrage.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+# Google verifie le jeton pour nous, sur son propre point d'entree. On
+# evite ainsi d'embarquer une bibliotheque de cryptographie pour
+# verifier une signature RS256 — le service reste sans dependance.
+GOOGLE_TOKENINFO = "https://oauth2.googleapis.com/tokeninfo?id_token="
+GOOGLE_TIMEOUT = 10
 
 SCHEMA_VERSION = 3
 
@@ -644,6 +657,11 @@ class Handler(BaseHTTPRequestHandler):
         path = self._route()
         if path == "/health":
             return self._send(200, {"ok": True})
+        if path == "/config":
+            # Ce que l'application a besoin de savoir avant d'afficher
+            # quoi que ce soit. L'identifiant client OAuth n'est pas un
+            # secret : il est public par construction.
+            return self._send(200, {"google": GOOGLE_CLIENT_ID or None})
         if path == "/me":
             return self._me()
         if path == "/sync":
@@ -663,6 +681,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._logout()
         if path == "/auth/password":
             return self._change_password(body)
+        if path == "/auth/google":
+            return self._google(body)
         if path == "/auth/confirm":
             return self._confirm(body)
         if path == "/auth/resend":
@@ -710,6 +730,75 @@ class Handler(BaseHTTPRequestHandler):
             if not SMTP_HOST:
                 print("mail non configure — lien de confirmation : %s" % link,
                       flush=True)
+
+    def _google(self, body):
+        """
+        Connexion par Google. Le jeton d'identite est verifie AUPRES DE
+        GOOGLE plutot que localement : verifier une signature RS256
+        demanderait une bibliotheque de cryptographie, et ce service
+        tient a n'avoir aucune dependance.
+        """
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        if not GOOGLE_CLIENT_ID:
+            return self._fail(503, "google_off")
+        if not limiter.allow("google:" + self._client(), 20, 900):
+            return self._fail(429, "too_many")
+
+        credential = str(body.get("credential") or "")
+        if not credential or len(credential) > 4096:
+            return self._fail(400, "bad_token")
+
+        try:
+            with urllib.request.urlopen(
+                    GOOGLE_TOKENINFO + urllib.parse.quote(credential, safe=""),
+                    timeout=GOOGLE_TIMEOUT) as res:
+                info = json.loads(res.read().decode("utf-8"))
+        except Exception as exc:
+            print("verification Google impossible : %s" % type(exc).__name__,
+                  flush=True)
+            return self._fail(400, "bad_token")
+
+        # Le controle qui compte : ce jeton a-t-il ete emis POUR nous ?
+        # Sans lui, un jeton obtenu par n'importe quelle autre
+        # application Google ouvrirait un compte ici.
+        if not hmac.compare_digest(str(info.get("aud") or ""), GOOGLE_CLIENT_ID):
+            return self._fail(400, "bad_token")
+        if str(info.get("email_verified")).lower() not in ("true", "1"):
+            return self._fail(400, "bad_token")
+
+        # Le nonce lie ce jeton a la demande qu'on vient d'emettre.
+        attendu = str(body.get("nonce") or "")
+        if attendu and not hmac.compare_digest(str(info.get("nonce") or ""), attendu):
+            return self._fail(400, "bad_token")
+
+        email = clean_email(info.get("email"))
+        if not email:
+            return self._fail(400, "bad_email")
+        name = clean_name(info.get("given_name") or info.get("name") or "") or "Toi"
+
+        row = store.one("SELECT * FROM accounts WHERE email = ?", (email,))
+        if row is None:
+            # Google a deja verifie cette adresse : pas de courriel de
+            # confirmation a envoyer, le compte est utilisable tout de
+            # suite. Le mot de passe est un alea qu'aucune saisie ne peut
+            # reproduire — on se connecte par Google, ou en passant par
+            # « mot de passe oublie » pour s'en choisir un.
+            now = int(time.time())
+            cur = store.write(
+                "INSERT INTO accounts (email, name, pw_salt, pw_hash, created, verified)"
+                " VALUES (?,?,?,?,?,1)",
+                (email, name, secrets.token_bytes(16), secrets.token_bytes(32), now))
+            row = store.one("SELECT * FROM accounts WHERE id = ?", (cur.lastrowid,))
+        elif not row["verified"]:
+            # Une inscription par courriel restee en attente : Google
+            # vient de prouver que l'adresse est bien la sienne.
+            store.write("UPDATE accounts SET verified = 1 WHERE id = ?", (row["id"],))
+            store.write("DELETE FROM confirms WHERE account_id = ?", (row["id"],))
+            row = store.one("SELECT * FROM accounts WHERE id = ?", (row["id"],))
+
+        token = self._open_session(row["id"])
+        self._send(200, {"token": token, "account": self._public(row)})
 
     def _confirm(self, body):
         if not isinstance(body, dict):
