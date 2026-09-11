@@ -7110,15 +7110,20 @@ var qrcode = function() {
 
   /* ---------------- Formulation de l'état ---------------- */
 
+  /* Renvoie la PAIRE {fr, ar}, pas un texte déjà bilingue : en mode
+     « les deux », TL() rend « fr — ar ». Coller deux TL() bout à bout
+     donnerait « fr1 — ar1fr2 — ar2 », soit les deux langues entrelacées.
+     Chaque phrase doit donc être composée entièrement dans sa langue,
+     et passer par TL() une seule fois, à la fin. */
   function cloudSyncedAgo(c){
-    if(!c || !c.lastSync) return TL("jamais","أبدا");
+    if(!c || !c.lastSync) return {fr:"jamais", ar:"أبدا"};
     var mins = Math.floor((Date.now() - c.lastSync) / 60000);
-    if(mins < 1)  return TL("à l'instant","الآن");
-    if(mins < 60) return TL("il y a " + mins + " min","قبل " + mins + " د");
+    if(mins < 1)  return {fr:"à l'instant", ar:"الآن"};
+    if(mins < 60) return {fr:"il y a " + mins + " min", ar:"قبل " + mins + " د"};
     var hours = Math.floor(mins/60);
-    if(hours < 24) return TL("il y a " + hours + " h","قبل " + hours + " س");
+    if(hours < 24) return {fr:"il y a " + hours + " h", ar:"قبل " + hours + " س"};
     var days = Math.floor(hours/24);
-    return TL("il y a " + days + " j","قبل " + days + " ي");
+    return {fr:"il y a " + days + " j", ar:"قبل " + days + " ي"};
   }
 
   /* Une pastille sur l'avatar : reliée, en attente, ou déconnectée.
@@ -7200,8 +7205,9 @@ var qrcode = function() {
     if(!cloudAvailable()) return "";
     var c = cloudOf(p);
     var linked = !!(c && c.token);
+    var ago = linked ? cloudSyncedAgo(c) : null;
     var sub = linked
-      ? esc(c.email) + " · " + cloudSyncedAgo(c)
+      ? TL(esc(c.email) + " · " + ago.fr, esc(c.email) + " · " + ago.ar)
       : TL("Retrouve ta progression sur un autre appareil",
            "استعد تقدّمك على جهاز آخر");
     return "<p class='sub' style='margin:18px 0 8px;'>" + TL("Compte en ligne","الحساب على الإنترنت") + "</p>" +
@@ -7254,11 +7260,13 @@ var qrcode = function() {
         "<span class='cloud-status-icon'>" + CLOUD_ICON + "</span>" +
         "<span class='cloud-status-body'>" +
           "<b>" + esc(c.email) + "</b>" +
-          "<span>" + TL("Dernière synchronisation : ","آخر مزامنة: ") + cloudSyncedAgo(c) + "</span>" +
+          "<span>" + TL("Dernière synchronisation : " + cloudSyncedAgo(c).fr,
+                        "آخر مزامنة: " + cloudSyncedAgo(c).ar) + "</span>" +
         "</span>" +
       "</div>" +
       (c.lastError
-        ? "<p class='gate-note'>" + cloudErrorText(c.lastError) + " " +
+        ? "<p class='gate-err' style='margin:10px 0 0'>" + cloudErrorText(c.lastError) + "</p>" +
+          "<p class='gate-note'>" +
           TS("Ta progression est en sécurité sur cet appareil et repartira toute seule.",
              "تقدّمك في أمان على هذا الجهاز وسيُرسل تلقائيا.") + "</p>"
         : "") +

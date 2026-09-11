@@ -315,15 +315,20 @@
 
   /* ---------------- Formulation de l'état ---------------- */
 
+  /* Renvoie la PAIRE {fr, ar}, pas un texte déjà bilingue : en mode
+     « les deux », TL() rend « fr — ar ». Coller deux TL() bout à bout
+     donnerait « fr1 — ar1fr2 — ar2 », soit les deux langues entrelacées.
+     Chaque phrase doit donc être composée entièrement dans sa langue,
+     et passer par TL() une seule fois, à la fin. */
   function cloudSyncedAgo(c){
-    if(!c || !c.lastSync) return TL("jamais","أبدا");
+    if(!c || !c.lastSync) return {fr:"jamais", ar:"أبدا"};
     var mins = Math.floor((Date.now() - c.lastSync) / 60000);
-    if(mins < 1)  return TL("à l'instant","الآن");
-    if(mins < 60) return TL("il y a " + mins + " min","قبل " + mins + " د");
+    if(mins < 1)  return {fr:"à l'instant", ar:"الآن"};
+    if(mins < 60) return {fr:"il y a " + mins + " min", ar:"قبل " + mins + " د"};
     var hours = Math.floor(mins/60);
-    if(hours < 24) return TL("il y a " + hours + " h","قبل " + hours + " س");
+    if(hours < 24) return {fr:"il y a " + hours + " h", ar:"قبل " + hours + " س"};
     var days = Math.floor(hours/24);
-    return TL("il y a " + days + " j","قبل " + days + " ي");
+    return {fr:"il y a " + days + " j", ar:"قبل " + days + " ي"};
   }
 
   /* Une pastille sur l'avatar : reliée, en attente, ou déconnectée.

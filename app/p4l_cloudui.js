@@ -65,8 +65,9 @@
     if(!cloudAvailable()) return "";
     var c = cloudOf(p);
     var linked = !!(c && c.token);
+    var ago = linked ? cloudSyncedAgo(c) : null;
     var sub = linked
-      ? esc(c.email) + " · " + cloudSyncedAgo(c)
+      ? TL(esc(c.email) + " · " + ago.fr, esc(c.email) + " · " + ago.ar)
       : TL("Retrouve ta progression sur un autre appareil",
            "استعد تقدّمك على جهاز آخر");
     return "<p class='sub' style='margin:18px 0 8px;'>" + TL("Compte en ligne","الحساب على الإنترنت") + "</p>" +
@@ -119,11 +120,13 @@
         "<span class='cloud-status-icon'>" + CLOUD_ICON + "</span>" +
         "<span class='cloud-status-body'>" +
           "<b>" + esc(c.email) + "</b>" +
-          "<span>" + TL("Dernière synchronisation : ","آخر مزامنة: ") + cloudSyncedAgo(c) + "</span>" +
+          "<span>" + TL("Dernière synchronisation : " + cloudSyncedAgo(c).fr,
+                        "آخر مزامنة: " + cloudSyncedAgo(c).ar) + "</span>" +
         "</span>" +
       "</div>" +
       (c.lastError
-        ? "<p class='gate-note'>" + cloudErrorText(c.lastError) + " " +
+        ? "<p class='gate-err' style='margin:10px 0 0'>" + cloudErrorText(c.lastError) + "</p>" +
+          "<p class='gate-note'>" +
           TS("Ta progression est en sécurité sur cet appareil et repartira toute seule.",
              "تقدّمك في أمان على هذا الجهاز وسيُرسل تلقائيا.") + "</p>"
         : "") +
