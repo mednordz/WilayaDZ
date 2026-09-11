@@ -78,22 +78,38 @@ qui existe aussi mais n'est pas celle utilisée par le service systemd) :
 Puis :
 
 ```bash
-cloudflared tunnel route dns smnc-portal-tunnel 69.smnc.win
 systemctl restart cloudflared
 systemctl status cloudflared   # PAS smnc-portal-tunnel, voir README YtSMNC
 ```
 
-⚠️ Si `https://69.smnc.win` renvoie déjà une erreur Cloudflare **1016
-« Origin DNS error »** avant même cette étape, c'est qu'un enregistrement
-DNS existe déjà pour cet hôte (créé avant ce travail, on ne sait pas
-quand ni comment) et pointe vers une cible que Cloudflare n'arrive pas à
-résoudre. Vérifier dans le tableau de bord Cloudflare (DNS de `smnc.win`)
-ce que cet enregistrement contient avant de lancer `cloudflared tunnel
-route dns` : s'il existe déjà et pointe ailleurs qu'au tunnel, il faut le
-corriger ou le supprimer d'abord, sinon la commande peut échouer ou laisser
-une configuration incohérente.
+⚠️ **`cloudflared tunnel route dns smnc-portal-tunnel 69.smnc.win` NE MARCHE
+PAS sur ce compte** — vérifié le 2026-09-11 : la commande répond « Added
+CNAME 69.smnc.win.**smnc-dz.com** » (l'ancien domaine, retiré, pas
+`smnc.win`) et crée l'enregistrement dans la mauvaise zone. Cause
+probable : l'auth locale de `cloudflared` (`~/.cloudflared/cert.pem`) reste
+scopée sur `smnc-dz.com` depuis avant la migration de domaine (2026-09-06)
+et n'a jamais été rafraîchie pour `smnc.win`. Ne pas relancer cette
+commande pour un futur sous-domaine sans d'abord vérifier où elle écrit
+(chercher le nouveau nom dans le dashboard Cloudflare juste après).
+
+**À la place, créer le DNS à la main** dans le dashboard Cloudflare :
+`smnc.win` → DNS → Records → **Ajouter un enregistrement** :
+- Type : `CNAME`
+- Nom : `69` (juste le sous-domaine, Cloudflare ajoute `.smnc.win` tout seul)
+- Cible : `6923c9e9-9586-49f6-82d9-47f46e78dbb2.cfargotunnel.com` (l'ID du
+  tunnel `smnc-portal-tunnel`, visible aussi dans `config.yml` ligne 1)
+- Statut proxy : **Proxied** (nuage orange)
+
+C'est exactement ce que `route dns` aurait dû créer — juste fait à la main,
+dans la bonne zone. Vérifié en production le 2026-09-11 : fonctionne.
 
 ## 3. Vérifier en conditions réelles
+
+⚠️ Depuis une session Claude Code cloud, ces `curl` vers `69.smnc.win`
+échouent avec un 403 qui vient du **proxy sortant du sandbox lui-même**
+(pas de Cloudflare ni du site) — politique réseau propre à cet
+environnement, sans rapport avec le déploiement. Les lancer depuis `bigpc`
+ou un poste normal.
 
 ```bash
 curl -sI https://69.smnc.win/ | grep -i content-type   # peu importe le charset ici :
