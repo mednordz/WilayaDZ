@@ -266,6 +266,26 @@ adapter le chemin selon où le fichier généré se trouve localement.
    et y lit un `data-id` que cette ligne n'a pas. Le sélecteur est devenu
    `.profile-row[data-id]`.
 
+10. **Un conteneur qui défile ne doit JAMAIS centrer avec
+    `align-items:center`.** `.gate` (la porte d'entrée) le faisait. Dès
+    que le formulaire dépasse la hauteur de l'écran, le centrage le fait
+    déborder des **deux** côtés — et un conteneur défilant ne peut pas
+    remonter au-dessus de zéro : le haut devient définitivement
+    inatteignable. Mesuré avant correctif sur l'inscription : 175 px
+    coupés sur un iPhone 15 **sans clavier**, 417 px clavier ouvert, avec
+    le champ « Prénom » lui-même hors d'atteinte. Le centrage se fait
+    désormais par `margin:auto` sur la boîte — les marges automatiques
+    absorbent l'espace libre quand il y en a, et valent zéro sinon.
+    Verrouillé par `tests/test_gate_scroll.js` (quatre tailles d'écran,
+    dont deux claviers ouverts). Les feuilles du bas (`.sheet`) ont été
+    mesurées : elles sont saines grâce à `max-height:80vh`.
+
+11. **`interactive-widget=resizes-content`** est ajouté au `<meta
+    viewport>` : sans lui, le clavier ne réduit pas la zone de mise en
+    page, il pousse la page — et un élément `position:fixed; inset:0`
+    garde alors la taille de l'écran entier alors qu'on n'en voit qu'un
+    tiers. Ne pas l'enlever.
+
 ## Où on en était à l'export
 
 **APK (dernière version figée) :** v14, mascottes avec rig articulé
