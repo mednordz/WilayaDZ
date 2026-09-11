@@ -54,7 +54,7 @@ class Combined(api.Handler):
 
     def do_HEAD(self):
         if self._is_api():
-            return self._send(405, {"error": "method"})
+            return api.Handler.do_HEAD(self)
         self._static()
 
 

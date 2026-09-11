@@ -300,6 +300,13 @@ def main():
         print("\nRoutes inconnues")
         check("404 sur une route inventee", api.call("GET", "/nexistepas")[0] == 404)
 
+        print("\nHEAD (sondes de supervision)")
+        code, res = api.call("HEAD", "/health")
+        check("200 en HEAD sur /health", code == 200, code)
+        check("aucun corps en HEAD", res is None, res)
+        check("GET /health renvoie toujours son corps",
+              api.call("GET", "/health")[1] == {"ok": True})
+
     finally:
         proc.terminate()
         try:

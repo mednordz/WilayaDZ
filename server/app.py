@@ -275,6 +275,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Max-Age", "86400")
 
     _responded = False
+    _head = False
 
     def _guarded(self, handler):
         """
@@ -308,7 +309,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self._cors()
         self.end_headers()
-        if body:
+        # En HEAD, Content-Length reste celui du corps qu'un GET aurait
+        # renvoye : c'est tout l'interet de la methode.
+        if body and not self._head:
             self.wfile.write(body)
 
     def _fail(self, code, error):
@@ -407,6 +410,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        self._guarded(self._do_get)
+
+    def do_HEAD(self):
+        # Mêmes en-têtes que GET, sans le corps. Sans cela une sonde de
+        # supervision qui interroge en HEAD reçoit un 501 et conclut que
+        # le service est en panne alors qu'il va très bien.
+        self._head = True
         self._guarded(self._do_get)
 
     def do_POST(self):
