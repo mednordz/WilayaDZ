@@ -96,14 +96,16 @@ const cloudEmail = (page) => page.evaluate(() => {
 
   await a.fill('#gate-email', EMAIL);
   await a.fill('#gate-pw', PASSWORD);
+  const porteA = () => a.locator('#gate-box').isVisible().catch(() => false).then(v => !v);
   await a.locator('#gate-create').click();
-  await waitFor(async () => (await cloudEmail(a)) === EMAIL);
+  // Le compte est ecrit pendant cloudSync ; la porte ne se ferme qu'une
+  // fois la promesse resolue. Attendre les deux, pas la premiere des deux.
+  await waitFor(async () => (await cloudEmail(a)) === EMAIL && (await porteA()));
 
   check('A est relie au compte', (await cloudEmail(a)) === EMAIL, await cloudEmail(a));
   check('la progression locale a survecu au rattachement',
         (await countProgress(a)) === 5, await countProgress(a));
-  check('A est entre dans l application',
-        !(await a.locator('#gate-box').isVisible().catch(() => false)));
+  check('A est entre dans l application', await porteA());
 
   await a.locator('#profile-btn').click(); await a.waitForTimeout(400);
   check('A voit la ligne « Compte en ligne »', await a.locator('#prof-cloud').isVisible());
@@ -248,13 +250,28 @@ const cloudEmail = (page) => page.evaluate(() => {
   check('la confirmation ne dit pas si le compte existe',
         /Si un compte existe/.test(neutre), neutre.slice(0, 60));
 
+  // Lire le courriel n'est possible qu'avec le serveur d'essai, qui
+  // capture les messages. Contre la production ce point d'entree
+  // n'existe pas : on le dit au lieu de sauter en silence.
   let lien = '';
-  await waitFor(async () => {
-    const r = await fetch(BASE + '__essai__/dernier-lien');
-    lien = (await r.json()).lien;
-    return !!lien;
-  });
-  check('un lien de reinitialisation a ete envoye', !!lien, lien);
+  let lisible = true;
+  try {
+    const sonde = await fetch(BASE + '__essai__/dernier-lien');
+    lisible = sonde.ok;
+  } catch (e) { lisible = false; }
+
+  if (!lisible) {
+    console.log('  --   suite du parcours non verifiable ici : le courriel');
+    console.log('       n\'est lisible qu\'avec tests/serve_test.py.');
+  } else {
+    await waitFor(async () => {
+      const r = await fetch(BASE + '__essai__/dernier-lien');
+      lien = (await r.json()).lien;
+      return !!lien;
+    });
+    check('un lien de reinitialisation a ete envoye', !!lien, lien);
+  }
+  if (lisible) {
 
   await d.goto(lien);
   await d.waitForTimeout(900);
@@ -276,6 +293,7 @@ const cloudEmail = (page) => page.evaluate(() => {
     body: JSON.stringify({ email: EMAIL, password: PASSWORD })
   });
   check('l ancien mot de passe ne marche plus', apres.status === 401, apres.status);
+  }
 
   /* ------------- Un lien perime ------------- */
   const ctxE = await browser.newContext({ viewport: { width: 420, height: 900 } });
