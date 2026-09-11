@@ -1,0 +1,27 @@
+services:
+  wilaya-web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: wilaya-web
+    restart: unless-stopped
+    # Un site statique d'un seul fichier HTML : quelques Mio suffisent
+    # largement (nginx:alpine tourne à moins de 10 Mio au repos). Plafond
+    # large uniquement pour ne jamais risquer un OOM-kill sur une machine
+    # qui fait déjà tourner Ollama, Plex, Immich et la VM Home Assistant.
+    mem_limit: 64m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    # Écoute uniquement sur la boucle locale : c'est le tunnel Cloudflare
+    # existant (smnc-portal-tunnel) qui route 69.smnc.win vers ce port,
+    # exactement comme wa.smnc.win → 127.0.0.1:8091 (voir DEPLOY.md).
+    # Choisir un port libre sur bigpc ; 8092 est une simple proposition.
+    ports:
+      - "127.0.0.1:8092:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s

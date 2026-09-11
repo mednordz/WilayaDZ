@@ -12,24 +12,36 @@ pas les refaire.
 app/          fichiers source de l'application (assemblés par build.py)
 mascots/      images sources et rig des 4 mascottes (fennec, chameau, cigogne, palmier)
 android/      projet APK (manifest, resources, keystore, dernier APK signé)
+deploy/       Dockerfile + nginx + docker-compose pour l'hébergement web (voir DEPLOY.md)
 tests/        suite Playwright (accessibilité, sécurité, animations, bidi)
 AUDIT.md      rapport d'audit sécurité/accessibilité déjà réalisé
+DEPLOY.md     runbook d'hébergement web (69.smnc.win sur bigpc, tunnel Cloudflare)
 ```
 
 ## Comment reconstruire l'app
 
 L'app est un **unique fichier HTML autonome** (pas de bundler, pas de build
-JS moderne). `app/build.py` concatène les morceaux dans cet ordre : `p0_head.html`,
+JS moderne), plus un **second fichier à part obligatoire**, `sw.js` (un
+service worker ne peut pas s'enregistrer depuis un `<script>` inline — voir
+plus bas). `app/build.py` concatène les morceaux dans cet ordre :
+`p0_head.html` (qui commence par `<meta charset="utf-8">`, voir piège n°6),
 puis un bloc `<style>` (le CSS de `p1_css.css` + `p2_css_add.css`, précédé de
 `font_face.css` si présent), puis `p3_body.html`, puis un `<script>` qui
-enchaîne `part_data.js`, `p4i_mascots.js`, `p4a_core.js`, `p4f_i18n.js`,
-`p4g_account.js`, `p4b_exercises.js`, `p4c_session.js`, `p4d_path.js`,
-`p4h_profileui.js`, `p4e_practice.js`.
+enchaîne `part_data.js`, `p4i_mascots.js`, `qr_lib.js`, `p4a_core.js`,
+`p4f_i18n.js`, `p4g_account.js`, `p4b_exercises.js`, `p4c_session.js`,
+`p4d_path.js`, `p4h_profileui.js`, `p4e_practice.js`, `p4j_pwa.js`. Le
+script copie aussi `sw.js` à côté du fichier produit.
 
 ```bash
 cd app
-python3 build.py        # produit wilaya-v6.html (le nom du fichier de sortie)
+python3 build.py        # produit wilaya-v6.html + sw.js à côté (le nom du fichier de sortie)
 ```
+
+Le script chdir sur son propre dossier (`app/`), donc il marche depuis
+n'importe quel répertoire courant — ce n'était pas le cas avant (il faisait
+`os.chdir('/tmp/wilayas')` en dur, un reliquat d'une session précédente qui
+cassait `cd app && python3 build.py` pour quiconque n'avait pas ce dossier
+scratch exact).
 
 Le script vérifie aussi la syntaxe JS (`node --check` sur le script extrait)
 et signale si une police a bien été embarquée.
@@ -147,6 +159,28 @@ adapter le chemin selon où le fichier généré se trouve localement.
   instances sont visibles en même temps. Une boucle (`mascotBeat()`)
   déclenche aléatoirement de petits gestes (regard, hochement, saut...) sur
   une mascotte visible à la fois, et respecte `prefers-reduced-motion`.
+- **Partage de profil par lien + QR** (piste web, section « Profil &
+  synchronisation ») : `exportCode()`/`parseCode()`/`mergeInto()`
+  (`p4g_account.js`) existaient déjà pour le copier-coller manuel du code
+  `WLY1.<base64url>.<checksum>` ; le code étant déjà en base64url, il tient
+  tel quel dans un fragment d'URL (`#w=<code>`), sans encodage
+  supplémentaire. `initWebShare()` (`p4h_profileui.js`) construit ce lien,
+  propose `navigator.share()` (avec repli sur `navigator.clipboard`), et un
+  QR généré 100% côté client via `qr_lib.js` (bibliothèque `qrcode-generator`
+  de Kazuhiko Arase, MIT, vendue telle quelle — voir son en-tête pour la
+  licence). Au chargement, `checkImportHash()` détecte `#w=...`, nettoie le
+  hash (`history.replaceState`) et déclenche la même confirmation/fusion que
+  l'import manuel — jamais de fusion silencieuse. Toute cette UI reste
+  masquée hors http(s) (`isWebOrigin()`) : un fichier local ou l'APK n'ont
+  pas d'adresse à partager, et `navigator.share` n'y existe pas de toute
+  façon.
+- **Service worker minimal** (`app/sw.js`, enregistré par `p4j_pwa.js`,
+  uniquement sur http(s)) : l'app tient dans un seul document, donc un seul
+  fichier à mettre en cache — pas de liste d'assets à maintenir.
+  Stratégie stale-while-revalidate : sert le cache instantanément, revalide
+  en tâche de fond. Voir DEPLOY.md pour le header `Cache-Control` côté
+  serveur qui rend ce mécanisme utile (sans lui, un cache HTTP intermédiaire
+  peut figer la version que le service worker croit être « le réseau »).
 
 ## Pièges déjà rencontrés — ne pas refaire
 
@@ -180,12 +214,33 @@ adapter le chemin selon où le fichier généré se trouve localement.
    `tests/test_rig.js` / `tests/test_life.js` après une édition CSS
    (ils échantillonnent les transformations calculées dans le temps et
    révèlent un blocage que l'œil peut manquer).
+6. **Aucun `<meta charset>` dans le document ne posait problème qu'en
+   apparence.** Le HTML n'a ni `<!DOCTYPE>` ni `<html>/<head>/<body>` (tag
+   soup volontaire, le navigateur les infère) et fonctionnait très bien en
+   `file://` et dans la WebView de l'APK — les deux supposent l'UTF-8 par
+   défaut sans balise explicite. Dès que l'app est servie par un serveur
+   HTTP qui ne déclare pas `charset=utf-8` dans l'en-tête `Content-Type`
+   (ex. `python -m http.server`, et potentiellement d'autres selon leur
+   config), tout le texte FR/AR s'affichait en charabia. Corrigé en mettant
+   `<meta charset="utf-8">` en toute première ligne de `p0_head.html` —
+   ne jamais l'enlever, et ne pas compter sur l'en-tête HTTP du serveur
+   pour ce rôle.
 
 ## Où on en était à l'export
 
-Dernière version livrée : **APK v14**, mascottes avec rig articulé tête/corps
-(fini, vérifié, livré), 0 violation d'accessibilité automatisée, XSS corrigé
-et re-vérifié à chaque reconstruction. Aucune tâche technique n'était en
-attente au moment de l'export — la suite logique, si on veut aller plus loin
-sur l'animation, serait soit un découpage manuel plus fin (oreilles/queue
-séparées), soit l'intégration d'un vrai moteur de rig (Rive/Spine).
+**APK (dernière version figée) :** v14, mascottes avec rig articulé
+tête/corps (fini, vérifié, livré), 0 violation d'accessibilité automatisée,
+XSS corrigé et re-vérifié à chaque reconstruction. Rien de technique n'était
+en attente sur ce front — la suite logique, si on va plus loin sur
+l'animation, serait un découpage manuel plus fin (oreilles/queue séparées)
+ou un vrai moteur de rig (Rive/Spine).
+
+**Piste actuelle : web uniquement, l'APK est mis de côté pour l'instant.**
+Ajoutés dans cette passe : service worker + PWA installable, partage de
+profil par lien/QR (voir plus haut), mnémotechniques pour les 21 wilayas de
+2019/2025 (`HOOKS` dans `part_data.js`, codes 49–69 — auparavant seuls les
+codes 1–48 en avaient), et le correctif de charset ci-dessus (bloquant pour
+tout hébergement web). Reste à faire, hors de portée de cette session cloud
+(pas d'accès réseau à `bigpc`) : lancer réellement `deploy/` sur `bigpc` et
+router `69.smnc.win` — voir **DEPLOY.md**, qui contient le runbook complet
+et dit explicitement qui doit l'exécuter.

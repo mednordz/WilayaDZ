@@ -199,6 +199,7 @@
     renderPath();
     refreshPracticeCards();
     renderSyncPanel();
+    checkImportHash();
   }
 
   /* ---------------- Feuille « Profil » ---------------- */
@@ -326,30 +327,115 @@
 
     document.getElementById("sync-import").addEventListener("click", function(){
       var raw = document.getElementById("sync-paste").value.trim();
-      if(!raw){ toast(TL("Colle d'abord un code.","الصق رمزا أولا.")); return; }
-      var res = parseCode(raw);
-      if(res.error){
-        var msg = res.error === "abime"
-          ? TL("Ce code est incomplet ou abîmé — recopie-le en entier.","الرمز ناقص أو تالف — أعد نسخه كاملا.")
-          : TL("Ce n'est pas un code de transfert valide.","هذا ليس رمز نقل صالح.");
-        toast(msg); return;
-      }
-      var obj = res.obj;
-      var p = activeProfile();
-      var n = Object.keys(obj.p||{}).length;
-      confirmDialog(
-        TL("Le code vient de « " + esc(obj.n || "?") + " » et contient " + n + " wilayas. Il sera FUSIONNÉ avec « " + esc(p.name) + " » : pour chaque wilaya, la meilleure des deux mémoires est gardée. Rien n'est effacé.",
-           "الرمز من « " + esc(obj.n || "?") + " » ويحتوي " + n + " ولاية. سيُدمج مع « " + esc(p.name) + " »: تُحفظ الأفضل من الذاكرتين. لا شيء يُمحى."),
-        TL("Fusionner","ادمج")
-      ).then(function(ok){
-        if(!ok) return;
-        var r = mergeInto(p, obj);
-        saveAccount(); bootProfile();
-        document.getElementById("sync-paste").value = "";
-        toast(TL(r.added + " ajoutées, " + r.improved + " améliorées.",
-                 r.added + " أُضيفت، " + r.improved + " تحسّنت."));
-      });
+      importCode(raw, function(){ document.getElementById("sync-paste").value = ""; });
     });
+
+    initWebShare();
+  }
+
+  /* Fusion d'un code, quelle que soit sa provenance (coller à la main
+     ou lien/QR reçu) : même validation, même confirmation, même fusion. */
+  function importCode(raw, onDone){
+    if(!raw){ toast(TL("Colle d'abord un code.","الصق رمزا أولا.")); return; }
+    var res = parseCode(raw);
+    if(res.error){
+      var msg = res.error === "abime"
+        ? TL("Ce code est incomplet ou abîmé — recopie-le en entier.","الرمز ناقص أو تالف — أعد نسخه كاملا.")
+        : TL("Ce n'est pas un code de transfert valide.","هذا ليس رمز نقل صالح.");
+      toast(msg); return;
+    }
+    var obj = res.obj;
+    var p = activeProfile();
+    if(!p) return;
+    var n = Object.keys(obj.p||{}).length;
+    confirmDialog(
+      TL("Le code vient de « " + esc(obj.n || "?") + " » et contient " + n + " wilayas. Il sera FUSIONNÉ avec « " + esc(p.name) + " » : pour chaque wilaya, la meilleure des deux mémoires est gardée. Rien n'est effacé.",
+         "الرمز من « " + esc(obj.n || "?") + " » ويحتوي " + n + " ولاية. سيُدمج مع « " + esc(p.name) + " »: تُحفظ الأفضل من الذاكرتين. لا شيء يُمحى."),
+      TL("Fusionner","ادمج")
+    ).then(function(ok){
+      if(!ok) return;
+      var r = mergeInto(p, obj);
+      saveAccount(); bootProfile();
+      if(onDone) onDone();
+      toast(TL(r.added + " ajoutées, " + r.improved + " améliorées.",
+               r.added + " أُضيفت، " + r.improved + " تحسّنت."));
+    });
+  }
+
+  /* ---------------- Partage web : lien + QR ----------------
+     file:// (l'APK, un double-clic local) n'a pas d'adresse à partager
+     et navigator.share n'y existe de toute façon pas : toute cette
+     section reste masquée hors http(s). */
+  function isWebOrigin(){ return /^https?:$/.test(location.protocol); }
+
+  function shareUrl(){
+    var p = activeProfile();
+    if(!p) return null;
+    return location.origin + location.pathname + "#w=" + exportCode(p);
+  }
+
+  function initWebShare(){
+    var row = document.getElementById("sync-web-actions");
+    if(!row || !isWebOrigin()) return;
+    row.style.display = "";
+
+    var shareBtn = document.getElementById("sync-share");
+    shareBtn.addEventListener("click", function(){
+      var url = shareUrl();
+      if(!url) return;
+      if(navigator.share){
+        navigator.share({
+          title:"Wilaya 01–69",
+          text:TL("Ma progression Wilaya 01–69 — importe-la sur ton appareil.",
+                  "تقدّمي في تطبيق الولايات — استورده على جهازك."),
+          url:url
+        }).catch(function(){ /* annulé par l'utilisateur : rien à faire */ });
+      }else if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url);
+        toast(TL("Lien copié — envoie-le sur l'autre appareil.","نُسخ الرابط — أرسله إلى الجهاز الآخر."));
+      }else{
+        toast(TL("Partage indisponible ici — utilise le code ci-dessus.","المشاركة غير متاحة هنا — استخدم الرمز أعلاه."));
+      }
+    });
+
+    var qrBtn = document.getElementById("sync-qr-toggle");
+    var qrBox = document.getElementById("sync-qr-box");
+    var qrHint = document.getElementById("sync-qr-hint");
+    qrBtn.addEventListener("click", function(){
+      var open = qrBox.style.display !== "none";
+      if(open){
+        qrBox.style.display = "none"; qrHint.style.display = "none";
+        qrBox.innerHTML = ""; qrBtn.setAttribute("aria-expanded","false");
+        return;
+      }
+      var url = shareUrl();
+      if(!url) return;
+      try{
+        var qr = qrcode(0, "M");
+        qr.addData(url);
+        qr.make();
+        qrBox.innerHTML = qr.createSvgTag({scalable:true});
+        qrBox.style.display = ""; qrHint.style.display = "";
+        qrBtn.setAttribute("aria-expanded","true");
+      }catch(e){
+        toast(TL("Code QR indisponible sur cet appareil.","رمز QR غير متاح على هذا الجهاز."));
+      }
+    });
+  }
+
+  /* ---------------- Import par lien (#w=...) ----------------
+     Ouvrir un lien de partage suffit : pas besoin de recopier le code
+     à la main. Ne se déclenche qu'une fois par chargement de page, et
+     seulement une fois qu'un profil actif existe (bootProfile() peut
+     tourner plusieurs fois — changement de langue, de profil...). */
+  var hashImportDone = false;
+  function checkImportHash(){
+    if(hashImportDone) return;
+    var m = location.hash.match(/#w=(WLY1\.[A-Za-z0-9\-_]+\.[a-z0-9]+)/);
+    if(!m) return;
+    hashImportDone = true;
+    history.replaceState(null, "", location.pathname + location.search);
+    importCode(m[1]);
   }
 
   document.getElementById("profile-btn").addEventListener("click", openProfileSheet);
