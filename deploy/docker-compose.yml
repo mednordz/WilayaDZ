@@ -5,6 +5,8 @@ services:
       dockerfile: deploy/Dockerfile
     container_name: wilaya-web
     restart: unless-stopped
+    depends_on:
+      - wilaya-api
     # Un site statique d'un seul fichier HTML : quelques Mio suffisent
     # largement (nginx:alpine tourne à moins de 10 Mio au repos). Plafond
     # large uniquement pour ne jamais risquer un OOM-kill sur une machine
@@ -14,9 +16,10 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
     # Écoute uniquement sur la boucle locale : c'est le tunnel Cloudflare
-    # existant (smnc-portal-tunnel) qui route 69.smnc.win vers ce port,
-    # exactement comme wa.smnc.win → 127.0.0.1:8091 (voir DEPLOY.md).
-    # Choisir un port libre sur bigpc ; 8099 est une simple proposition.
+    # existant (smnc-portal-tunnel) qui route wilayadz.smnc.win vers ce
+    # port, exactement comme wa.smnc.win → 127.0.0.1:8091 (voir DEPLOY.md).
+    # 69.smnc.win reste routé vers le même port, pour ne casser aucun lien
+    # déjà partagé.
     ports:
       - "127.0.0.1:8099:8080"
     healthcheck:
@@ -25,3 +28,35 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  # Comptes et synchronisation. Volontairement SANS `ports:` : ce service
+  # n'est joignable que par wilaya-web, sur le réseau interne de ce
+  # fichier. Rien ne l'expose à bigpc, encore moins au tunnel — c'est ce
+  # qui rend acceptable d'y faire tourner http.server.
+  wilaya-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    container_name: wilaya-api
+    restart: unless-stopped
+    volumes:
+      - wilaya-data:/data
+    # scrypt réserve ~16 Mio par mot de passe vérifié ; quelques requêtes
+    # simultanées tiennent très largement dans 128 Mio.
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/api/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  # La base des comptes. C'est la SEULE donnée de tout ce déploiement qui
+  # ne se régénère pas depuis le dépôt : à inclure dans les sauvegardes de
+  # bigpc, contrairement aux images et aux conteneurs.
+  wilaya-data:

@@ -13,10 +13,15 @@ app/          fichiers source de l'application (assemblés par build.py)
 mascots/      images sources et rig des 4 mascottes (fennec, chameau, cigogne, palmier)
 android/      projet APK (manifest, resources, keystore, dernier APK signé)
 deploy/       Dockerfile + nginx + docker-compose pour l'hébergement web (voir DEPLOY.md)
-tests/        suite Playwright (accessibilité, sécurité, animations, bidi)
+server/       service de comptes et de synchronisation (Python stdlib + SQLite)
+tests/        suite Playwright + tests du service de comptes (test_api.py, test_cloud_e2e.js)
 AUDIT.md      rapport d'audit sécurité/accessibilité déjà réalisé
-DEPLOY.md     runbook d'hébergement web (69.smnc.win sur bigpc, tunnel Cloudflare)
+DEPLOY.md     runbook d'hébergement web (wilayadz.smnc.win sur bigpc, tunnel Cloudflare)
 ```
+
+`server/` est la seule partie qui ne finit pas dans le fichier HTML : c'est
+un service à part, joignable uniquement par nginx, et dont l'application
+n'a **jamais** besoin pour fonctionner.
 
 ## Comment reconstruire l'app
 
@@ -159,6 +164,14 @@ adapter le chemin selon où le fichier généré se trouve localement.
   instances sont visibles en même temps. Une boucle (`mascotBeat()`)
   déclenche aléatoirement de petits gestes (regard, hochement, saut...) sur
   une mascotte visible à la fois, et respecte `prefers-reduced-motion`.
+- **Comptes en ligne facultatifs** (`p4k_cloud.js` côté transport,
+  `p4l_cloudui.js` côté interface, `server/app.py` côté serveur) : adresse
+  e-mail + mot de passe, la progression suit sur tous les appareils. Trois
+  règles à ne pas casser : (1) l'app marche à l'identique sans compte et
+  sans réseau ; (2) on FUSIONNE avec `mergeInto()` — la même fonction que
+  les codes de transfert — on n'écrase jamais ; (3) on ne pousse jamais
+  sans avoir lu le serveur d'abord (contrôle de version, 409 + refusion),
+  sinon deux appareils utilisés le même jour s'effacent mutuellement.
 - **Partage de profil par lien + QR** (piste web, section « Profil &
   synchronisation ») : `exportCode()`/`parseCode()`/`mergeInto()`
   (`p4g_account.js`) existaient déjà pour le copier-coller manuel du code
@@ -225,6 +238,33 @@ adapter le chemin selon où le fichier généré se trouve localement.
    `<meta charset="utf-8">` en toute première ligne de `p0_head.html` —
    ne jamais l'enlever, et ne pas compter sur l'en-tête HTTP du serveur
    pour ce rôle.
+
+7. **Le service worker mettait l'API en cache.** `sw.js` intercepte TOUTES
+   les requêtes GET de même origine en stale-while-revalidate. Dès que le
+   service de comptes est apparu sous `/api/`, `GET /api/sync` est devenu
+   une de ces requêtes : le cache était servi en premier, donc l'app lisait
+   une progression périmée en boucle, et les réponses contenant les données
+   du compte restaient dans le cache du navigateur après une déconnexion.
+   Corrigé par une exclusion explicite (`NO_CACHE_PREFIX = "/api/"`, pas de
+   `respondWith` du tout pour ces URL) et le cache renommé en
+   `wilaya-shell-v2` pour purger ce qu'une version précédente aurait rangé.
+   Verrouillé par un test (`tests/test_cloud_e2e.js`). **Toute nouvelle
+   route dynamique devra être exclue de la même façon.**
+
+8. **Une porte modale ne suffit pas à cacher ce qu'il y a derrière.** La
+   porte d'entrée (« Qui apprend ? ») recouvre l'app visuellement, mais le
+   reste du document restait dans l'arbre d'accessibilité : un lecteur
+   d'écran traversait la barre d'onglets et le parcours, y compris avant
+   leur premier rendu — donc des boutons vides et sans nom (violation axe
+   `button-name`). Corrigé par `setShellHidden()` dans `p4h_profileui.js`,
+   qui pose `aria-hidden` sur `.app-shell` tant que la porte est ouverte.
+
+9. **Réutiliser une classe CSS existante réutilise aussi ses
+   gestionnaires.** La ligne « Compte en ligne » a d'abord été écrite avec
+   `class='profile-row'` pour hériter du style — mais `openProfileSheet()`
+   attache un `click` à **tous** les `.profile-row` pour changer de profil,
+   et y lit un `data-id` que cette ligne n'a pas. Le sélecteur est devenu
+   `.profile-row[data-id]`.
 
 ## Où on en était à l'export
 

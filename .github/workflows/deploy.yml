@@ -1,4 +1,4 @@
-name: Déployer le web (69.smnc.win)
+name: Déployer le web (wilayadz.smnc.win)
 
 # Tourne sur le runner self-hosted de bigpc (voir DEPLOY.md) : c'est la
 # seule machine qui héberge le site, il n'y a pas de build à distance.
@@ -8,6 +8,7 @@ on:
     paths:
       - "app/**"
       - "deploy/**"
+      - "server/**"
   workflow_dispatch: {}
 
 jobs:
@@ -16,17 +17,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Construire et (re)lancer le conteneur
+      # Le service de comptes n'a aucune dépendance à installer, mais une
+      # faute de frappe dedans ne doit pas être découverte en production :
+      # ces tests lancent une instance jetable et l'exercent par HTTP.
+      - name: Éprouver le service de comptes
+        run: python3 tests/test_api.py
+
+      - name: Construire et (re)lancer les conteneurs
         run: docker compose -f deploy/docker-compose.yml up -d --build
 
-      - name: Attendre que le conteneur soit sain
+      - name: Attendre que les conteneurs soient sains
         run: |
-          for i in $(seq 1 15); do
-            status=$(docker inspect -f '{{.State.Health.Status}}' wilaya-web 2>/dev/null || echo "starting")
-            echo "état : $status"
-            if [ "$status" = "healthy" ]; then exit 0; fi
-            sleep 2
+          for c in wilaya-api wilaya-web; do
+            ok=""
+            for i in $(seq 1 20); do
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null || echo "starting")
+              echo "$c : $status"
+              if [ "$status" = "healthy" ]; then ok=1; break; fi
+              sleep 2
+            done
+            if [ -z "$ok" ]; then
+              echo "$c n'est jamais devenu sain — logs :" >&2
+              docker logs "$c" --tail 50
+              exit 1
+            fi
           done
-          echo "le conteneur n'est jamais devenu sain — logs :" >&2
-          docker logs wilaya-web --tail 50
-          exit 1
+
+      # Vérifie la chaîne complète telle qu'un téléphone la voit :
+      # nginx doit router /api vers le service de comptes.
+      - name: Vérifier que l'API répond à travers nginx
+        run: |
+          out=$(docker exec wilaya-web wget -qO- http://127.0.0.1:8080/api/health)
+          echo "réponse : $out"
+          echo "$out" | grep -q '"ok"' || { echo "l'API ne répond pas à travers nginx" >&2; exit 1; }

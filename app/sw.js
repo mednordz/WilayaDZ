@@ -10,7 +10,17 @@
 // le réseau), puis on revérifie en tâche de fond et on met à jour le
 // cache pour la prochaine visite. Une modification de l'app se voit donc
 // au chargement SUIVANT, jamais en repoussant celui en cours.
-const CACHE = "wilaya-shell-v1";
+// Le numéro change quand la règle de mise en cache change, pas quand
+// l'app change : « activate » purge alors tout ce qu'une version
+// précédente aurait pu ranger sous d'autres règles.
+const CACHE = "wilaya-shell-v2";
+
+// Comptes et synchronisation : jamais de cache, jamais de rejeu. Ces
+// réponses portent la progression du compte et dépendent d'un en-tête
+// Authorization ; les servir depuis le cache renverrait un état périmé
+// en boucle, et les y ranger laisserait des données de compte derrière
+// soi après une déconnexion.
+const NO_CACHE_PREFIX = "/api/";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -39,6 +49,9 @@ self.addEventListener("fetch", (event) => {
   // Uniquement les lectures same-origin : jamais d'appel réseau externe
   // de toute façon (voir plus haut), mais le garde-fou reste explicite.
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
+  // Laisser passer l'API sans y toucher : pas de respondWith du tout,
+  // donc le navigateur la traite comme si ce service worker n'existait pas.
+  if (new URL(req.url).pathname.startsWith(NO_CACHE_PREFIX)) return;
 
   event.respondWith(
     caches.open(CACHE).then((cache) =>

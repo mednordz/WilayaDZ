@@ -53,13 +53,27 @@
     btn.textContent = profileInitial(p);
     btn.setAttribute("aria-label", TL("Profil de " + p.name + ", changer de profil",
                                       "ملف " + p.name + "، تغيير الملف"));
+    renderCloudBadge();
   }
 
   /* ---------------- Porte d'entrée : « Qui apprend ? » ---------------- */
+  /* La porte d'entrée recouvre l'application en entier. Sans cela elle
+     ne la recouvrirait que pour les yeux : un lecteur d'écran
+     continuerait de traverser la barre d'onglets et les cartes du
+     parcours, y compris avant leur premier rendu — c'est-à-dire des
+     boutons encore vides et sans nom. */
+  function setShellHidden(hidden){
+    var shell = document.querySelector(".app-shell");
+    if(!shell) return;
+    if(hidden) shell.setAttribute("aria-hidden", "true");
+    else shell.removeAttribute("aria-hidden");
+  }
+
   function showGate(mode, targetProfile){
     var gate = document.getElementById("gate");
     gate.style.display = "flex";
     gate.setAttribute("aria-hidden", "false");
+    setShellHidden(true);
 
     if(mode === "pin"){
       gate.innerHTML =
@@ -92,6 +106,45 @@
       return;
     }
 
+    /* Appareil neuf : on se connecte et la progression arrive, sans
+       avoir à recopier un code depuis l'ancien téléphone. */
+    if(mode === "login"){
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<h2 id='gate-title'>" + T("Se connecter","تسجيل الدخول") + "</h2>" +
+          "<p class='gate-sub'>" + TS("Ta progression te rejoint sur cet appareil.",
+                                      "سيصلك تقدّمك على هذا الجهاز.") + "</p>" +
+          cloudFieldsHtml("glog", {}) +
+          "<p class='gate-err' id='glog-err' role='alert'></p>" +
+          "<button class='btn' id='glog-go'>" + T("Se connecter","ادخل") + "</button>" +
+          "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
+        "</div>";
+      var glogBtn = document.getElementById("glog-go");
+      function doGateLogin(){
+        var f = cloudReadFields("glog");
+        cloudErrInto("glog-err", "");
+        if(!f.email || !f.pw){ return cloudErrInto("glog-err", cloudErrorText("bad_credentials")); }
+        cloudBusy(glogBtn, true, TL("Connexion…","جارٍ الاتصال…"));
+        cloudLoginNewProfile(f.email, f.pw).then(function(r){
+          cloudBusy(glogBtn, false);
+          if(!r.ok) return cloudErrInto("glog-err", r.message);
+          hideGate(); bootProfile();
+          toast(TL("Bon retour, " + esc(r.profile.name) + ".",
+                   "مرحبا بعودتك، " + esc(r.profile.name) + "."));
+        });
+      }
+      glogBtn.addEventListener("click", doGateLogin);
+      document.getElementById("glog-pw").addEventListener("keydown", function(e){
+        if(e.key === "Enter") doGateLogin();
+      });
+      document.getElementById("gate-back").addEventListener("click", function(){
+        showGate(account.profiles.length ? "pick" : "create");
+      });
+      document.getElementById("glog-email").focus();
+      return;
+    }
+
     if(mode === "create"){
       gate.innerHTML =
         "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
@@ -110,6 +163,7 @@
                                        "هذا الرمز قفل محلي: يمنع غيرك من فتح ملفك على هذا الجهاز. ليس كلمة سر آمنة ولا يمكن استرجاعه.") + "</p>" +
           "<p class='gate-err' id='gate-err' role='alert'></p>" +
           "<button class='btn' id='gate-create'>" + T("Créer","أنشئ") + "</button>" +
+          (cloudAvailable() ? "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" : "") +
           (account.profiles.length ? "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" : "") +
         "</div>";
       var gateBox = document.getElementById("gate-box");
@@ -131,6 +185,8 @@
         hideGate(); bootProfile();
         toast(TL("Profil « " + esc(nm) + " » créé.","أُنشئ الملف « " + esc(nm) + " »."));
       });
+      var gotoLogin = document.getElementById("gate-login");
+      if(gotoLogin) gotoLogin.addEventListener("click", function(){ showGate("login"); });
       var back = document.getElementById("gate-back");
       if(back) back.addEventListener("click", function(){ showGate("pick"); });
       nameInp.focus();
@@ -160,6 +216,7 @@
                                     "لكل شخص ذاكرته وقلوبه وسلسلته الخاصة.") + "</p>" +
         "<div class='gate-list'>" + list + "</div>" +
         "<button class='btn ghost' id='gate-new'>" + T("+ Nouveau profil","+ ملف جديد") + "</button>" +
+        (cloudAvailable() ? "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("Se connecter à un compte","الدخول إلى حساب") + "</button>" : "") +
       "</div>";
 
     Array.prototype.forEach.call(gate.querySelectorAll(".gate-profile"), function(b){
@@ -173,6 +230,8 @@
       });
     });
     document.getElementById("gate-new").addEventListener("click", function(){ showGate("create"); });
+    var pickLogin = document.getElementById("gate-login");
+    if(pickLogin) pickLogin.addEventListener("click", function(){ showGate("login"); });
     document.getElementById("gate-box").focus();
   }
 
@@ -181,6 +240,7 @@
     gate.style.display = "none";
     gate.setAttribute("aria-hidden", "true");
     gate.innerHTML = "";
+    setShellHidden(false);
   }
 
   /* Recharge toute l'application pour le profil actif. */
@@ -200,6 +260,7 @@
     refreshPracticeCards();
     renderSyncPanel();
     checkImportHash();
+    cloudBootSync();
   }
 
   /* ---------------- Feuille « Profil » ---------------- */
@@ -231,6 +292,7 @@
         : "") +
       "<p class='sub' style='margin:18px 0 8px;'>" + TL("Langue de l'interface","لغة الواجهة") + "</p>" +
       langPickerHtml(p.lang || "bi") +
+      cloudRowHtml(p) +
       "<button class='btn ghost' id='prof-new' style='margin-top:12px;'>" + T("+ Nouveau profil","+ ملف جديد") + "</button>" +
       "<button class='btn ghost' id='prof-sync' style='margin-top:9px;'>" + T("Synchroniser un autre appareil","مزامنة جهاز آخر") + "</button>" +
       (account.profiles.length > 1
@@ -244,16 +306,23 @@
       applyLang(l);
       bootProfile();
     });
-    Array.prototype.forEach.call(document.querySelectorAll(".profile-row"), function(b){
+    /* `[data-id]` n'est pas décoratif : d'autres lignes partagent la
+       classe .profile-row sans désigner un profil (le compte en ligne).
+       Sans ce filtre, cliquer l'une d'elles cherche un profil qui
+       n'existe pas. */
+    Array.prototype.forEach.call(document.querySelectorAll(".profile-row[data-id]"), function(b){
       b.addEventListener("click", function(){
         var id = b.getAttribute("data-id");
         var o = account.profiles.filter(function(x){ return x.id === id; })[0];
+        if(!o) return;
         closeSheet();
         if(o.pin){ showGate("pin", o); return; }
         account.activeId = o.id; saveAccount(); bootProfile();
         toast(TL("Profil « " + esc(o.name) + " »","الملف « " + esc(o.name) + " »"));
       });
     });
+    var cloudRow = document.getElementById("prof-cloud");
+    if(cloudRow) cloudRow.addEventListener("click", function(){ openCloudSheet(); });
     document.getElementById("prof-new").addEventListener("click", function(){ closeSheet(); showGate("create"); });
     document.getElementById("prof-sync").addEventListener("click", function(){
       closeSheet(); switchTab("info");

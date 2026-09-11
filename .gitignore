@@ -1,3 +1,13 @@
 app/_check.js
 app/wilaya-v6.html
 node_modules/
+
+# Artefacts macOS
+.DS_Store
+
+# Captures écrites dans le dossier courant par tests/test_v6.js
+v6_*.png
+
+# Cache Python (tests/serve_test.py importe server/app.py)
+__pycache__/
+*.pyc

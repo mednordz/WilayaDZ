@@ -106,6 +106,10 @@
     };
     p.lastSeen = Date.now();
     saveAccount();
+    /* Si ce profil est relié à un compte, la poussée part toute seule
+       un peu plus tard — jamais à chaque réponse. Sans compte, cette
+       ligne ne fait rien du tout. */
+    if(typeof cloudScheduleSync === "function") cloudScheduleSync();
   }
 
   function profileInitial(p){
@@ -135,20 +139,26 @@
     return h.toString(36).slice(0,6);
   }
 
-  function exportCode(p){
+  /* La progression sous sa forme compacte. C'est exactement ce qui
+     voyage, que ce soit dans un code de transfert ou vers le compte en
+     ligne : un seul format à maintenir, une seule fusion à vérifier. */
+  function packProfile(p){
     var d = p.data || blankData();
     var packed = {};
     Object.keys(d.progress||{}).forEach(function(c){
       var r = d.progress[c] || {};
       packed[c] = [r.box||0, Math.round((r.due||0)/DAY)];
     });
-    var obj = {
+    return {
       v:1, n:p.name, x:d.xp||0,
       sc:(d.streak&&d.streak.count)||0, sl:(d.streak&&d.streak.last)||null,
       k:d.keyDone?1:0, bb:d.bestBlitz||0,
       cr:d.crowns||{}, p:packed, cf:d.confusions||{}
     };
-    var json = JSON.stringify(obj);
+  }
+
+  function exportCode(p){
+    var json = JSON.stringify(packProfile(p));
     return "WLY1." + b64urlEncode(json) + "." + checksum(json);
   }
 

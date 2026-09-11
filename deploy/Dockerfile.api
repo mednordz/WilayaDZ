@@ -1,0 +1,22 @@
+# Service de comptes et de synchronisation — voir DEPLOY.md.
+#
+# Aucune dependance a installer : server/app.py n'utilise que la
+# bibliotheque standard. L'image est donc celle de Python, plus un
+# fichier. Rien a auditer d'autre, rien qui puisse etre compromis en
+# amont a la prochaine reconstruction.
+FROM python:3.12-alpine
+
+# Tourner en non-root : /data appartient a l'utilisateur applicatif DES
+# l'image, pour qu'un volume nomme neuf herite de ce proprietaire et
+# soit inscriptible sans passer par un point d'entree privilegie.
+RUN adduser -D -u 10001 wilaya && mkdir -p /data && chown wilaya:wilaya /data
+
+WORKDIR /srv
+COPY server/app.py ./app.py
+
+USER wilaya
+ENV WILAYA_DB=/data/wilayadz.sqlite3 \
+    PORT=8090 \
+    PYTHONUNBUFFERED=1
+EXPOSE 8090
+CMD ["python3", "app.py"]

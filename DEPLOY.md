@@ -1,10 +1,36 @@
-# Déploiement web — 69.smnc.win
+# Déploiement web — wilayadz.smnc.win
 
-Objectif : servir l'app en continu sur `https://69.smnc.win`, hébergée sur
-`bigpc`, derrière le tunnel Cloudflare existant `smnc-portal-tunnel` — le
-même mécanisme que `wa.smnc.win` (voir le dépôt `YtSMNC`, section
-« Cloudflare Tunnel » de son README, pour le détail de cette
-architecture).
+Objectif : servir l'app en continu sur `https://wilayadz.smnc.win`
+(`69.smnc.win` reste actif, pour ne casser aucun lien déjà partagé),
+hébergée sur `bigpc`, derrière le tunnel Cloudflare existant
+`smnc-portal-tunnel` — le même mécanisme que `wa.smnc.win` (voir le dépôt
+`YtSMNC`, section « Cloudflare Tunnel » de son README, pour le détail de
+cette architecture).
+
+## Ce qui tourne
+
+Deux conteneurs, décrits par `deploy/docker-compose.yml` :
+
+| Conteneur | Rôle | Exposition |
+|---|---|---|
+| `wilaya-web` | nginx : sert l'app (un seul `index.html`) et **relaie `/api/`** | `127.0.0.1:8099` |
+| `wilaya-api` | comptes et synchronisation (`server/app.py`) | **aucune** — réseau interne seulement |
+
+`wilaya-api` n'a volontairement pas de `ports:` : il n'est joignable que
+par `wilaya-web`. C'est ce qui rend acceptable d'y faire tourner
+`http.server` — il ne voit jamais l'internet en direct, seulement des
+requêtes déjà filtrées par nginx, lui-même derrière le tunnel.
+
+> ⚠️ **Sauvegardes.** Le volume `wilaya-data` (base SQLite des comptes)
+> est la **seule** donnée de tout ce déploiement qui ne se régénère pas
+> depuis le dépôt. Images, conteneurs et HTML se reconstruisent d'un
+> `docker compose build` ; les comptes des gens, non. À inclure dans les
+> sauvegardes de `bigpc`.
+>
+> ```bash
+> docker run --rm -v wilaya-data:/d -v "$PWD":/out alpine \
+>   tar czf /out/wilaya-data.tgz -C /d .
+> ```
 
 ⚠️ **Cette session Claude Code tourne dans un conteneur cloud isolé, sans
 accès réseau à `bigpc`** (pas de SSH, pas de Tailscale) : aucune commande
@@ -60,20 +86,28 @@ Si le port `8099` est déjà pris par autre chose sur `bigpc`, changer le
 mappage dans `deploy/docker-compose.yml` (`"127.0.0.1:<PORT>:8080"`) et
 adapter la route ci-dessous en conséquence.
 
-## 2. Router 69.smnc.win vers ce conteneur (à faire une fois, sur bigpc)
+## 2. Router le nom de domaine vers ce conteneur (fait, sur bigpc)
 
 Laissé en manuel volontairement : ça touche `/etc/cloudflared/config.yml`,
 un fichier **partagé** avec `wa.smnc.win` (le bot WhatsApp en production) —
 pas quelque chose à faire éditer par une automatisation sans supervision,
 même une seule fois.
 
-Ajouter dans **`/etc/cloudflared/config.yml`** (pas `~/.cloudflared/config.yml`,
-qui existe aussi mais n'est pas celle utilisée par le service systemd) :
+État actuel (posé le 2026-09-11, sauvegarde préalable du fichier,
+`cloudflared tunnel ingress validate` → OK) — **`/etc/cloudflared/config.yml`**
+(pas `~/.cloudflared/config.yml`, qui existe aussi mais n'est pas celle
+utilisée par le service systemd) :
 
 ```yaml
+  - hostname: wilayadz.smnc.win
+    service: http://127.0.0.1:8099
   - hostname: 69.smnc.win
     service: http://127.0.0.1:8099
 ```
+
+Les deux noms pointent volontairement sur le même conteneur : `69.smnc.win`
+est conservé pour ne casser aucun lien déjà partagé. Rien à faire de plus
+pour l'API — elle passe par le même nginx, sur `/api/`.
 
 Puis :
 
@@ -95,7 +129,8 @@ commande pour un futur sous-domaine sans d'abord vérifier où elle écrit
 **À la place, créer le DNS à la main** dans le dashboard Cloudflare :
 `smnc.win` → DNS → Records → **Ajouter un enregistrement** :
 - Type : `CNAME`
-- Nom : `69` (juste le sous-domaine, Cloudflare ajoute `.smnc.win` tout seul)
+- Nom : le sous-domaine seul (`wilayadz`, `69`…) — Cloudflare ajoute
+  `.smnc.win` tout seul
 - Cible : `6923c9e9-9586-49f6-82d9-47f46e78dbb2.cfargotunnel.com` (l'ID du
   tunnel `smnc-portal-tunnel`, visible aussi dans `config.yml` ligne 1)
 - Statut proxy : **Proxied** (nuage orange)
@@ -105,23 +140,83 @@ dans la bonne zone. Vérifié en production le 2026-09-11 : fonctionne.
 
 ## 3. Vérifier en conditions réelles
 
-⚠️ Depuis une session Claude Code cloud, ces `curl` vers `69.smnc.win`
-échouent avec un 403 qui vient du **proxy sortant du sandbox lui-même**
-(pas de Cloudflare ni du site) — politique réseau propre à cet
-environnement, sans rapport avec le déploiement. Les lancer depuis `bigpc`
-ou un poste normal.
+⚠️ Depuis une session Claude Code cloud, ces `curl` échouent avec un 403
+qui vient du **proxy sortant du sandbox lui-même** (pas de Cloudflare ni
+du site) — politique réseau propre à cet environnement, sans rapport avec
+le déploiement. Les lancer depuis `bigpc` ou un poste normal.
 
 ```bash
-curl -sI https://69.smnc.win/ | grep -i content-type   # peu importe le charset ici :
-                                                         # <meta charset="utf-8"> dans le
-                                                         # HTML fait foi quoi qu'il arrive
-curl -s https://69.smnc.win/sw.js | head -c 100
+curl -sI https://wilayadz.smnc.win/ | grep -i content-type  # peu importe le charset ici :
+                                                            # <meta charset="utf-8"> dans le
+                                                            # HTML fait foi quoi qu'il arrive
+curl -s  https://wilayadz.smnc.win/sw.js | head -c 100
+curl -s  https://wilayadz.smnc.win/api/health                # doit renvoyer {"ok": true}
+curl -sI https://69.smnc.win/ | head -1                      # l'ancien lien doit vivre
 ```
 
-Puis depuis un téléphone : ouvrir `https://69.smnc.win`, créer un profil,
-vérifier que l'app fonctionne, couper le réseau et recharger (doit
+Puis depuis un téléphone : ouvrir `https://wilayadz.smnc.win`, créer un
+profil, vérifier que l'app fonctionne, couper le réseau et recharger (doit
 continuer à s'afficher — c'est le service worker). Tester aussi
 « Partager un lien » / « Code QR » dans Infos → Profil & synchronisation.
+
+Et pour les comptes, le seul essai qui prouve quelque chose : créer un
+compte sur un téléphone, se connecter avec sur un **autre** appareil, et
+vérifier que la progression est bien là.
+
+## 4. Comptes et synchronisation
+
+Un compte (adresse e-mail + mot de passe) rattache un profil au serveur :
+la même progression se retrouve sur n'importe quel appareil où l'on se
+connecte. **L'application n'en a jamais besoin** — sans réseau, sans
+compte, dans l'APK, tout continue de fonctionner sur la mémoire locale.
+
+Routes, toutes sous `/api` :
+
+| Route | Effet |
+|---|---|
+| `POST /auth/register` | crée un compte, renvoie un jeton |
+| `POST /auth/login` | ouvre une session sur cet appareil |
+| `POST /auth/logout` | ferme **cette** session seulement |
+| `POST /auth/password` | change le mot de passe et ferme les autres appareils |
+| `GET /me` | le compte courant |
+| `GET /sync` · `PUT /sync` | lire / écrire la progression |
+| `DELETE /account` | supprime le compte (mot de passe exigé) |
+| `GET /health` | sonde du healthcheck |
+
+Ce qui protège quoi :
+
+- **Mots de passe** : `hashlib.scrypt` (n=2¹⁴, r=8, p=1), sel aléatoire
+  de 16 octets par compte, comparaison en temps constant. Jamais stockés
+  ni journalisés en clair.
+- **Jetons de session** : 32 octets tirés de `secrets`, dont la base ne
+  garde qu'une empreinte SHA-256 — une copie du fichier SQLite ne permet
+  de se faire passer pour personne. Transmis par en-tête `Authorization`,
+  jamais par cookie : il n'y a donc pas de CSRF à traiter, et l'APK
+  (origine `null`) peut se synchroniser.
+- **Débit** : 8 créations de compte par heure et par IP, 10 connexions
+  par quart d'heure. Une adresse inexistante coûte le même temps qu'une
+  vraie, pour ne pas révéler qui a un compte ici.
+- **Écritures concurrentes** : chaque envoi déclare la version sur
+  laquelle il a fusionné ; si le serveur a bougé entre-temps il répond
+  409 avec son état, et le client refusionne. Deux appareils utilisés le
+  même jour convergent au lieu de s'effacer.
+- **Fusion, jamais écrasement** : côté client, exactement la même
+  fonction que les codes de transfert (`mergeInto`) — pour chaque wilaya,
+  la meilleure des deux mémoires gagne.
+
+Ce qui n'existe pas encore, et que l'interface dit franchement :
+**la récupération de mot de passe par e-mail**. Un mot de passe perdu est
+un compte perdu — mais pas une progression perdue, puisqu'elle reste sur
+l'appareil.
+
+Éprouver le service sans rien déployer :
+
+```bash
+python3 tests/test_api.py              # 59 vérifications, service jetable
+python3 tests/serve_test.py 8390 &     # l'app + son API sur une même origine
+node tests/test_cloud_e2e.js           # deux « appareils » qui se synchronisent
+node tests/audit_a11y_cloud.js         # accessibilité des écrans de compte
+```
 
 ## Pourquoi ces choix
 
@@ -150,6 +245,22 @@ continuer à s'afficher — c'est le service worker). Tester aussi
   avec un service en production (`wa.smnc.win`) — une automatisation qui
   peut le réécrire sans supervision est un risque disproportionné pour un
   geste qui ne se fait qu'une fois.
+- **Le service de comptes n'utilise que la bibliothèque standard de
+  Python** : pas de `requirements.txt`, pas de chaîne d'approvisionnement
+  à surveiller, et un fichier qu'on peut relire d'un bout à l'autre — le
+  seul moyen honnête d'auditer soi-même du code qui manipule des mots de
+  passe. Tout ce qu'il faut y est déjà : `hashlib.scrypt`, `secrets`,
+  `hmac.compare_digest`, `sqlite3`.
+- **SQLite plutôt qu'un serveur de base de données** : quelques dizaines
+  de comptes et une écriture par session de révision. Un PostgreSQL
+  serait un service de plus à faire tourner, surveiller et sauvegarder
+  sur une machine qui héberge déjà Plex, Immich, Ollama et une VM. Un
+  fichier unique se sauvegarde en le copiant.
+- **Le service worker ignore `/api/`** : il intercepte tous les GET de
+  même origine ; sans exclusion explicite il servirait une progression
+  périmée depuis le cache, en boucle, et laisserait les données du compte
+  dans le cache du navigateur après une déconnexion. Vérifié par
+  `tests/test_cloud_e2e.js`.
 
 ## Mettre à jour après un nouveau `git pull`
 
