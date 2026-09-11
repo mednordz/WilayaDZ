@@ -1,0 +1,222 @@
+<div class="app-shell">
+
+  <!-- ===== TOP BAR ===== -->
+  <div class="topbar" role="banner">
+    <div class="topbar-inner">
+      <div class="brand">Wilaya <span>01–69</span></div>
+      <div class="topstats">
+        <span class="topstat streak" id="topstat-streak">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c-1 3-4 4-4 8a4 4 0 008 0c0-1.5-.5-2.2-1-3.2.9.6 2 2.1 2 4.2a5 5 0 01-10 0c0-4.5 3.3-6.6 5-9z"/></svg>
+          <span id="stat-streak">0</span>
+          <span class="sr-only">jours de série — أيام السلسلة</span>
+        </span>
+        <span class="topstat xp" id="topstat-xp">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 9l4-6h8l4 6-8 12L4 9z"/></svg>
+          <span id="stat-xp">0</span>
+          <span class="sr-only">points d'expérience — نقاط الخبرة</span>
+        </span>
+        <button class="sound-btn" id="sound-btn" aria-label="Son — الصوت" aria-pressed="true"></button>
+        <button class="profile-btn" id="profile-btn" style="display:none;" aria-label="Profil — الملف">?</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PARCOURS ===== -->
+  <div class="view active" id="view-path" role="tabpanel" aria-labelledby="tab-path" tabindex="-1">
+    <div class="path-head">
+      <h1><span class="bi"><span class="bf" lang="fr">Ton parcours</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">مسارك</span></span></h1>
+      <p><span class="bis"><span class="bf2" lang="fr">Une étape = une leçon de 10 questions. Touche une étape pour la lancer directement.</span><span class="ba2" lang="ar" dir="rtl">كل مرحلة = درس من 10 أسئلة. المس مرحلة لتبدأ مباشرة.</span></span></p>
+    </div>
+
+    <button class="hero" id="hero-card" type="button"></button>
+
+    <div class="path-track" id="path-track"></div>
+  </div>
+
+  <!-- ===== ENTRAÎNEMENT ===== -->
+  <div class="view" id="view-practice" role="tabpanel" aria-labelledby="tab-practice" tabindex="-1">
+    <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Entraînement</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">التدريب</span></span></h2>
+    <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Quatre façons de travailler, selon ce dont ta mémoire a besoin maintenant.</span><span class="ba2" lang="ar" dir="rtl">أربع طرق للعمل، حسب ما تحتاجه ذاكرتك الآن.</span></span></p>
+
+    <div class="action-grid">
+      <button class="action-card" id="act-review" type="button">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        <span><b><span class="bi"><span class="bf" lang="fr">Révision</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">مراجعة</span></span></b><span id="act-review-sub">—</span></span>
+      </button>
+      <button class="action-card teal" id="act-blitz" type="button">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+        <span><b><span class="bi"><span class="bf" lang="fr">Rafale · 60 s</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">دفعة · 60 ث</span></span></b><span><span class="bis"><span class="bf2" lang="fr">Vitesse de rappel. Sans cœurs, sans pitié.</span><span class="ba2" lang="ar" dir="rtl">سرعة الاسترجاع. بلا قلوب ولا رحمة.</span></span></span></span>
+      </button>
+      <button class="action-card gold" id="act-confuse" type="button">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 8h8M8 12h8M8 16h5"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+        <span><b><span class="bi"><span class="bf" lang="fr">Confusions</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">التباسات</span></span></b><span id="act-confuse-sub">—</span></span>
+      </button>
+      <button class="action-card" id="act-free" type="button">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        <span><b><span class="bi"><span class="bf" lang="fr">Libre</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">حرّ</span></span></b><span><span class="bis"><span class="bf2" lang="fr">À ton rythme, tu choisis le sens et le lot.</span><span class="ba2" lang="ar" dir="rtl">على إيقاعك، تختار الاتجاه والمجموعة.</span></span></span></span>
+      </button>
+    </div>
+
+    <div class="forecast" id="forecast">
+      <h3><span class="bi"><span class="bf" lang="fr">Où en est ta mémoire</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">أين وصلت ذاكرتك</span></span></h3>
+      <div id="forecast-rows"></div>
+    </div>
+
+    <section id="quiz-section">
+      <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Entraînement libre</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">تدريب حرّ</span></span></h2>
+      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Sans cœurs, sans XP : pour réviser à ton rythme. Chaque wilaya suit quand même la répétition espacée du parcours.</span><span class="ba2" lang="ar" dir="rtl">بلا قلوب ولا نقاط: للمراجعة على إيقاعك. ومع ذلك تتبع كل ولاية التكرار المتباعد للمسار.</span></span></p>
+
+      <div class="tiers" role="radiogroup" aria-label="Choix du lot de wilayas — اختيار مجموعة الولايات">
+        <button class="tier-btn active" role="radio" aria-checked="true" data-tier="1" aria-label="48 prioritaires — 48 الأساسية"><span class="bi"><span class="bf" lang="fr">48 prioritaires</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">48 الأساسية</span></span></button>
+        <button class="tier-btn" role="radio" aria-checked="false" data-tier="2" aria-label="58 wilayas — 58 ولاية"><span class="bi"><span class="bf" lang="fr">58 · +10 (2019)</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">58 · +10 (2019)</span></span></button>
+        <button class="tier-btn" role="radio" aria-checked="false" data-tier="3" aria-label="69 complet — 69 كاملة"><span class="bi"><span class="bf" lang="fr">69 · +11 (2025)</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">69 · +11 (2025)</span></span></button>
+      </div>
+
+      <div class="modes" role="radiogroup" aria-label="Sens de la question — اتجاه السؤال">
+        <button class="mode-btn active" role="radio" aria-checked="true" data-mode="code2name" aria-label="Code vers wilaya — رمز إلى ولاية"><span class="bi"><span class="bf" lang="fr">Code → Wilaya</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">رمز ← ولاية</span></span></button>
+        <button class="mode-btn" role="radio" aria-checked="false" data-mode="name2code" aria-label="Wilaya vers code — ولاية إلى رمز"><span class="bi"><span class="bf" lang="fr">Wilaya → Code</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">ولاية ← رمز</span></span></button>
+        <button class="mode-btn" role="radio" aria-checked="false" data-mode="neighbors" aria-label="Voisins — الجيران"><span class="bi"><span class="bf" lang="fr">Voisins</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">الجيران</span></span></button>
+        <button class="mode-btn" role="radio" aria-checked="false" data-mode="typein" aria-label="Saisie libre — كتابة حرة"><span class="bi"><span class="bf" lang="fr">Saisie libre</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">كتابة حرة</span></span></button>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-top">
+          <span class="stat"><span class="bi"><span class="bf" lang="fr">Série</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">سلسلة</span></span> <b id="stat-session">0/0</b></span>
+          <span class="stat due"><span class="bi"><span class="bf" lang="fr">À réviser</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">للمراجعة</span></span> <b id="stat-due">0</b></span>
+          <span class="stat"><span class="bi"><span class="bf" lang="fr">Boîte 5</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">صندوق 5</span></span> <b id="stat-mastered">0</b>/<span id="stat-total">48</span></span>
+        </div>
+        <p class="prompt-label" id="prompt-label">—</p>
+        <p class="prompt" id="prompt-text" tabindex="-1">—</p>
+        <div id="choice-area" class="choices"></div>
+        <div id="typein-area" class="type-row" style="display:none;">
+          <label class="sr-only" for="typein-input">Code à deux chiffres — رمز من رقمين</label>
+          <input type="text" inputmode="numeric" id="typein-input" placeholder="ex. 16" maxlength="2" autocomplete="off" aria-label="Code à deux chiffres — رمز من رقمين" />
+          <button class="btn" style="width:auto;" id="typein-submit"><span class="bi"><span class="bf" lang="fr">Valider</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">تحقّق</span></span></button>
+        </div>
+        <p class="feedback" id="feedback" aria-live="polite"></p>
+        <div class="quiz-footer">
+          <button class="link-btn" id="reset-progress"><span class="bi"><span class="bf" lang="fr">Réinitialiser ma progression</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">أعد ضبط تقدّمي</span></span></button>
+          <button class="btn ghost" style="width:auto;" id="skip-btn"><span class="bi"><span class="bf" lang="fr">Passer →</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">تخطَّ ←</span></span></button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== INFOS ===== -->
+  <div class="view" id="view-info" role="tabpanel" aria-labelledby="tab-info" tabindex="-1">
+
+    <section id="method-section">
+      <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">La clé du système</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">مفتاح النظام</span></span></h2>
+      <p><span class="bis"><span class="bf2" lang="fr">Les codes ne sont pas arbitraires. Les <b>31 premiers suivent l'ordre alphabétique arabe</b> — c'est le seul fait qu'il faut vraiment retenir, et il fait tomber la moitié du travail.</span><span class="ba2" lang="ar" dir="rtl">الرموز ليست اعتباطية. <b>الـ31 الأولى مرتّبة حسب الترتيب الأبجدي العربي</b> — هذه هي الحقيقة الوحيدة التي يجب حفظها فعلا، وهي تسقط نصف العمل.</span></span></p>
+      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Vérifié en triant les 31 noms arabes selon l'alphabet <span dir="rtl" lang="ar">ا ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي</span> : l'ordre obtenu redonne exactement les codes 01 à 31. Le seul piège est le <b>02</b>, qui s'appelait <span dir="rtl" lang="ar">الأصنام</span> (El Asnam) en 1974 et n'est devenu Chlef qu'en 1984.</span><span class="ba2" lang="ar" dir="rtl">تم التحقق بترتيب الأسماء العربية الـ31 أبجديا: الترتيب الناتج يعطي بالضبط الرموز من 01 إلى 31. الفخ الوحيد هو <b>02</b>، التي كانت تسمى الأصنام سنة 1974 ولم تصبح الشلف إلا سنة 1984.</span></span></p>
+
+      <div class="block-strip" id="method-blocks"></div>
+
+      <p><span class="bis"><span class="bf2" lang="fr">Au-delà de 31, le fil alphabétique se coupe : <b>32–48</b> sont l'extension de 1984, <b>49–58</b> les wilayas du Sud de 2019, <b>59–69</b> celles du 16 novembre 2025.</span><span class="ba2" lang="ar" dir="rtl">بعد 31 ينقطع الخيط الأبجدي: <b>32–48</b> توسعة 1984، و<b>49–58</b> ولايات الجنوب لسنة 2019، و<b>59–69</b> ولايات 16 نوفمبر 2025.</span></span></p>
+
+      <div class="hooks" id="anchor-hooks"></div>
+
+      <details class="full-hooks">
+        <summary><span class="bi"><span class="bf" lang="fr">Un indice pour chacune des 48 wilayas</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">دليل لكل من الولايات الـ48</span></span></summary>
+        <div class="hooks" id="full-hooks-list"></div>
+      </details>
+      <p class="caveat"><span class="bis"><span class="bf2" lang="fr">Pour les 11 wilayas de novembre 2025 (59–69), les sources de presse ne s'accordent pas toutes sur l'ordre exact au-delà des extrêmes (59 = Aflou, 69 = El Abiodh Sidi Cheikh). Vérifie au Journal officiel pour un usage officiel.</span><span class="ba2" lang="ar" dir="rtl">بخصوص الولايات الـ11 لنوفمبر 2025 (59–69)، لا تتفق مصادر الصحافة كلها على الترتيب الدقيق عدا الطرفين (59 = أفلو، 69 = الأبيض سيدي الشيخ). راجع الجريدة الرسمية للاستعمال الرسمي.</span></span></p>
+    </section>
+
+    <!-- ===== PROFIL & SYNCHRONISATION ===== -->
+    <section id="sync-section">
+      <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Profil &amp; synchronisation</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">الملف والمزامنة</span></span></h2>
+      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Cette application fonctionne entièrement hors ligne : il n'y a pas de serveur, donc pas de compte en ligne. Pour retrouver ta progression sur un autre appareil, tu transportes toi-même ton code — et l'import <b>fusionne</b> au lieu d'écraser, donc tu peux faire l'aller-retour sans jamais rien perdre.</span><span class="ba2" lang="ar" dir="rtl">هذا التطبيق يعمل كليا دون اتصال: لا يوجد خادم، إذن لا حساب على الإنترنت. لاسترجاع تقدّمك على جهاز آخر، تنقل رمزك بنفسك — والاستيراد <b>يدمج</b> ولا يمحو، فيمكنك التنقل بين الأجهزة دون أن تفقد شيئا.</span></span></p>
+
+      <div class="map-card">
+        <div class="sync-step">
+          <span class="sync-num" aria-hidden="true">1</span>
+          <span class="sync-step-body"><span class="bis"><span class="bf2" lang="fr">Sur cet appareil, copie le code ci-dessous.</span><span class="ba2" lang="ar" dir="rtl">على هذا الجهاز، انسخ الرمز أدناه.</span></span></span>
+        </div>
+        <label class="sr-only" for="sync-code">Ton code de transfert — رمز النقل الخاص بك</label>
+        <textarea class="sync-code" id="sync-code" readonly aria-label="Ton code de transfert — رمز النقل الخاص بك"></textarea>
+        <p class="section-note" id="sync-info"></p>
+        <div class="sync-actions">
+          <button class="btn" id="sync-copy"><span class="bi"><span class="bf" lang="fr">Copier</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">انسخ</span></span></button>
+          <button class="btn ghost" id="sync-save"><span class="bi"><span class="bf" lang="fr">Enregistrer</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">احفظ</span></span></button>
+        </div>
+
+        <div class="sync-step" style="margin-top:24px;">
+          <span class="sync-num" aria-hidden="true">2</span>
+          <span class="sync-step-body"><span class="bis"><span class="bf2" lang="fr">Sur l'autre appareil, ouvre cette même section, colle le code ici et fusionne.</span><span class="ba2" lang="ar" dir="rtl">على الجهاز الآخر، افتح هذا القسم نفسه، الصق الرمز هنا وادمج.</span></span></span>
+        </div>
+        <label class="sr-only" for="sync-paste">Coller un code venu d'un autre appareil — الصق رمزا من جهاز آخر</label>
+        <textarea class="sync-code" id="sync-paste" placeholder="WLY1..." aria-label="Coller un code venu d'un autre appareil — الصق رمزا من جهاز آخر"></textarea>
+        <button class="btn" id="sync-import"><span class="bi"><span class="bf" lang="fr">Fusionner</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">ادمج</span></span></button>
+      </div>
+    </section>
+
+    <section id="map-section">
+      <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Carte mentale</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">الخريطة الذهنية</span></span></h2>
+      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Positions approximatives, pour ancrer chaque code à un endroit du pays. Le registre plus bas donne la même information en texte.</span><span class="ba2" lang="ar" dir="rtl">مواقع تقريبية، لربط كل رمز بمكان في البلاد. السجل أسفله يعطي المعلومة نفسها نصّا.</span></span></p>
+      <div class="map-card">
+        <div class="map-svg-wrap">
+          <svg id="map-svg" viewBox="0 0 500 420" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Carte schématique des wilayas — خريطة تخطيطية للولايات">
+            <g class="map-compass" id="map-compass"></g>
+            <g id="map-points"></g>
+          </svg>
+        </div>
+        <p class="map-caption" id="map-caption"><span class="bi"><span class="bf" lang="fr">Touche un point</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">المس نقطة</span></span></p>
+        <div class="map-legend" id="map-legend"></div>
+      </div>
+    </section>
+
+    <section id="ledger-section">
+      <h2 class="section-title" id="ledger-title"><span class="bi"><span class="bf" lang="fr">Le registre complet</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">السجل الكامل</span></span></h2>
+      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Les 69 wilayas, groupées par région. La barre indique ta force de rappel actuelle.</span><span class="ba2" lang="ar" dir="rtl">الولايات الـ69 مجمّعة حسب الجهة. الشريط يبيّن قوة استرجاعك الحالية.</span></span></p>
+      <div class="ledger-wrap" tabindex="0" role="region" aria-labelledby="ledger-title">
+        <table id="ledger-table">
+          <thead><tr><th class="code"><span class="bi"><span class="bf" lang="fr">Code</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">رمز</span></span></th><th><span class="bi"><span class="bf" lang="fr">Wilaya</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">ولاية</span></span></th><th><span class="bi"><span class="bf" lang="fr">Force</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">قوة</span></span></th></tr></thead>
+          <tbody id="ledger-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <p><span class="bis"><span class="bf2" lang="fr">Numérotation 01–58 confirmée par les décrets de 1984 et 2019. Numérotation 59–69 basée sur les annonces du 16 novembre 2025 ; ordre à confirmer au Journal officiel.</span><span class="ba2" lang="ar" dir="rtl">الترقيم 01–58 مؤكَّد بمراسيم 1984 و2019. الترقيم 59–69 مبني على إعلانات 16 نوفمبر 2025؛ الترتيب يبقى للتأكيد في الجريدة الرسمية.</span></span></p>
+    </footer>
+  </div>
+
+  <!-- ===== TAB BAR ===== -->
+  <div class="tabbar">
+    <div class="tabbar-inner" role="tablist" aria-label="Sections — الأقسام">
+      <button class="tab-btn active" id="tab-path" role="tab" aria-selected="true" aria-controls="view-path" data-tab="path" aria-label="Parcours — المسار">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M6 17c0-6 12 0 12-6"/></svg>
+        <span class="tab-fr">Parcours</span><span class="tab-ar" lang="ar" dir="rtl">المسار</span>
+      </button>
+      <button class="tab-btn" id="tab-practice" role="tab" aria-selected="false" aria-controls="view-practice" data-tab="practice" aria-label="Entraînement — تدريب">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        <span class="tab-fr">Entraînement</span><span class="tab-ar" lang="ar" dir="rtl">تدريب</span>
+      </button>
+      <button class="tab-btn" id="tab-info" role="tab" aria-selected="false" aria-controls="view-info" data-tab="info" aria-label="Infos — معلومات">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.5l-1.4 4.4-4.4 1.4 1.4-4.4 4.4-1.4z"/></svg>
+        <span class="tab-fr">Infos</span><span class="tab-ar" lang="ar" dir="rtl">معلومات</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== LESSON OVERLAY ===== -->
+  <div class="lesson-overlay" id="lesson-overlay" role="dialog" aria-modal="true" aria-label="Leçon en cours">
+    <div class="lesson-head">
+      <button class="lesson-close" id="lesson-close" aria-label="Quitter la leçon — أغلق الدرس">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+      </button>
+      <div class="lesson-bar" id="lesson-bar" role="progressbar" aria-label="Progression — التقدّم" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div class="lesson-bar-fill" id="lesson-bar-fill" style="width:0%;"></div></div>
+      <div class="lesson-hearts" id="lesson-hearts" role="img" aria-label="5 cœurs restants sur 5"></div>
+      <div class="blitz-timer" id="blitz-timer" style="display:none;" role="timer" aria-label="Temps restant — الوقت المتبقي">60</div>
+      <div class="blitz-score" id="blitz-score" style="display:none;" aria-label="Score — النتيجة">0</div>
+    </div>
+    <div class="lesson-body" id="lesson-body"></div>
+    <div id="lesson-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <div id="sheet-root"></div>
+  <div id="confirm-root"></div>
+  <div id="toast-root" aria-live="polite"></div>
+  <div class="gate" id="gate" aria-hidden="true"></div>
+</div>

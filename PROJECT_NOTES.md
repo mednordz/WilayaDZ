@@ -1,0 +1,191 @@
+# Wilaya 01–69 — notes de reprise du projet
+
+Application bilingue (français/arabe, RTL) façon Duolingo pour mémoriser les
+codes des 69 wilayas d'Algérie. Ce document sert à reprendre le travail dans
+Claude Code sans avoir à tout réexpliquer — il résume l'architecture, la
+chaîne de build, et surtout les pièges déjà rencontrés et corrigés, pour ne
+pas les refaire.
+
+## Structure du dossier
+
+```
+app/          fichiers source de l'application (assemblés par build.py)
+mascots/      images sources et rig des 4 mascottes (fennec, chameau, cigogne, palmier)
+android/      projet APK (manifest, resources, keystore, dernier APK signé)
+tests/        suite Playwright (accessibilité, sécurité, animations, bidi)
+AUDIT.md      rapport d'audit sécurité/accessibilité déjà réalisé
+```
+
+## Comment reconstruire l'app
+
+L'app est un **unique fichier HTML autonome** (pas de bundler, pas de build
+JS moderne). `app/build.py` concatène les morceaux dans cet ordre : `p0_head.html`,
+puis un bloc `<style>` (le CSS de `p1_css.css` + `p2_css_add.css`, précédé de
+`font_face.css` si présent), puis `p3_body.html`, puis un `<script>` qui
+enchaîne `part_data.js`, `p4i_mascots.js`, `p4a_core.js`, `p4f_i18n.js`,
+`p4g_account.js`, `p4b_exercises.js`, `p4c_session.js`, `p4d_path.js`,
+`p4h_profileui.js`, `p4e_practice.js`.
+
+```bash
+cd app
+python3 build.py        # produit wilaya-v6.html (le nom du fichier de sortie)
+```
+
+Le script vérifie aussi la syntaxe JS (`node --check` sur le script extrait)
+et signale si une police a bien été embarquée.
+
+**Pourquoi tout est en base64 inline (polices, images des mascottes) :**
+l'app doit fonctionner 100% hors-ligne dans l'APK (aucun réseau), et la
+version publiée en Artifact a une CSP qui bloque tous les hôtes externes sauf
+Google Fonts. Donc aucune police ni image ne doit être chargée via une URL
+externe — tout doit être des data URI.
+
+### Régénérer les polices embarquées
+
+```bash
+python3 embed_all_fonts.py
+```
+
+Sous-échantillonne (subsetting via `fontTools`) Nunito (400/700/800/900,
+depuis `node_modules/@fontsource/nunito`) et BouazziMaghribi (arabe, licence
+MIT) pour ne garder que les glyphes réellement utilisés dans le code source,
+puis génère `font_face.css`. Attention à préserver les features OpenType
+`init/medi/fina/isol` pour que les lettres arabes se lient correctement —
+c'était un point de vérification explicite (pas juste "ça s'affiche").
+
+### Régénérer les mascottes (si on retouche les images sources)
+
+Le dossier `mascots/` contient déjà les images finales (rig tête/corps
+découpé, fond transparent, pancarte numérotée effacée). Si on repart des
+images brutes fournies par l'utilisateur, l'ordre est :
+
+1. `mascots_finalize.py` / `mascots_prepare.py` — nettoyage initial, détourage
+2. `mascots_bust.py` — malgré son nom, sa fonction finale est **l'effacement
+   de la pancarte numérotée** posée devant chaque personnage (elle ne
+   correspondait plus à l'étape réellement affichée). Détection par couleur
+   de bordure verte de la pancarte (composantes connexes), filtrage sur la
+   moitié droite de l'image pour ne pas confondre avec l'écharpe, puis
+   enveloppe convexe (convex hull) du contour détecté = masque à effacer.
+   Deux approches plus simples (rectangle fixe, détection d'îlot blanc
+   isolé) ont échoué avant celle-ci — voir commentaires dans le fichier.
+3. `mascots_rig.py` — découpe chaque personnage en 2 calques articulés
+   (tête / corps), coupés au niveau de l'écharpe (seul endroit où la
+   jointure ne se voit pas). La tête déborde sous la ligne de coupe (une
+   "langue") pour qu'aucun trou n'apparaisse pendant la rotation. Les
+   paramètres de coupe/pivot sont dans le dict `RIG` en tête de fichier.
+
+Puis régénérer `app/p4i_mascots.js` (variable `MASCOTS`) à partir des
+fichiers `mascots/{nom}_body.webp` / `_head.webp` en base64 + `rig.json`.
+
+**Important — pas d'outil externe pour ça :** j'ai cherché un connecteur
+MCP de rigging/animation de personnage (aucun disponible dans le registre) et
+testé la segmentation Adobe (`image_select_by_prompt`) pour découper les
+oreilles/membres — elle ne comprend que l'anatomie humaine et renvoie un
+masque couvrant 99,6% du personnage sur un animal dessiné. D'où le
+découpage géométrique manuel en 2 pièces. Aller plus loin (oreilles/queue
+articulées indépendamment, clignement des yeux) demanderait soit un
+découpage manuel beaucoup plus fin par partie, soit un vrai outil de rig
+(ex. Rive ou Spine, import de fichier `.riv`/`.json` avec un runtime JS
+dédié) — non fait, laissé en option future.
+
+### Compiler l'APK Android
+
+Pas de Gradle — pipeline manuel (dézipper/remplacer les assets/rezipper/
+zipaligner/signer). Il faut le SDK Android (juste `build-tools`, pas besoin
+d'Android Studio) pour `zipalign` et `apksigner`.
+
+Étapes generales (à adapter avec les chemins réels du SDK local) :
+1. Copier le HTML généré par `build.py` dans `android/assets/index.html`
+   (remplace `assets_index_reference.html`, qui n'est qu'une copie de
+   référence de l'ancienne version).
+2. Compiler les ressources → `res.zip`, générer le `classes.dex` depuis
+   `MainActivity.java` (wrapper WebView minimal).
+3. Assembler l'APK, `zipalign` (⚠️ `resources.arsc` doit rester **stocké**,
+   non compressé, dans le zip — sinon l'installation échoue sur certains
+   Android récents).
+4. Signer avec `apksigner sign --ks android/keystore/wilayas-v2.jks`.
+
+**Le keystore `wilayas-v2.jks` est le fichier le plus critique de toute
+l'archive.** Mot de passe : `wilayasapp2026`. Toutes les versions livrées à
+l'utilisateur depuis "v9" sont signées avec cette clé — si l'utilisateur a
+déjà installé une version signée par cette clé sur son téléphone, **toute
+nouvelle version doit être signée avec la même clé**, sinon Android refuse
+la mise à jour (il faut désinstaller puis réinstaller, ce qui perd les
+données locales de l'app). Un premier keystore avait déjà été perdu une fois
+en cours de session (mot de passe irrécupérable après une coupure de
+contexte) — ne pas laisser ça se reproduire, sauvegarder ce fichier ailleurs
+aussi si possible.
+
+Le dernier APK livré est inclus tel quel : `android/wilayas-v14.apk`.
+
+### Faire tourner les tests
+
+```bash
+npm install --no-save axe-core   # déjà présent dans node_modules si copié
+npx playwright install chromium   # si Chromium n'est pas déjà installé localement
+node tests/audit_a11y.js
+node tests/test_rig.js
+```
+
+Les scripts Playwright pointent vers `file:///.../wilaya-v6.html` en dur —
+adapter le chemin selon où le fichier généré se trouve localement.
+
+## Architecture de l'app (résumé fonctionnel)
+
+- **Interface bilingue "spine"** : le français est épinglé à gauche, l'arabe
+  à droite, en permanence visible (pas un simple toggle de langue).
+- **Répétition espacée façon Leitner**, système de cœurs/vies, XP, séries
+  (streak), couronnes de progression — mécaniques façon Duolingo.
+- **Design tokens CSS** dans `p1_css.css` avec parité clair/sombre stricte :
+  bloc `:root` pour le clair, dupliqué sous
+  `@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){...}}`
+  ET sous `:root[data-theme="dark"]{...}` (pour que le choix explicite de
+  thème par l'utilisateur l'emporte dans les deux sens).
+- **Mascottes vivantes** : chaque instance (`mascotHtml()` dans
+  `p4a_core.js`) a un décalage d'animation propre et irrégulier (pas de
+  valeurs rondes) pour éviter l'effet "copié-collé" quand plusieurs
+  instances sont visibles en même temps. Une boucle (`mascotBeat()`)
+  déclenche aléatoirement de petits gestes (regard, hochement, saut...) sur
+  une mascotte visible à la fois, et respecte `prefers-reduced-motion`.
+
+## Pièges déjà rencontrés — ne pas refaire
+
+1. **XSS stocké corrigé** : `esc()` (dans `p4f_i18n.js`) doit échapper
+   `& < > " '` — pas seulement `& < >`. Une valeur de profil contenant un
+   guillemet pouvait autrement casser un attribut `aria-label="..."` construit
+   par concaténation de chaînes et injecter du HTML. Ne jamais revenir à un
+   `esc()` qui n'échappe pas les guillemets.
+2. **3 défauts WCAG AA trouvés et corrigés** (voir `AUDIT.md` pour le détail) :
+   `role="img"` sur `#map-svg` alors qu'il contient 69 boutons interactifs
+   réels (corrigé en `role="group"`) ; `.ledger-wrap` inatteignable au
+   clavier (ajout de `tabindex="0" role="region"`) ; contraste insuffisant
+   sur l'onglet arabe actif à cause d'un `opacity:.9` parasite (supprimé).
+3. **Un seul token de couleur `--accent` utilisé à la fois en décoratif ET
+   en texte casse le contraste.** D'où la séparation `--accent` (foncé, sûr
+   comme texte) / `--accent-bright` (vif, décoratif uniquement — barres de
+   progression, confettis). Ne pas fusionner ces deux tokens.
+4. **Empiler deux animations CSS (`animation-name`) sur le MÊME élément DOM
+   ne fonctionne pas** — la propriété raccourcie `animation` de la classe
+   appliquée en second écrase celle du premier. C'est pour ça que la
+   respiration continue et les réactions ponctuelles (`beat-*`) sont sur des
+   éléments séparés dans la hiérarchie `.mascot-stage > .mascot-breathe >
+   .mascot-rig > .rig-head/.rig-body`. Si on ajoute une nouvelle animation à
+   une mascotte, lui donner son propre élément, ne pas la poser sur un
+   élément qui a déjà une animation en cours.
+5. **En modifiant `p2_css_add.css` par script (recherche/remplacement de
+   blocs), une suppression accidentelle de CSS peut passer inaperçue** — ça
+   m'est arrivé une fois (perte silencieuse de `.mascot-shadow` et de
+   plusieurs `@keyframes` lors d'un refactor). Le symptôme était subtil : pas
+   d'erreur JS, juste une animation figée. Toujours revérifier avec
+   `tests/test_rig.js` / `tests/test_life.js` après une édition CSS
+   (ils échantillonnent les transformations calculées dans le temps et
+   révèlent un blocage que l'œil peut manquer).
+
+## Où on en était à l'export
+
+Dernière version livrée : **APK v14**, mascottes avec rig articulé tête/corps
+(fini, vérifié, livré), 0 violation d'accessibilité automatisée, XSS corrigé
+et re-vérifié à chaque reconstruction. Aucune tâche technique n'était en
+attente au moment de l'export — la suite logique, si on veut aller plus loin
+sur l'animation, serait soit un découpage manuel plus fin (oreilles/queue
+séparées), soit l'intégration d'un vrai moteur de rig (Rive/Spine).

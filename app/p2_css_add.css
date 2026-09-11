@@ -1,0 +1,826 @@
+
+  /* ============================================================
+     v3 — Zéro friction + moteur d'apprentissage
+     ============================================================ */
+
+  /* ---- Hero "prochaine action" ---- */
+  .hero{
+    margin:0 0 22px; padding:18px; border-radius:18px;
+    background:var(--surface); border:1px solid var(--line);
+    box-shadow:var(--shadow); text-align:left;
+    display:block; width:100%; cursor:pointer; font-family:var(--font-body);
+    position:relative; overflow:hidden;
+  }
+  .hero:active{ transform:scale(.99); }
+  .hero.key{ background:linear-gradient(135deg, var(--accent) 0%, #7d4a11 100%); border-color:transparent; }
+  .hero.key .hero-kicker,.hero.key .hero-title,.hero.key .hero-sub{ color:var(--accent-ink); }
+  .hero.key .hero-go{ background:var(--accent-ink); color:var(--accent); }
+  .hero.review{ background:var(--teal-soft); border-color:var(--teal); }
+  .hero-kicker{
+    font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase;
+    letter-spacing:.1em; color:var(--ink-faint); font-weight:600; margin:0 0 6px;
+  }
+  .hero.review .hero-kicker{ color:var(--teal); }
+  .hero-title{ font-family:var(--font-display); font-size:1.42rem; margin:0 0 4px; color:var(--ink); line-height:1.15; }
+  .hero-sub{ margin:0; font-size:.88rem; color:var(--ink-dim); }
+  .hero-go{
+    margin-top:14px; display:inline-flex; align-items:center; gap:8px;
+    background:var(--accent); color:var(--accent-ink);
+    padding:11px 18px; border-radius:11px; font-weight:700; font-size:.94rem;
+    min-height:44px; box-sizing:border-box;
+  }
+  .hero.review .hero-go{ background:var(--teal); color:var(--accent-ink); }
+  .hero-go .icon{ width:17px; height:17px; }
+
+  /* ---- Rangée de nœud : nœud (1 tap = leçon) + bouton info séparé ---- */
+  .node-line{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .node-info{
+    width:44px; height:44px; flex:none; border-radius:50%;
+    border:1.5px solid var(--border-strong); background:transparent;
+    color:var(--ink-dim); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .node-info .icon{ width:19px; height:19px; }
+  .node-info:active{ background:var(--surface-2); }
+  .node-hint{
+    margin:8px auto 0; max-width:260px; text-align:center;
+    font-size:.82rem; color:var(--ink-dim);
+    background:var(--surface-2); border-radius:10px; padding:9px 12px;
+  }
+
+  /* ---- Feuille de détail (bottom sheet, non bloquante) ---- */
+  .sheet-backdrop{
+    position:fixed; inset:0; z-index:70; background:rgba(20,15,10,.4);
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .sheet{
+    background:var(--surface); width:100%; max-width:560px;
+    border-radius:20px 20px 0 0; padding:22px 20px 28px;
+    box-shadow:var(--shadow); max-height:80vh; overflow-y:auto;
+  }
+  .sheet h2{ font-family:var(--font-display); font-size:1.3rem; margin:0 0 4px; }
+  .sheet .sub{ margin:0 0 16px; color:var(--ink-dim); font-size:.88rem; }
+  .sheet-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0; }
+  .sheet-stat{
+    background:var(--surface-2); border-radius:12px; padding:11px 8px; text-align:center;
+  }
+  .sheet-stat .n{ display:block; font-family:var(--font-mono); font-weight:600; font-size:1.05rem; color:var(--ink); }
+  .sheet-stat .l{ display:block; font-size:.68rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+
+  /* ---- Bloc alphabétique (La Clé) ---- */
+  .block-strip{ display:flex; flex-direction:column; gap:9px; margin:18px 0; }
+  .block-row{
+    display:flex; align-items:center; gap:12px; padding:11px 13px;
+    border-radius:13px; background:var(--surface-2); border:1.5px solid transparent;
+    opacity:.28; transition:opacity .38s ease, border-color .38s ease, background .38s ease;
+  }
+  .block-row.on{ opacity:1; border-color:var(--accent); background:var(--accent-soft); }
+  .block-ar{
+    font-size:1.7rem; line-height:1; width:42px; text-align:center; flex:none;
+    color:var(--accent); font-weight:600;
+  }
+  .block-range{
+    font-family:var(--font-mono); font-weight:600; font-size:.92rem;
+    color:var(--ink); flex:none; min-width:60px;
+  }
+  .block-names{ font-size:.8rem; color:var(--ink-dim); line-height:1.35; }
+
+  .key-step{ text-align:center; padding:8px 0 0; }
+  .key-step h2{ font-family:var(--font-display); font-size:1.55rem; margin:0 0 10px; line-height:1.2; }
+  .key-step p{ color:var(--ink-dim); font-size:.95rem; margin:0 auto 6px; max-width:44ch; line-height:1.55; }
+  .key-big{
+    font-family:var(--font-mono); font-size:2.6rem; font-weight:600;
+    color:var(--accent); margin:14px 0 6px;
+  }
+  .key-arrow{ color:var(--ink-faint); font-size:1.4rem; margin:6px 0; }
+
+  /* ---- Chaîne (remise en ordre) ---- */
+  .chain-slots{
+    display:flex; gap:8px; justify-content:center; margin:18px 0 14px; flex-wrap:wrap;
+  }
+  .chain-slot{
+    min-width:74px; min-height:56px; border-radius:12px;
+    border:2px dashed var(--border-strong); background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:600; font-size:.9rem; color:var(--ink-faint);
+    padding:6px; text-align:center; box-sizing:border-box;
+  }
+  .chain-slot.filled{ border-style:solid; border-color:var(--accent); background:var(--accent-soft); color:var(--ink); font-size:.78rem; font-family:var(--font-body); }
+  .chain-bank{ display:flex; flex-wrap:wrap; gap:9px; justify-content:center; }
+  .chain-chip{
+    padding:12px 15px; min-height:48px; border-radius:12px;
+    border:1.5px solid var(--border-strong); background:var(--surface);
+    font-family:var(--font-body); font-size:.92rem; font-weight:600; color:var(--ink);
+    cursor:pointer;
+  }
+  .chain-chip:active{ transform:scale(.97); }
+  .chain-chip.used{ opacity:.3; pointer-events:none; }
+
+  /* ---- Discrimination (paires confondues) ---- */
+  .confuse-banner{
+    display:flex; align-items:center; gap:9px; margin:0 0 14px;
+    padding:10px 13px; border-radius:11px;
+    background:var(--gold-soft); color:var(--ink);
+    font-size:.83rem; line-height:1.4;
+  }
+  .confuse-banner .icon{ width:18px; height:18px; flex:none; color:var(--gold); }
+
+  /* ---- Chrono / Rafale ---- */
+  .blitz-timer{
+    font-family:var(--font-mono); font-weight:600; font-size:.95rem;
+    color:var(--ink); flex:none; min-width:44px; text-align:right;
+  }
+  .blitz-timer.low{ color:var(--wrong); }
+  .blitz-score{
+    font-family:var(--font-mono); font-weight:600; font-size:.95rem; color:var(--teal); flex:none;
+  }
+
+  /* ---- Cartes d'action (Entraînement) ---- */
+  .action-grid{ display:grid; grid-template-columns:1fr 1fr; gap:11px; margin:0 0 22px; }
+  .action-card{
+    text-align:left; padding:15px 14px; border-radius:15px;
+    background:var(--surface); border:1.5px solid var(--line);
+    cursor:pointer; font-family:var(--font-body); min-height:110px;
+    display:flex; flex-direction:column; justify-content:space-between; gap:8px;
+  }
+  .action-card:active{ transform:scale(.985); }
+  .action-card .icon{ width:23px; height:23px; color:var(--accent); }
+  .action-card b{ display:block; font-size:.96rem; color:var(--ink); margin-bottom:2px; }
+  .action-card span{ font-size:.77rem; color:var(--ink-dim); line-height:1.35; }
+  .action-card.teal .icon{ color:var(--teal); }
+  .action-card.gold .icon{ color:var(--gold); }
+  .action-card[aria-disabled="true"]{ opacity:.5; }
+
+  /* ---- Barre de force par wilaya (registre) ---- */
+  .mini-bar{
+    display:inline-block; width:46px; height:6px; border-radius:3px;
+    background:var(--surface-2); overflow:hidden; vertical-align:middle;
+  }
+  .mini-bar i{ display:block; height:100%; background:var(--teal); border-radius:3px; }
+
+  /* ---- Prévision de rétention ---- */
+  .forecast{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:16px 17px; margin:0 0 22px;
+  }
+  .forecast h3{ font-family:var(--font-display); font-size:1.08rem; margin:0 0 10px; }
+  .forecast-row{ display:flex; align-items:center; gap:10px; margin:0 0 8px; font-size:.85rem; color:var(--ink-dim); }
+  .forecast-bar{ flex:1; height:9px; border-radius:5px; background:var(--surface-2); overflow:hidden; }
+  .forecast-bar i{ display:block; height:100%; border-radius:5px; background:var(--teal); }
+  .forecast-row .v{ font-family:var(--font-mono); font-weight:600; color:var(--ink); min-width:38px; text-align:right; }
+
+  /* ---- Toast ---- */
+  .toast{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:calc(84px + env(safe-area-inset-bottom, 0px)); z-index:90;
+    background:var(--ink); color:var(--bg); padding:12px 18px; border-radius:12px;
+    font-size:.87rem; max-width:300px; text-align:center; box-shadow:var(--shadow);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+    .hero:active,.action-card:active,.chain-chip:active,.choice:active,.lesson-choice:active{ transform:none; }
+  }
+
+  /* ---- Note pédagogique dans le pied de leçon ---- */
+  .lesson-footer-note{
+    font-size:.83rem; line-height:1.45; margin:-2px 0 4px;
+    color:var(--ink-dim); opacity:.95;
+  }
+  .lesson-footer.wrong .lesson-footer-note,
+  .lesson-footer.correct .lesson-footer-note{ color:var(--ink-dim); }
+
+  /* ============================================================
+     BILINGUE — la colonne vertébrale
+     Français ancré à gauche, arabe ancré à droite, filet au milieu.
+     ============================================================ */
+  .bi{ display:flex; align-items:center; gap:10px; width:100%; text-align:initial; }
+  .bf{ flex:1 1 0; min-width:0; text-align:left;  direction:ltr; }
+  .ba{ flex:1 1 0; min-width:0; text-align:right; direction:rtl;
+       font-family:var(--font-ar); font-size:1.06em; line-height:1.75; }
+  .bs{ flex:none; width:1px; align-self:stretch; min-height:1.1em;
+       background:var(--line); opacity:.85; }
+  .bi-lg .ba{ font-family:var(--font-ar-display); font-size:1.1em; }
+
+  .bis{ display:block; }
+  .bf2{ display:block; direction:ltr; text-align:left; }
+  .ba2{ display:block; direction:rtl; text-align:right;
+        margin-top:9px; padding-top:9px; border-top:1px solid var(--line);
+        font-family:var(--font-ar); font-size:1.04em; line-height:1.85; }
+
+  [lang="ar"]{ font-family:var(--font-ar); }
+  .section-title .ba, h1 .ba, h2 .ba, .hero-title .ba{ font-family:var(--font-ar-display); }
+  .btn .bi, .action-card .bi{ width:100%; }
+  .btn .bs{ background:currentColor; opacity:.32; }
+  .lesson-choice .bi, .choice .bi{ width:100%; }
+  .lesson-prompt .bi{ justify-content:center; gap:16px; }
+  .lesson-prompt .bf{ text-align:right; }
+  .lesson-prompt .ba{ text-align:left; }
+  .block-names .bi{ gap:8px; }
+
+  /* ---- Barre du haut : avatar de profil ---- */
+  .profile-btn{
+    width:36px; height:36px; min-width:36px; border-radius:50%; border:none;
+    color:#fff; font-family:var(--font-body); font-weight:700; font-size:.92rem;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    margin-left:10px; flex:none;
+  }
+  .profile-btn:active{ transform:scale(.95); }
+
+  /* ---- Porte d'entrée « Qui apprend ? » ---- */
+  .gate{
+    position:fixed; inset:0; z-index:120; background:var(--bg);
+    display:none; align-items:center; justify-content:center; padding:22px;
+    overflow-y:auto;
+  }
+  .gate-box{ width:100%; max-width:420px; text-align:center; }
+  .gate-brand{
+    font-family:var(--font-display); font-size:1.15rem; color:var(--ink); margin-bottom:26px;
+  }
+  .gate-brand span{ color:var(--accent); font-style:italic; }
+  .gate-box h2{ font-family:var(--font-display); font-size:1.6rem; margin:0 0 8px; }
+  .gate-sub{ color:var(--ink-dim); font-size:.9rem; margin:0 0 22px; line-height:1.6; }
+  .gate-note{
+    color:var(--ink-faint); font-size:.78rem; line-height:1.55;
+    margin:14px 0 4px; text-align:left;
+  }
+  .gate-err{ color:var(--wrong); font-size:.85rem; min-height:1.2em; margin:8px 0 6px; }
+  .gate-avatar{
+    width:66px; height:66px; border-radius:50%; margin:0 auto 16px;
+    background:var(--surface-2); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:1.7rem; font-weight:600;
+  }
+  .gate-avatar .icon{ width:30px; height:30px; color:var(--ink-dim); }
+  .gate-list{ display:flex; flex-direction:column; gap:10px; margin:0 0 18px; }
+  .gate-profile, .profile-row{
+    display:flex; align-items:center; gap:13px; width:100%;
+    padding:13px 15px; min-height:64px; border-radius:15px;
+    background:var(--surface); border:1.5px solid var(--line);
+    cursor:pointer; font-family:var(--font-body); text-align:left;
+  }
+  .profile-row{ margin-bottom:9px; }
+  .gate-profile:active, .profile-row:active{ transform:scale(.985); }
+  .gate-profile-av{
+    width:42px; height:42px; border-radius:50%; flex:none; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.05rem;
+  }
+  .gate-profile-body{ flex:1; min-width:0; }
+  .gate-profile-body b{ display:block; font-size:.98rem; color:var(--ink); }
+  .gate-profile-body span{ display:block; font-size:.76rem; color:var(--ink-dim); margin-top:2px; }
+  .gate-profile-lock .icon{ width:18px; height:18px; color:var(--ink-faint); }
+  .gate-input, .gate-pin{
+    width:100%; box-sizing:border-box; min-height:52px;
+    padding:13px 15px; border-radius:12px; margin-bottom:10px;
+    border:1.5px solid var(--border-strong); background:var(--surface);
+    color:var(--ink); font-family:var(--font-body); font-size:1rem;
+  }
+  .gate-pin{ text-align:center; letter-spacing:.5em; font-family:var(--font-mono); font-size:1.3rem; }
+
+  .profile-head{ display:flex; align-items:center; gap:13px; margin:6px 0 4px; }
+  .profile-av{
+    width:48px; height:48px; border-radius:50%; flex:none; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:1.3rem; font-weight:600;
+  }
+  .profile-name{ font-family:var(--font-display); font-size:1.2rem; color:var(--ink); display:flex; align-items:center; gap:7px; }
+  .profile-name .icon{ width:16px; height:16px; color:var(--ink-faint); }
+  .btn.ghost.danger{ color:var(--wrong); border-color:var(--wrong); }
+
+  /* ---- Synchronisation ---- */
+  .sync-code{
+    width:100%; box-sizing:border-box; min-height:96px; resize:vertical;
+    padding:12px 14px; border-radius:12px; margin:10px 0;
+    border:1.5px solid var(--border-strong); background:var(--surface-2);
+    color:var(--ink); font-family:var(--font-mono); font-size:.74rem;
+    line-height:1.6; word-break:break-all;
+  }
+  .sync-actions{ display:flex; gap:9px; flex-wrap:wrap; }
+  .sync-actions .btn{ width:auto; flex:1 1 140px; }
+  .sync-step{
+    display:flex; gap:12px; align-items:flex-start; margin:0 0 14px;
+  }
+  .sync-num{
+    width:27px; height:27px; border-radius:50%; flex:none; margin-top:1px;
+    background:var(--accent); color:var(--accent-ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:600; font-size:.8rem;
+  }
+  .sync-step-body{ flex:1; font-size:.87rem; color:var(--ink-dim); line-height:1.55; }
+
+  /* ---- Onglets sur deux lignes (fr + ar) ---- */
+  .tab-btn span{ font-size:.63rem; font-weight:600; line-height:1.25; }
+  /* Pas d'opacity ici : sur l'onglet actif (couleur accent), ça fait
+     chuter le contraste sous 4.5:1 (WCAG AA) pour le texte arabe. */
+  .tab-btn span[lang="ar"]{ font-family:var(--font-ar); font-size:.66rem; }
+  .tab-btn{ min-height:62px; gap:1px; }
+  .tab-btn .icon{ width:20px; height:20px; margin-bottom:1px; }
+  .node-label .bi{ gap:6px; font-size:.78rem; }
+  .map-caption .bi{ justify-content:center; gap:12px; }
+  .hook .body .bi{ gap:8px; }
+  .lesson-choice .ba, .choice .ba{ font-size:1.02em; }
+  .prompt .bi{ justify-content:center; gap:18px; }
+
+  /* ============================================================
+     MODE DE LANGUE PAR PROFIL
+     Le choix vit sur le profil, pas dans un écran de réglages.
+     Une seule règle CSS pilote tout : le DOM garde toujours les
+     deux langues, on masque simplement la moitié non choisie —
+     SAUF le contenu marqué .bi-keep (les noms de wilayas), qui
+     reste bilingue en permanence parce que c'est la matière même
+     de l'application, pas de l'habillage.
+     ============================================================ */
+  :root[data-lang="fr"] .bi:not(.bi-keep) > .ba,
+  :root[data-lang="fr"] .bi:not(.bi-keep) > .bs,
+  :root[data-lang="fr"] .bis > .ba2,
+  :root[data-lang="fr"] .tab-ar{ display:none; }
+
+  :root[data-lang="ar"] .bi:not(.bi-keep) > .bf,
+  :root[data-lang="ar"] .bi:not(.bi-keep) > .bs,
+  :root[data-lang="ar"] .bis > .bf2,
+  :root[data-lang="ar"] .tab-fr{ display:none; }
+
+  :root[data-lang="ar"] .bis > .ba2{ margin-top:0; padding-top:0; border-top:none; }
+  :root[data-lang="fr"] .bi > .bf{ text-align:left; }
+  :root[data-lang="ar"] .bi > .ba{ text-align:right; }
+  :root[data-lang="ar"] .lesson-prompt .bi > .ba{ text-align:center; }
+  :root[data-lang="fr"] .lesson-prompt .bi > .bf{ text-align:center; }
+
+  /* ---- Miroir complet quand l'interface est en arabe ---- */
+  [dir="rtl"] .hero, [dir="rtl"] .action-card, [dir="rtl"] .gate-profile,
+  [dir="rtl"] .profile-row, [dir="rtl"] .gate-note, [dir="rtl"] .lesson-choice,
+  [dir="rtl"] .choice, [dir="rtl"] .prompt-label, [dir="rtl"] .section-note,
+  [dir="rtl"] .lesson-prompt-label, [dir="rtl"] .sync-step-body,
+  [dir="rtl"] .region-heading td, [dir="rtl"] th, [dir="rtl"] td{ text-align:right; }
+  [dir="rtl"] .caveat{
+    border-left:none; border-right:3px solid var(--accent); padding:4px 14px 4px 0;
+  }
+  [dir="rtl"] .profile-btn{ margin-left:0; margin-right:10px; }
+  [dir="rtl"] .blitz-timer, [dir="rtl"] .forecast-row .v{ text-align:left; }
+  [dir="rtl"] .node-row.off-l .node-col{ transform:translateX(46px); }
+  [dir="rtl"] .node-row.off-r .node-col{ transform:translateX(-46px); }
+  [dir="rtl"] .sync-code{ direction:ltr; text-align:left; }
+  [dir="rtl"] .toast{ transform:translateX(50%); right:50%; left:auto; }
+  [dir="rtl"] .result-screen, [dir="rtl"] .key-step{ text-align:center; }
+  [dir="rtl"] .gate-box{ text-align:center; }
+
+  /* ---- Choix de langue à la création du profil ---- */
+  .lang-pick{ display:flex; flex-direction:column; gap:9px; margin:4px 0 14px; }
+  .lang-opt{
+    display:flex; align-items:center; gap:12px; width:100%;
+    padding:13px 15px; min-height:56px; border-radius:13px;
+    border:1.5px solid var(--border-strong); background:var(--surface);
+    cursor:pointer; font-family:var(--font-body); text-align:left;
+  }
+  .lang-opt[aria-checked="true"]{ border-color:var(--accent); background:var(--accent-soft); }
+  .lang-opt .tick{
+    width:20px; height:20px; border-radius:50%; flex:none;
+    border:2px solid var(--border-strong);
+  }
+  .lang-opt[aria-checked="true"] .tick{
+    border-color:var(--accent); background:var(--accent);
+    box-shadow:inset 0 0 0 3px var(--surface);
+  }
+  .lang-opt b{ display:block; font-size:.96rem; color:var(--ink); }
+  .lang-opt b[lang="ar"]{ font-family:var(--font-ar); }
+  .lang-opt span{ display:block; font-size:.76rem; color:var(--ink-dim); margin-top:2px; }
+
+  /* ---- Les codes sont des nombres latins : ils ne doivent JAMAIS
+       être retournés par l'algorithme bidirectionnel. « 01–10 »
+       deviendrait « 10–01 » en contexte arabe. ---- */
+  [dir="rtl"] .brand, [dir="rtl"] .node, [dir="rtl"] .node-label,
+  [dir="rtl"] .block-range, [dir="rtl"] .code, [dir="rtl"] .sheet h2,
+  [dir="rtl"] .result-stat .n, [dir="rtl"] .quiz-top b, [dir="rtl"] .chain-slot,
+  [dir="rtl"] .forecast-row .v, [dir="rtl"] .sync-num, [dir="rtl"] .key-big,
+  [dir="rtl"] .blitz-timer, [dir="rtl"] .blitz-score, [dir="rtl"] .tier-tag{
+    direction:ltr; unicode-bidi:isolate;
+  }
+
+  /* ============================================================
+     ESPRIT DUOLINGO — bouton son, parcours en relief, couleurs
+     par étape, mascotte réactive, série en cours, célébration.
+     ============================================================ */
+
+  /* ---- Bouton son (barre du haut) ---- */
+  .sound-btn{
+    width:36px; height:36px; min-width:36px; border-radius:50%; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink-dim); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; margin-left:6px; flex:none;
+  }
+  .sound-btn:active{ transform:scale(.92); }
+  .sound-btn .icon{ width:18px; height:18px; }
+  [dir="rtl"] .sound-btn{ margin-left:0; margin-right:6px; }
+
+  /* ---- Parcours en relief : bouton "3D" façon Duolingo ---- */
+  .node{
+    --unit-color: var(--accent);
+    border-width:0;
+    box-shadow: 0 5px 0 0 rgba(0,0,0,.16), var(--shadow);
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .node.locked{ box-shadow: 0 5px 0 0 rgba(0,0,0,.08); }
+  .node:active:not([aria-disabled="true"]){
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 0 rgba(0,0,0,.16);
+  }
+  .node.current{
+    background:var(--unit-color);
+    border-color:var(--unit-color);
+    box-shadow: 0 5px 0 0 color-mix(in srgb, var(--unit-color) 65%, black), var(--shadow);
+    animation: nodePop .38s cubic-bezier(.34,1.56,.64,1);
+  }
+  .node.complete{
+    background: color-mix(in srgb, var(--unit-color) 22%, var(--surface));
+    border-color:var(--unit-color);
+    color:var(--unit-color);
+    box-shadow: 0 5px 0 0 color-mix(in srgb, var(--unit-color) 35%, var(--surface-2)), var(--shadow);
+  }
+  @keyframes nodePop{
+    0%{ transform:scale(.7); }
+    60%{ transform:scale(1.08); }
+    100%{ transform:scale(1); }
+  }
+  .connector{ position:relative; }
+  .connector::after{
+    content:"";
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:8px; height:8px; border-radius:50%;
+    background:var(--unit-color, var(--line));
+    opacity:.4;
+  }
+  .crown-pip.on{ background:var(--unit-color, var(--gold)); }
+
+  /* ============================================================
+     MASCOTTES VIVANTES
+     Les images sont fixes ; tout le vivant est dans le mouvement.
+     Le pivot au sol (transform-origin) est le détail décisif :
+     un personnage qui s'écrase par le haut a l'air d'un autocollant
+     qu'on redimensionne, un personnage qui s'écrase sur ses pieds
+     a du poids.
+     ============================================================ */
+  .mascot-stage{
+    position:relative;
+    display:inline-flex;
+    align-items:flex-end;
+    justify-content:center;
+    flex:none;
+  }
+  /* La respiration vit sur son propre calque : sur le même élément que
+     les gestes, la première réaction remplacerait la boucle et figerait
+     le personnage pour de bon. Les deux transformations se composent. */
+  .mascot-breathe{
+    display:block;
+    position:relative; z-index:1;
+    transform-origin:50% 100%;
+    animation-name:mascotBreathe;
+    animation-timing-function:ease-in-out;
+    animation-iteration-count:infinite;
+    will-change:transform;
+  }
+  /* La pièce assemblée : les deux calques se superposent au pixel. */
+  .mascot-rig{
+    position:relative;
+    display:block;
+    transform-origin:50% 100%;
+    will-change:transform;
+  }
+  .rig-body, .rig-head{
+    position:absolute;
+    left:0; top:0;
+    width:100%; height:100%;
+    object-fit:contain;
+    display:block;
+  }
+  .rig-body{ z-index:0; }
+  /* La tête passe devant : c'est elle qui doit couvrir la couture. */
+  .rig-head{
+    z-index:1;
+    animation-name:headSway;
+    animation-timing-function:ease-in-out;
+    animation-iteration-count:infinite;
+    will-change:transform;
+  }
+  .mascot{ flex:none; }
+
+  /* 1b — balancement de tête, lent et continu. Il tourne autour de
+     l'axe du cou, pas du centre de l'image : c'est ce qui distingue
+     une tête qui s'incline d'une image qui pivote. */
+  @keyframes headSway{
+    0%,100%{ transform:rotate(-1.6deg) translateY(0); }
+    35%{ transform:rotate(1.4deg) translateY(-1px); }
+    70%{ transform:rotate(-.5deg) translateY(.5px); }
+  }
+
+  /* 2b — gestes de tête */
+  .rig-head.beat-look{ animation:headLook 1.05s ease-in-out; }
+  .rig-head.beat-nod{ animation:headNod .95s cubic-bezier(.34,1.4,.6,1); }
+  .rig-head.beat-tilt{ animation:headTilt 1.05s ease-in-out; }
+  .rig-head.beat-perk{ animation:headPerk .95s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes headLook{           /* il regarde de côté, puis revient */
+    0%,100%{ transform:rotate(0) translateX(0); }
+    28%{ transform:rotate(-7deg) translateX(-3%); }
+    62%{ transform:rotate(5deg) translateX(2%); }
+  }
+  @keyframes headNod{
+    0%,100%{ transform:rotate(0) translateY(0) scaleY(1); }
+    30%{ transform:rotate(3deg) translateY(4%) scaleY(.97); }
+    65%{ transform:rotate(-2deg) translateY(-2%) scaleY(1.02); }
+  }
+  @keyframes headTilt{
+    0%,100%{ transform:rotate(0); }
+    40%{ transform:rotate(-9deg); }
+  }
+  @keyframes headPerk{           /* il dresse la tête, curieux */
+    0%,100%{ transform:translateY(0) rotate(0); }
+    40%{ transform:translateY(-7%) rotate(-3deg); }
+  }
+
+  /* Ombre au sol : elle ne bouge pas, c'est le personnage qui la
+     quitte. Sans elle, un saut n'est qu'une translation. */
+  .mascot-shadow{
+    position:absolute;
+    left:50%; bottom:-3px;
+    width:62%; height:9%;
+    transform:translateX(-50%);
+    border-radius:50%;
+    background:rgba(20,35,26,.16);
+    filter:blur(2px);
+    z-index:0;
+    pointer-events:none;
+  }
+  :root[data-theme="dark"] .mascot-shadow{ background:rgba(0,0,0,.42); }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .mascot-shadow{ background:rgba(0,0,0,.42); }
+  }
+
+  /* 1 — respiration du corps, continue */
+  @keyframes mascotBreathe{
+    0%,100%{ transform:scale(1, 1) translateY(0); }
+    50%{ transform:scale(.985, 1.02) translateY(-1.5px); }
+  }
+
+  /* 2c — gestes du corps entier, rares */
+  .mascot.beat-hop{ animation:mascotHop .82s cubic-bezier(.3,1.5,.5,1); }
+  .mascot.beat-wiggle{ animation:mascotWiggle .8s ease-in-out; }
+  @keyframes mascotHop{
+    0%{ transform:scale(1,1); }
+    18%{ transform:scale(1.10,.90); }        /* il s'accroupit avant de sauter */
+    45%{ transform:scale(.94,1.08) translateY(-16%); }
+    72%{ transform:scale(1.07,.93); }
+    100%{ transform:scale(1,1); }
+  }
+  @keyframes mascotWiggle{
+    0%,100%{ transform:translateX(0) rotate(0); }
+    25%{ transform:translateX(-3%) rotate(-2.5deg); }
+    55%{ transform:translateX(3%) rotate(2.5deg); }
+    80%{ transform:translateX(-1%) rotate(-1deg); }
+  }
+
+  /* 3 — réactions. Elles doivent primer sur la respiration : d'où
+     l'animation nommée qui remplace la boucle le temps du geste. */
+  .mascot-sad{
+    filter:saturate(.55) brightness(.97);
+    animation:mascotSlump .9s ease-out forwards;
+  }
+  @keyframes mascotSlump{
+    0%{ transform:scale(1,1) rotate(0); }
+    40%{ transform:scale(1.06,.92) rotate(-6deg); }
+    100%{ transform:scale(1.02,.96) rotate(-7deg); }
+  }
+  .mascot-excited{ animation:mascotCheer 1.5s cubic-bezier(.34,1.56,.64,1) 2; }
+  @keyframes mascotCheer{
+    0%,100%{ transform:scale(1,1) rotate(0); }
+    15%{ transform:scale(1.12,.88); }
+    38%{ transform:scale(.92,1.12) translateY(-22%) rotate(-4deg); }
+    58%{ transform:scale(1.08,.94) rotate(2deg); }
+    78%{ transform:scale(.97,1.04) translateY(-8%); }
+  }
+  .mascot-happy{ animation:mascotNod .62s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes mascotNod{
+    0%{ transform:scale(1.08,.92); }
+    45%{ transform:scale(.96,1.06) translateY(-9%); }
+    100%{ transform:scale(1,1); }
+  }
+  .lesson-footer-mascot{
+    display:flex; align-items:center; gap:10px;
+    margin:2px 0 12px; font-size:.86rem; color:var(--ink-dim); font-weight:600;
+  }
+  .result-mascot{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    font-size:1rem; font-weight:800; color:var(--ink-dim);
+  }
+  /* Le personnage parle : bulle avec ergot, plutôt qu'une vignette
+     posée à côté du texte. C'est ce qui fait qu'il « habite » la carte. */
+  .hero-mascot{ display:flex; align-items:center; gap:12px; margin:10px 0 2px; }
+  /* « > span » et non « span » : le texte bilingue imbrique ses propres
+     spans (.bi/.bf/.ba). Un sélecteur descendant les habillerait tous
+     en bulles. */
+  .hero-mascot > span:not(.mascot-stage){
+    position:relative;
+    background:var(--surface-2);
+    color:var(--ink);
+    font-size:.92rem; font-weight:800;
+    padding:10px 14px;
+    border-radius:14px;
+  }
+  .hero-mascot > span:not(.mascot-stage)::before{
+    content:""; position:absolute; left:-7px; top:50%;
+    width:0; height:0; transform:translateY(-50%);
+    border:7px solid transparent;
+    border-right-color:var(--surface-2);
+    border-left:0;
+  }
+  [dir="rtl"] .hero-mascot > span:not(.mascot-stage)::before{
+    left:auto; right:-7px;
+    border-right-color:transparent; border-left-color:var(--surface-2);
+    border-right:0; border-left-width:7px;
+  }
+  /* Sur la carte « La Clé » le fond est vert plein : la bulle doit
+     rester lisible, donc surface opaque et non le gris de fond. */
+  .hero.key .hero-mascot > span:not(.mascot-stage){ background:var(--surface); color:var(--ink); }
+  .hero.key .hero-mascot > span:not(.mascot-stage)::before{ border-right-color:var(--surface); }
+  [dir="rtl"] .hero.key .hero-mascot > span:not(.mascot-stage)::before{ border-left-color:var(--surface); border-right-color:transparent; }
+
+  /* ---- Série en cours (combo) ---- */
+  .combo-pop{
+    position:absolute;
+    top:18%; left:50%;
+    transform:translate(-50%,0);
+    display:flex; align-items:center; gap:6px;
+    background:var(--accent); color:var(--accent-ink);
+    font-weight:700; font-size:.92rem;
+    padding:8px 16px; border-radius:999px;
+    box-shadow:var(--shadow);
+    z-index:60;
+    animation: comboPop 1.5s ease forwards;
+    pointer-events:none;
+  }
+  .combo-pop .icon{ width:16px; height:16px; }
+  @keyframes comboPop{
+    0%{ opacity:0; transform:translate(-50%,10px) scale(.8); }
+    15%{ opacity:1; transform:translate(-50%,0) scale(1.05); }
+    25%{ transform:translate(-50%,0) scale(1); }
+    80%{ opacity:1; }
+    100%{ opacity:0; transform:translate(-50%,-8px) scale(.95); }
+  }
+
+  /* ============================================================
+     PASSAGE AU LANGAGE « JEU »
+     Tout ce qui suit remplace l'ancienne esthétique éditoriale
+     (traits fins, sérif, aplats discrets) par des blocs francs :
+     bords épais, angles généreux, ombre dure sous les surfaces
+     cliquables, typographie très grasse.
+     ============================================================ */
+
+  body{ font-weight:600; }
+  h1, h2, h3, .hero-title, .lesson-prompt, .result-screen h2{
+    font-family:var(--font-display);
+    font-weight:900;
+    letter-spacing:-.01em;
+    text-wrap:balance;
+  }
+  /* Les codes sont des données : chiffres à chasse fixe pour qu'ils
+     s'alignent en colonne dans le registre et ne dansent pas. */
+  .code, .node, .node-label, .block-range, .result-stat .n, .chain-slot,
+  .forecast-row .v, .sync-num, .blitz-timer, .blitz-score, td.code, th.code,
+  .key-big, .hook .code, .chunk .range{
+    font-variant-numeric:tabular-nums;
+    font-weight:800;
+  }
+
+  /* ---- Boutons en relief ---- */
+  .btn{
+    font-weight:800;
+    font-size:1.06rem;
+    letter-spacing:.005em;
+    border-radius:var(--radius-sm);
+    padding:15px 20px;
+    box-shadow:0 4px 0 0 var(--accent-deep);
+    transition:transform .07s ease, box-shadow .07s ease, filter .12s ease;
+  }
+  .btn:active:not(:disabled){ transform:translateY(4px); box-shadow:0 0 0 0 var(--accent-deep); }
+  .btn.ghost{
+    background:var(--surface); color:var(--ink-dim);
+    border:2px solid var(--line);
+    box-shadow:0 4px 0 0 var(--line);
+  }
+  .btn.ghost:active:not(:disabled){ transform:translateY(4px); box-shadow:0 0 0 0 var(--line); }
+  .btn.secondary{ background:var(--surface-2); color:var(--ink); box-shadow:0 4px 0 0 var(--line); }
+  .lesson-footer.correct .btn{ background:var(--teal); box-shadow:0 4px 0 0 var(--teal-deep); }
+  .lesson-footer.correct .btn:active{ box-shadow:0 0 0 0 var(--teal-deep); }
+  .lesson-footer.wrong .btn{ background:var(--wrong); box-shadow:0 4px 0 0 var(--wrong-deep); }
+  .lesson-footer.wrong .btn:active{ box-shadow:0 0 0 0 var(--wrong-deep); }
+  .btn.danger, .btn.ghost.danger{ color:var(--wrong); border-color:var(--wrong-soft); }
+
+  /* ---- Réponses : cases épaisses, enfoncement au clic ---- */
+  .lesson-choice{
+    border-width:3px;
+    border-color:var(--line);
+    border-radius:var(--radius-sm);
+    box-shadow:0 4px 0 0 var(--line);
+    font-weight:800;
+    font-size:1.05rem;
+    padding:16px 18px;
+    min-height:60px;
+    transition:transform .07s ease, box-shadow .07s ease,
+               background-color .12s ease, border-color .12s ease;
+  }
+  .lesson-choice:active:not(:disabled){
+    transform:translateY(4px); box-shadow:0 0 0 0 var(--line);
+  }
+  .lesson-choice.correct{
+    background:var(--teal-soft); border-color:var(--teal); color:var(--teal);
+    box-shadow:0 4px 0 0 var(--teal);
+  }
+  .lesson-choice.wrong{
+    background:var(--wrong-soft); border-color:var(--wrong); color:var(--wrong);
+    box-shadow:0 4px 0 0 var(--wrong);
+  }
+  .lesson-type-row input{
+    border-width:3px; border-radius:var(--radius-sm);
+    font-weight:800; font-variant-numeric:tabular-nums;
+  }
+
+  /* ---- Cartes ---- */
+  .hero{
+    border-radius:var(--radius);
+    border:3px solid var(--line);
+    box-shadow:0 5px 0 0 var(--line);
+    padding:20px;
+  }
+  .hero.key{
+    background:var(--accent); border-color:var(--accent-deep);
+    box-shadow:0 5px 0 0 var(--accent-deep);
+  }
+  .hero.key .hero-kicker, .hero.key .hero-title, .hero.key .hero-sub{ color:var(--accent-ink); }
+  .hero.key .hero-go{ background:var(--surface); color:var(--accent); }
+  .hero.review{ background:var(--surface); border-color:var(--gold); box-shadow:0 5px 0 0 var(--gold); }
+  .hero.review .hero-kicker{ color:var(--gold-ink); }
+  .hero.review .hero-go{ background:var(--gold); color:#3A2600; }
+  .hero:active{ transform:translateY(4px); box-shadow:0 1px 0 0 var(--line); }
+  .hero.key:active{ box-shadow:0 1px 0 0 var(--accent-deep); }
+  .hero.review:active{ box-shadow:0 1px 0 0 var(--gold); }
+  .hero-kicker{ font-weight:800; letter-spacing:.09em; }
+  .hero-title{ font-size:1.55rem; }
+  .hero-go{ font-weight:800; border-radius:999px; padding:11px 20px; font-size:1rem; }
+
+  .action-card, .sheet, .result-stat, .forecast-panel, .unit-sheet,
+  .gate-box, .confirm-box, .sync-panel{
+    border-radius:var(--radius);
+  }
+  .action-card{
+    border:3px solid var(--line);
+    box-shadow:0 4px 0 0 var(--line);
+    font-weight:800;
+  }
+  .action-card:active:not(:disabled){ transform:translateY(4px); box-shadow:0 0 0 0 var(--line); }
+  .result-stat{ border-width:3px; box-shadow:0 4px 0 0 var(--line); }
+  .result-stat .n{ font-size:1.5rem; font-weight:900; }
+  .result-stat .l{ font-weight:800; }
+
+  /* ---- Onglets ---- */
+  .tabbar{ border-top:2px solid var(--line); }
+  .tab-btn span{ font-weight:800; }
+  .tab-btn.active .icon{ transform:scale(1.12); }
+  .tab-btn .icon{ transition:transform .15s cubic-bezier(.34,1.56,.64,1); }
+
+  /* ---- Barre de progression et cœurs ---- */
+  .lesson-bar{ height:16px; border:2px solid var(--line); background:var(--surface-2); }
+  .lesson-bar-fill{
+    background:var(--accent-bright);
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.12), inset 0 3px 0 rgba(255,255,255,.28);
+  }
+  .lesson-hearts .icon{ width:21px; height:21px; }
+  .topstat{ font-weight:900; font-size:.95rem; font-variant-numeric:tabular-nums; }
+  .topstat .icon{ width:19px; height:19px; }
+  .topstat.xp{ color:var(--gold-ink); }
+  .brand{ font-weight:900; letter-spacing:-.02em; }
+
+  /* ---- Étapes du parcours ---- */
+  .node{ width:86px; height:86px; font-size:1.18rem; }
+  .node .icon{ width:32px; height:32px; }
+  .path-head h1{ font-size:1.7rem; }
+  .crown-pip{ width:8px; height:8px; }
+
+  /* ---- Célébration de fin de leçon ---- */
+  .result-screen{ position:relative; overflow:hidden; }
+  .result-screen.perfect .result-badge.success{
+    background: var(--gold-soft); color: var(--gold);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 18%, transparent);
+  }
+  .confetti{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .confetto{
+    position:absolute; top:-16px;
+    width:13px; height:20px;
+    border-radius:2px;
+    animation-name: confettiFall;
+    animation-timing-function: cubic-bezier(.3,.6,.7,1);
+    animation-fill-mode: forwards;
+  }
+  .confetto.round{ border-radius:50%; width:13px; height:13px; }
+  @keyframes confettiFall{
+    0%{ transform: translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform: translateY(320px) rotate(var(--rot)); opacity:0; }
+  }
