@@ -141,6 +141,16 @@
           <button class="btn ghost" id="sync-save"><span class="bi"><span class="bf" lang="fr">Enregistrer</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">احفظ</span></span></button>
         </div>
 
+        <!-- Partage web : lien direct + QR. Masqué par défaut, affiché en
+             JS seulement sur http(s) — un fichier local (APK, double-clic)
+             n'a pas d'adresse à partager. -->
+        <div class="sync-actions" id="sync-web-actions" style="display:none;">
+          <button class="btn ghost" id="sync-share"><span class="bi"><span class="bf" lang="fr">Partager un lien</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">شارك رابطا</span></span></button>
+          <button class="btn ghost" id="sync-qr-toggle" aria-expanded="false" aria-controls="sync-qr-box"><span class="bi"><span class="bf" lang="fr">Code QR</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">رمز QR</span></span></button>
+        </div>
+        <p class="section-note" id="sync-qr-hint" style="display:none;"><span class="bis"><span class="bf2" lang="fr">Fais scanner cet écran par l'appareil photo de l'autre téléphone — il ouvrira le lien tout seul, pas besoin d'app.</span><span class="ba2" lang="ar" dir="rtl">امسح هذه الشاشة بكاميرا الهاتف الآخر — سيفتح الرابط تلقائيا، دون الحاجة لتطبيق.</span></span></p>
+        <div id="sync-qr-box" class="sync-qr" style="display:none;" role="img" aria-label="Code QR du transfert — رمز QR للنقل"></div>
+
         <div class="sync-step" style="margin-top:24px;">
           <span class="sync-num" aria-hidden="true">2</span>
           <span class="sync-step-body"><span class="bis"><span class="bf2" lang="fr">Sur l'autre appareil, ouvre cette même section, colle le code ici et fusionne.</span><span class="ba2" lang="ar" dir="rtl">على الجهاز الآخر، افتح هذا القسم نفسه، الصق الرمز هنا وادمج.</span></span></span>

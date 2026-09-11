@@ -118,7 +118,35 @@ var DATA = [
     [45,"Naâma","extrême ouest saharien, frontière marocaine."],
     [46,"Aïn Témouchent","côte ouest, entre Oran et Tlemcen."],
     [47,"Ghardaïa","la vallée du Mzab et ses cités ocre — avant-dernier code du bloc 1984."],
-    [48,"Relizane","dernier code des wilayas historiques, dans la plaine du Chélif à l'ouest."]
+    [48,"Relizane","dernier code des wilayas historiques, dans la plaine du Chélif à l'ouest."],
+
+    /* 49–58 : les 10 wilayas créées en 2019, chacune détachée d'une
+       wilaya historique déjà connue — c'est ce lien qui sert de repère,
+       pas un ordre alphabétique ou géographique (il n'y en a pas). */
+    [49,"Timimoun","la « ville rouge » du Gourara, détachée d'Adrar — premier code du bloc de 2019."],
+    [50,"Bordj Badji Mokhtar","à l'extrême sud-ouest, frontière malienne — comme Timimoun, détachée d'Adrar."],
+    [51,"Ouled Djellal","dans la plaine au nord de Biskra, dont elle est détachée."],
+    [52,"Béni Abbès","oasis de la Saoura, détachée de Béchar."],
+    [53,"In Salah","au cœur du Sahara (le Tidikelt), détachée de Tamanrasset — l'une des villes les plus chaudes du pays."],
+    [54,"In Guezzam","tout au sud, frontière nigérienne — comme In Salah, détachée de Tamanrasset."],
+    [55,"Touggourt","grande oasis dattière de l'Oued Righ, détachée d'Ouargla."],
+    [56,"Djanet","porte du Tassili n'Ajjer, à l'extrême sud-est, détachée d'Illizi."],
+    [57,"El M'Ghaier","dans l'Oued Righ comme Touggourt, mais détachée d'El Oued."],
+    [58,"El Meniaa","l'ancienne El Goléa, sur la route du grand Sud, détachée de Ghardaïa — dernier code du bloc de 2019."],
+
+    /* 59–69 : les 11 wilayas des Hauts Plateaux créées en 2025, même
+       principe — chacune détachée d'une wilaya du Tell déjà connue. */
+    [59,"Aflou","hauts plateaux frais du Djebel Amour, détachée de Laghouat — premier code du bloc de 2025."],
+    [60,"Barika","dans la plaine à l'ouest de Batna, dont elle est détachée."],
+    [61,"El Kantara","la gorge qui sépare le Tell du Sahara, détachée de Biskra."],
+    [62,"Bir El Ater","région minière de l'Est (phosphates du Djebel Onk), détachée de Tébessa."],
+    [63,"El Aricha","hauts plateaux de l'Ouest, frontière marocaine, détachée de Tlemcen."],
+    [64,"Ksar Chellala","hauts plateaux de l'Ouest, détachée de Tiaret."],
+    [65,"Aïn Oussara","sur la route Alger–Sud, détachée de Djelfa."],
+    [66,"Messaad","comme Aïn Oussara, détachée de Djelfa — les deux se suivent."],
+    [67,"Ksar El Boukhari","au sud de Médéa, dont elle est détachée."],
+    [68,"Bou Saâda","la « ville du bonheur » aux portes du Sahara, détachée de M'Sila."],
+    [69,"El Abiodh Sidi Cheikh","zaouïa historique de l'Ouest saharien, détachée d'El Bayadh — dernier code du pays."]
   ];
 
   var REGION_COLOR = {

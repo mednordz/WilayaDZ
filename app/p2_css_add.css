@@ -298,6 +298,14 @@
   }
   .sync-actions{ display:flex; gap:9px; flex-wrap:wrap; }
   .sync-actions .btn{ width:auto; flex:1 1 140px; }
+  /* Fond blanc fixe, y compris en thème sombre : un QR doit rester
+     scannable quel que soit le thème (le SVG lui-même dessine déjà
+     son propre rectangle blanc — la carte ne fait que l'entourer). */
+  .sync-qr{
+    max-width:220px; margin:14px auto 4px; padding:12px;
+    background:#fff; border-radius:14px; border:1.5px solid var(--border-strong);
+  }
+  .sync-qr svg{ display:block; width:100%; height:auto; }
   .sync-step{
     display:flex; gap:12px; align-items:flex-start; margin:0 0 14px;
   }
