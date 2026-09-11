@@ -18,7 +18,7 @@ lui-même (`workflow_dispatch`) sans plus rien te redemander.
 
 ## 0. Mise en place unique du runner (à faire une fois, sur bigpc)
 
-1. Ouvrir **https://github.com/mednordz/wilaya-01-69/settings/actions/runners/new**
+1. Ouvrir **https://github.com/mednordz/WilayaDZ/settings/actions/runners/new**
    (choisir Linux / x64) — cette page génère les commandes `curl`/`tar`/
    `config.sh` avec un jeton d'enregistrement valide (~1h), copiées-collées
    telles quelles sur `bigpc`.
