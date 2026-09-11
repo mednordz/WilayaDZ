@@ -1,12 +1,10 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 (async () => {
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 420, height: 900 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file:///tmp/wilayas/wilaya-v6.html'); await p.waitForTimeout(400);
-  await p.fill('#gate-name', 'Amine');
-  await p.locator('.lang-opt[data-lang="ar"]').click(); await p.waitForTimeout(200);
-  await p.locator('#gate-create').click(); await p.waitForTimeout(600);
+  await seedSignedIn(p, 'file:///tmp/wilayas/wilaya-v6.html', { name: 'Amine', lang: 'ar', settle: 600 });
 
   console.log('marque:', (await p.locator('.brand').innerText()).trim());
   console.log('nœud Clé:', (await p.locator('.node').nth(0).innerText()).replace(/\n/g,' '));

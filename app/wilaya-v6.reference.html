@@ -1052,6 +1052,11 @@
   [dir="rtl"] .profile-btn.cloud-on::after,
   [dir="rtl"] .profile-btn.cloud-stale::after{ right:auto; left:-1px; }
 
+  /* Profil d'avant les comptes : signale, jamais barre ni grise —
+     sa progression est intacte, il lui manque juste un rattachement. */
+  .gate-profile.orphan{ border-style:dashed; border-color:var(--border-strong); }
+  .gate-profile.orphan .gate-profile-body span{ color:var(--accent-deep); }
+
   .cloud-row .gate-profile-body b{ color:var(--ink); }
   .cloud-row-icon{
     width:42px; height:42px; border-radius:13px; flex:none;
@@ -4991,14 +4996,18 @@ var qrcode = function() {
 
   /* ============================================================
      PROFILS & SYNCHRONISATION
-     Il n'y a pas de serveur derrière cette application : elle
-     fonctionne hors ligne, y compris dans l'APK Android. Donc
-     pas de compte en ligne — ce serait mentir que d'en afficher un.
-     À la place :
-       · plusieurs profils sur un même appareil, chacun sa mémoire ;
-       · un code d'accès local facultatif par profil ;
-       · un code de transfert qui déplace une progression d'un
-         appareil à l'autre, et qui FUSIONNE au lieu d'écraser.
+     Un compte est désormais obligatoire pour se servir de
+     l'application : c'est lui qui porte la progression d'un appareil à
+     l'autre (voir p4k_cloud.js). Il n'est exigé qu'UNE fois — ensuite
+     la session reste sur l'appareil et tout fonctionne hors ligne.
+
+     Ce fichier reste le dépôt local, et il garde son rôle :
+       · plusieurs profils sur un même appareil, chacun sa mémoire,
+         chacun son compte — un téléphone de famille marche toujours ;
+       · un code d'accès local facultatif, qui verrouille un profil sur
+         CET appareil et ne remplace pas le mot de passe du compte ;
+       · un code de transfert d'appareil à appareil, qui FUSIONNE au
+         lieu d'écraser — la même fusion que la synchronisation.
      ============================================================ */
   var ACCOUNT_KEY = "wilaya-account-v1";
   var PROFILE_COLORS = ["var(--accent)","var(--teal)","var(--slate)","var(--olive)","var(--rose)","var(--gold)"];
@@ -5073,9 +5082,17 @@ var qrcode = function() {
     return prof;
   }
 
+  /* Quel profil l'état de travail contient-il réellement ? Tant que
+     personne n'a franchi la porte d'entrée, `state` est vide : l'écrire
+     dans un profil effacerait sa progression. Ce garde-fou a été posé
+     après exactement cet accident, lors du rattachement d'un profil
+     existant à un compte tout neuf. */
+  var loadedProfileId = null;
+
   /* Charge le profil actif dans l'état de travail. */
   function loadState(){
     var p = activeProfile();
+    loadedProfileId = p ? p.id : null;
     applyLang(p ? (p.lang || "bi") : "bi");
     var d = p ? p.data : blankData();
     state.progress   = d.progress || {};
@@ -5090,6 +5107,11 @@ var qrcode = function() {
   function persist(){
     var p = activeProfile();
     if(!p) return;
+    /* On n'écrit que ce qui a été chargé depuis CE profil. Sans cela,
+       toute écriture faite avant le premier loadState() — ou juste
+       après un changement de profil — remplacerait une progression
+       réelle par un état de travail vide. */
+    if(p.id !== loadedProfileId) return;
     p.data = {
       progress:state.progress, confusions:state.confusions, crowns:state.crowns,
       xp:state.xp, streak:state.streak, keyDone:state.keyDone, bestBlitz:state.bestBlitz
@@ -6394,15 +6416,23 @@ var qrcode = function() {
     /* Appareil neuf : on se connecte et la progression arrive, sans
        avoir à recopier un code depuis l'ancien téléphone. */
     if(mode === "login"){
+      /* Meme regle qu'a la creation : si un profil local est vise, on
+         se connecte DANS ce profil et sa progression fusionne avec
+         celle du compte. */
+      var loginInto = (targetProfile && typeof targetProfile === "object") ? targetProfile : null;
       gate.innerHTML =
         "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
           "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
           "<h2 id='gate-title'>" + T("Se connecter","تسجيل الدخول") + "</h2>" +
-          "<p class='gate-sub'>" + TS("Ta progression te rejoint sur cet appareil.",
-                                      "سيصلك تقدّمك على هذا الجهاز.") + "</p>" +
+          "<p class='gate-sub'>" + (loginInto
+            ? TS("La progression de « " + esc(loginInto.name) + " » sera FUSIONNÉE avec celle du compte : pour chaque wilaya, la meilleure des deux mémoires est gardée.",
+                 "سيُدمج تقدّم « " + esc(loginInto.name) + " » مع تقدّم الحساب: تُحفظ الأفضل من الذاكرتين.")
+            : TS("Ta progression te rejoint sur cet appareil.",
+                 "سيصلك تقدّمك على هذا الجهاز.")) + "</p>" +
           cloudFieldsHtml("glog", {}) +
           "<p class='gate-err' id='glog-err' role='alert'></p>" +
           "<button class='btn' id='glog-go'>" + T("Se connecter","ادخل") + "</button>" +
+          "<button class='btn ghost' id='glog-forgot' style='margin-top:9px;'>" + T("Mot de passe oublié ?","نسيت كلمة السر؟") + "</button>" +
           "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
         "</div>";
       var glogBtn = document.getElementById("glog-go");
@@ -6411,7 +6441,13 @@ var qrcode = function() {
         cloudErrInto("glog-err", "");
         if(!f.email || !f.pw){ return cloudErrInto("glog-err", cloudErrorText("bad_credentials")); }
         cloudBusy(glogBtn, true, TL("Connexion…","جارٍ الاتصال…"));
-        cloudLoginNewProfile(f.email, f.pw).then(function(r){
+        var demarche = loginInto
+          ? cloudLoginInto(loginInto, f.email, f.pw).then(function(r){
+              if(r.ok){ account.activeId = loginInto.id; saveAccount(); r.profile = loginInto; }
+              return r;
+            })
+          : cloudLoginNewProfile(f.email, f.pw);
+        demarche.then(function(r){
           cloudBusy(glogBtn, false);
           if(!r.ok) return cloudErrInto("glog-err", r.message);
           hideGate(); bootProfile();
@@ -6423,55 +6459,187 @@ var qrcode = function() {
       document.getElementById("glog-pw").addEventListener("keydown", function(e){
         if(e.key === "Enter") doGateLogin();
       });
+      document.getElementById("glog-forgot").addEventListener("click", function(){
+        showGate("forgot", document.getElementById("glog-email").value.trim());
+      });
       document.getElementById("gate-back").addEventListener("click", function(){
+        if(loginInto) return showGate("create", loginInto);
         showGate(account.profiles.length ? "pick" : "create");
       });
       document.getElementById("glog-email").focus();
       return;
     }
 
+    /* « J'ai oublié » : la réponse est volontairement la MÊME que
+       l'adresse existe ou non. Le serveur répond 204 dans les deux cas
+       pour ne dire à personne qui a un compte ici ; si l'interface
+       disait « adresse inconnue », elle rouvrirait à elle seule la
+       fuite que le serveur s'applique à fermer. */
+    if(mode === "forgot"){
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<h2 id='gate-title'>" + T("Mot de passe oublié","نسيت كلمة السر") + "</h2>" +
+          "<p class='gate-sub'>" + TS("Donne ton adresse : on t'envoie un lien pour en choisir un nouveau.",
+                                      "أدخل بريدك: سنرسل لك رابطا لاختيار كلمة سر جديدة.") + "</p>" +
+          "<label class='sr-only' for='gfor-email'>" + TL("Adresse e-mail","البريد الإلكتروني") + "</label>" +
+          "<input class='gate-input' id='gfor-email' type='email' inputmode='email' autocomplete='email' " +
+            "autocapitalize='off' spellcheck='false' placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
+          "<p class='gate-err' id='gfor-err' role='alert'></p>" +
+          "<p class='gate-note' id='gfor-done' style='display:none' role='status'></p>" +
+          "<button class='btn' id='gfor-go'>" + T("Envoyer le lien","أرسل الرابط") + "</button>" +
+          "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
+        "</div>";
+      var forEmail = document.getElementById("gfor-email");
+      if(typeof targetProfile === "string") forEmail.value = targetProfile;
+      var forBtn = document.getElementById("gfor-go");
+      function doForgot(){
+        var mail = forEmail.value.trim();
+        cloudErrInto("gfor-err", "");
+        if(!mail){ return cloudErrInto("gfor-err", cloudErrorText("bad_email")); }
+        cloudBusy(forBtn, true, TL("Envoi…","جارٍ الإرسال…"));
+        cloudForgot(mail).then(function(r){
+          cloudBusy(forBtn, false);
+          if(!r.ok){ return cloudErrInto("gfor-err", r.message); }
+          var done = document.getElementById("gfor-done");
+          done.style.display = "";
+          done.innerHTML = TS(
+            "Si un compte existe avec cette adresse, le lien vient de partir. Il est valable une heure — pense à regarder dans les indésirables.",
+            "إن كان هناك حساب بهذا البريد، فقد أُرسل الرابط. صالح لمدة ساعة — تحقّق من البريد غير المرغوب فيه.");
+          forBtn.disabled = true;
+        });
+      }
+      forBtn.addEventListener("click", doForgot);
+      forEmail.addEventListener("keydown", function(e){ if(e.key === "Enter") doForgot(); });
+      document.getElementById("gate-back").addEventListener("click", function(){ showGate("login"); });
+      forEmail.focus();
+      return;
+    }
+
+    /* Arrivée par le lien reçu par courriel. targetProfile porte ici le
+       jeton de réinitialisation, déjà retiré de la barre d'adresse. */
+    if(mode === "reset"){
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<h2 id='gate-title'>" + T("Nouveau mot de passe","كلمة سر جديدة") + "</h2>" +
+          "<p class='gate-sub'>" + TS("Choisis-en un nouveau : tu seras connecté dans la foulée.",
+                                      "اختر كلمة سر جديدة: ستدخل مباشرة بعدها.") + "</p>" +
+          "<label class='sr-only' for='gres-pw'>" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "</label>" +
+          "<input class='gate-input' id='gres-pw' type='password' autocomplete='new-password' " +
+            "placeholder='Mot de passe (8 min.) · كلمة السر' aria-label=\"" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "\" />" +
+          "<p class='gate-note'>" + TS("Tous les appareils déjà connectés à ce compte devront se reconnecter.",
+                                       "ستحتاج كل الأجهزة المتصلة بهذا الحساب إلى إعادة الاتصال.") + "</p>" +
+          "<p class='gate-err' id='gres-err' role='alert'></p>" +
+          "<button class='btn' id='gres-go'>" + T("Valider","تأكيد") + "</button>" +
+          "<button class='btn ghost' id='gres-again' style='margin-top:9px;display:none'>" + T("Demander un nouveau lien","اطلب رابطا جديدا") + "</button>" +
+          "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
+        "</div>";
+      var resPw = document.getElementById("gres-pw");
+      var resBtn = document.getElementById("gres-go");
+      function doReset(){
+        var pw = resPw.value || "";
+        cloudErrInto("gres-err", "");
+        if(pw.length < 8){ return cloudErrInto("gres-err", cloudErrorText("weak_password")); }
+        cloudBusy(resBtn, true, TL("Patiente…","انتظر…"));
+        cloudResetWithToken(targetProfile, pw).then(function(r){
+          cloudBusy(resBtn, false);
+          if(!r.ok){
+            cloudErrInto("gres-err", r.message);
+            document.getElementById("gres-again").style.display = "";
+            return;
+          }
+          hideGate(); bootProfile();
+          toast(TL("Mot de passe changé — te voilà connecté.",
+                   "تم تغيير كلمة السر — أنت متصل الآن."));
+        });
+      }
+      resBtn.addEventListener("click", doReset);
+      resPw.addEventListener("keydown", function(e){ if(e.key === "Enter") doReset(); });
+      document.getElementById("gres-again").addEventListener("click", function(){ showGate("forgot"); });
+      document.getElementById("gate-back").addEventListener("click", function(){
+        showGate(account.profiles.length ? "pick" : "create");
+      });
+      resPw.focus();
+      return;
+    }
+
     if(mode === "create"){
+      /* targetProfile, s'il s'agit d'un profil, est une progression qui
+         existe deja sur cet appareil et qu'il faut rattacher au compte
+         qu'on va creer — surtout pas remplacer par un compte vide. */
+      var attachTo = (targetProfile && typeof targetProfile === "object") ? targetProfile : null;
       gate.innerHTML =
         "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
           "<div class='gate-avatar'>" + USER_ICON + "</div>" +
-          "<h2 id='gate-title'>" + T("Nouveau profil","ملف جديد") + "</h2>" +
-          "<p class='gate-sub'>" + TS("Ta progression sera gardée sous ce nom, séparée des autres.",
-                                      "سيُحفظ تقدّمك باسمك، منفصلا عن الآخرين.") + "</p>" +
-          "<label class='sr-only' for='gate-name'>" + TL("Ton prénom","اسمك") + "</label>" +
-          "<input class='gate-input' id='gate-name' maxlength='18' autocomplete='off' placeholder='Prénom · الاسم' aria-label=\"" + TL("Ton prénom","اسمك") + "\" />" +
-          langPickerHtml("bi") +
+          "<h2 id='gate-title'>" + T("Créer ton compte","أنشئ حسابك") + "</h2>" +
+          "<p class='gate-sub'>" + (attachTo
+            ? TS("La progression de « " + esc(attachTo.name) + " » déjà sur cet appareil sera envoyée sur ce compte. Rien n'est effacé.",
+                 "سيُرسل تقدّم « " + esc(attachTo.name) + " » الموجود على هذا الجهاز إلى هذا الحساب. لا شيء يُمحى.")
+            : TS("Ta progression sera rattachée à ce compte : tu la retrouveras sur n'importe quel appareil où tu te connectes.",
+                 "سيُربط تقدّمك بهذا الحساب: ستجده على أي جهاز تتصل منه.")) + "</p>" +
+          cloudFieldsHtml("gate", {name:true, newPassword:true}) +
+          langPickerHtml(attachTo ? (attachTo.lang || "bi") : "bi") +
           "<p class='gate-note'>" + TS("Les noms de wilayas resteront écrits dans les deux langues quel que soit ton choix — c'est ce que tu apprends.",
                                        "ستبقى أسماء الولايات مكتوبة باللغتين مهما كان اختيارك — فهي مادة التعلّم نفسها.") + "</p>" +
           "<label class='sr-only' for='gate-newpin'>" + TL("Code d'accès à 4 chiffres, facultatif","رمز دخول من 4 أرقام، اختياري") + "</label>" +
           "<input class='gate-input' id='gate-newpin' type='password' inputmode='numeric' maxlength='6' autocomplete='off' placeholder=\"Code 4 chiffres (facultatif)\" aria-label=\"" + TL("Code d'accès facultatif","رمز دخول اختياري") + "\" />" +
-          "<p class='gate-note'>" + TS("Ce code est un verrou local : il empêche quelqu'un d'ouvrir ton profil sur cet appareil. Ce n'est pas un mot de passe sécurisé et il ne se récupère pas.",
-                                       "هذا الرمز قفل محلي: يمنع غيرك من فتح ملفك على هذا الجهاز. ليس كلمة سر آمنة ولا يمكن استرجاعه.") + "</p>" +
+          "<p class='gate-note'>" + TS("Ce code verrouille ton profil sur CET appareil, pour que personne d'autre ne l'ouvre ici. Il ne remplace pas ton mot de passe et ne se récupère pas.",
+                                       "هذا الرمز يقفل ملفك على هذا الجهاز فقط. لا يحل محل كلمة السر ولا يمكن استرجاعه.") + "</p>" +
           "<p class='gate-err' id='gate-err' role='alert'></p>" +
-          "<button class='btn' id='gate-create'>" + T("Créer","أنشئ") + "</button>" +
-          (cloudAvailable() ? "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" : "") +
+          "<button class='btn' id='gate-create'>" + T("Créer le compte","أنشئ الحساب") + "</button>" +
+          "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" +
           (account.profiles.length ? "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" : "") +
         "</div>";
       var gateBox = document.getElementById("gate-box");
       /* aperçu immédiat : on applique la langue dès le clic */
       wireLangPicker(gateBox, function(l){ applyLang(l); });
       var nameInp = document.getElementById("gate-name");
-      document.getElementById("gate-create").addEventListener("click", function(){
-        var nm = nameInp.value.trim();
-        if(!nm){
-          document.getElementById("gate-err").textContent = TL("Écris un prénom.","اكتب اسما.");
-          nameInp.focus(); return;
-        }
+      var createBtn = document.getElementById("gate-create");
+      if(attachTo) nameInp.value = attachTo.name;
+
+      function doCreate(){
+        var f = cloudReadFields("gate");
+        cloudErrInto("gate-err", "");
+        if(!f.name){ cloudErrInto("gate-err", TL("Écris un prénom.","اكتب اسما.")); nameInp.focus(); return; }
+        if(!f.email){ cloudErrInto("gate-err", cloudErrorText("bad_email")); return; }
+        if(f.pw.length < 8){ cloudErrInto("gate-err", cloudErrorText("weak_password")); return; }
         var pin = document.getElementById("gate-newpin").value.trim();
         if(pin && !/^\d{4,6}$/.test(pin)){
-          document.getElementById("gate-err").textContent = TL("Le code doit faire 4 à 6 chiffres.","الرمز من 4 إلى 6 أرقام.");
+          cloudErrInto("gate-err", TL("Le code doit faire 4 à 6 chiffres.","الرمز من 4 إلى 6 أرقام."));
           return;
         }
-        createProfile(nm, pin || null, pickedLang(gateBox));
-        hideGate(); bootProfile();
-        toast(TL("Profil « " + esc(nm) + " » créé.","أُنشئ الملف « " + esc(nm) + " »."));
+        var lang = pickedLang(gateBox);
+        cloudBusy(createBtn, true, TL("Création…","جارٍ الإنشاء…"));
+
+        var demarche;
+        if(attachTo){
+          attachTo.name = f.name;
+          attachTo.lang = lang;
+          account.activeId = attachTo.id;
+          saveAccount();
+          demarche = cloudRegister(attachTo, f.email, f.name, f.pw)
+            .then(function(r){ r.profile = attachTo; return r; });
+        }else{
+          demarche = cloudRegisterNew(f.name, f.email, f.pw, lang);
+        }
+
+        demarche.then(function(r){
+          cloudBusy(createBtn, false);
+          if(!r.ok){ cloudErrInto("gate-err", r.message); return; }
+          if(pin){
+            r.profile.pin = hashPin(pin, r.profile.salt);
+            saveAccount();
+          }
+          hideGate(); bootProfile();
+          toast(TL("Bienvenue, " + esc(f.name) + ".","مرحبا، " + esc(f.name) + "."));
+        });
+      }
+      createBtn.addEventListener("click", doCreate);
+      document.getElementById("gate-pw").addEventListener("keydown", function(e){
+        if(e.key === "Enter") doCreate();
       });
-      var gotoLogin = document.getElementById("gate-login");
-      if(gotoLogin) gotoLogin.addEventListener("click", function(){ showGate("login"); });
+      document.getElementById("gate-login").addEventListener("click", function(){ showGate("login", attachTo); });
       var back = document.getElementById("gate-back");
       if(back) back.addEventListener("click", function(){ showGate("pick"); });
       nameInp.focus();
@@ -6481,13 +6649,23 @@ var qrcode = function() {
     /* mode "pick" */
     var list = account.profiles.map(function(p){
       var s = profileStats(p);
-      return "<button class='gate-profile' data-id='" + p.id + "' aria-label=\"" +
-             esc(TL(p.name + ", " + s.tracked + " wilayas suivies, " + s.xp + " XP" + (p.pin ? ", protégé par un code" : ""),
-                p.name + "، " + s.tracked + " ولاية، " + s.xp + " نقطة")) + "\">" +
+      /* Un profil d'avant les comptes n'a rien de cassé : il a juste
+         besoin d'être rattaché une fois. On le dit, on ne le cache pas,
+         et surtout on n'efface rien. */
+      var orphan = !cloudOf(p);
+      var ligne = orphan
+        ? TL("à rattacher à un compte","بحاجة إلى ربط بحساب")
+        : s.tracked + " wilayas · " + s.xp + " XP · " + s.streak + "🔥";
+      return "<button class='gate-profile" + (orphan ? " orphan" : "") + "' data-id='" + p.id + "' aria-label=\"" +
+             esc(TL(p.name + ", " + s.tracked + " wilayas suivies, " + s.xp + " XP"
+                    + (orphan ? ", à rattacher à un compte" : "")
+                    + (p.pin ? ", protégé par un code" : ""),
+                p.name + "، " + s.tracked + " ولاية، " + s.xp + " نقطة"
+                    + (orphan ? "، بحاجة إلى ربط بحساب" : ""))) + "\">" +
                "<span class='gate-profile-av' style='background:" + PROFILE_COLORS[p.color||0] + "'>" + profileInitial(p) + "</span>" +
                "<span class='gate-profile-body'>" +
                  "<b>" + esc(p.name) + "</b>" +
-                 "<span>" + s.tracked + " wilayas · " + s.xp + " XP · " + s.streak + "🔥</span>" +
+                 "<span>" + ligne + "</span>" +
                "</span>" +
                (p.pin ? "<span class='gate-profile-lock' aria-hidden='true'>" + LOCKSM_ICON + "</span>" : "") +
              "</button>";
@@ -6500,8 +6678,8 @@ var qrcode = function() {
         "<p class='gate-sub'>" + TS("Chaque personne garde sa propre mémoire, ses propres cœurs, sa propre série.",
                                     "لكل شخص ذاكرته وقلوبه وسلسلته الخاصة.") + "</p>" +
         "<div class='gate-list'>" + list + "</div>" +
-        "<button class='btn ghost' id='gate-new'>" + T("+ Nouveau profil","+ ملف جديد") + "</button>" +
-        (cloudAvailable() ? "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("Se connecter à un compte","الدخول إلى حساب") + "</button>" : "") +
+        "<button class='btn ghost' id='gate-new'>" + T("+ Nouveau compte","+ حساب جديد") + "</button>" +
+        "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("Se connecter à un compte","الدخول إلى حساب") + "</button>" +
       "</div>";
 
     Array.prototype.forEach.call(gate.querySelectorAll(".gate-profile"), function(b){
@@ -6509,6 +6687,10 @@ var qrcode = function() {
         var id = b.getAttribute("data-id");
         var p = account.profiles.filter(function(x){ return x.id === id; })[0];
         if(!p) return;
+        /* Rattachement d'abord : le compte est désormais obligatoire.
+           La progression de ce profil sera envoyée sur le compte, pas
+           remplacée par lui. */
+        if(!cloudOf(p)){ showGate("create", p); return; }
         if(p.pin){ showGate("pin", p); return; }
         account.activeId = p.id; saveAccount();
         hideGate(); bootProfile();
@@ -6801,9 +6983,12 @@ var qrcode = function() {
      n'importe quel appareil où l'on se connecte.
 
      Trois règles tiennent tout le reste :
-       1. L'application n'a jamais BESOIN du serveur. Sans réseau, sans
-          compte, hors ligne, dans l'APK : tout continue de marcher sur
-          la mémoire locale. Le compte n'ajoute que le transport.
+       1. Le serveur n'est exigé qu'UNE fois : à l'ouverture du compte
+          ou à la connexion. Ensuite la session reste sur l'appareil et
+          l'application travaille sur sa mémoire locale — hors ligne,
+          dans l'APK, en avion — la synchronisation reprenant d'elle
+          même au retour du réseau. Une panne du service ne doit jamais
+          empêcher de réviser.
        2. On ne remplace jamais, on FUSIONNE — avec exactement la même
           fonction (mergeInto) que les codes de transfert, déjà éprouvée :
           pour chaque wilaya, la meilleure des deux mémoires gagne.
@@ -7056,28 +7241,107 @@ var qrcode = function() {
       });
   }
 
+  /* Un compte vient d'être reconnu (connexion, inscription ou nouveau
+     mot de passe) : on lui donne un profil local — le sien s'il en a
+     déjà un sur cet appareil, un neuf sinon — puis on synchronise. */
+  function adoptSession(acc, token){
+    var existing = profileForEmail(acc.email);
+    var p;
+    if(existing){
+      account.activeId = existing.id;
+      existing.cloud = existing.cloud || {};
+      existing.cloud.email = acc.email;
+      existing.cloud.token = token;
+      existing.cloud.lastError = null;
+      saveAccount();
+      p = existing;
+    }else{
+      p = createProfile(acc.name, null, "bi");
+      attachCloud(p, acc, token);
+    }
+    cloudBooted[p.id] = true;
+    return cloudSync(p).then(function(r){
+      return {ok:true, profile:p, added:(r && r.added) || 0,
+              improved:(r && r.improved) || 0};
+    });
+  }
+
   /* Connexion sur un appareil neuf : le compte amène son propre profil
      local, puis récupère sa progression. */
   function cloudLoginNewProfile(email, password){
     return cloudCall("POST", "/auth/login", {email:email, password:password})
       .then(function(res){
         if(res.status !== 200) return {ok:false, message:cloudFailText(res)};
-        var acc = res.data.account;
-        var existing = profileForEmail(acc.email);
-        if(existing){
-          account.activeId = existing.id;
-          existing.cloud.token = res.data.token;
-          saveAccount();
-          cloudBooted[existing.id] = true;
-          return cloudSync(existing).then(function(){ return {ok:true, profile:existing}; });
-        }
-        var p = createProfile(acc.name, null, "bi");
-        attachCloud(p, acc, res.data.token);
-        cloudBooted[p.id] = true;
-        return cloudSync(p).then(function(r){
-          return {ok:true, profile:p, added:(r && r.added) || 0};
-        });
+        return adoptSession(res.data.account, res.data.token);
       });
+  }
+
+  /* Inscription depuis la porte d'entrée : on n'écrit RIEN en local
+     tant que le serveur n'a pas accepté, sinon un refus (adresse déjà
+     prise, mot de passe trop court) laisserait derrière lui un profil
+     fantôme que personne n'a demandé. */
+  function cloudRegisterNew(name, email, password, lang){
+    return cloudCall("POST", "/auth/register",
+                     {email:email, name:name, password:password})
+      .then(function(res){
+        if(res.status !== 201) return {ok:false, message:cloudFailText(res)};
+        var p = createProfile(name, null, lang || "bi");
+        attachCloud(p, res.data.account, res.data.token);
+        cloudBooted[p.id] = true;
+        return cloudSync(p).then(function(){ return {ok:true, profile:p}; });
+      });
+  }
+
+  /* ---------------- Mot de passe oublié ---------------- */
+
+  /* Le serveur répond 204 quoi qu'il arrive — adresse connue ou non.
+     L'interface doit donc dire exactement la même chose dans les deux
+     cas, sinon elle réintroduit elle-même la fuite que le serveur
+     s'applique à éviter. */
+  function cloudForgot(email){
+    return cloudCall("POST", "/auth/forgot", {email:email})
+      .then(function(res){
+        if(res.status === 204) return {ok:true};
+        return {ok:false, message:cloudFailText(res)};
+      });
+  }
+
+  function cloudResetWithToken(token, password){
+    return cloudCall("POST", "/auth/reset", {token:token, password:password})
+      .then(function(res){
+        if(res.status !== 200){
+          var code = res.data && res.data.error;
+          if(code === "bad_token"){
+            return {ok:false, message:TL(
+              "Ce lien n'est plus valable — il expire au bout d'une heure. Demandes-en un nouveau.",
+              "هذا الرابط لم يعد صالحا — ينتهي بعد ساعة. اطلب رابطا جديدا.")};
+          }
+          return {ok:false, message:cloudFailText(res)};
+        }
+        return adoptSession(res.data.account, res.data.token);
+      });
+  }
+
+  /* Ouvrir le lien alors que l'application tourne déjà ne change que le
+     fragment : le navigateur ne recharge pas la page, donc rien ne
+     relirait le jeton. C'est le cas de quelqu'un qui a l'onglet ouvert
+     et colle le lien reçu par courriel. */
+  if(typeof window !== "undefined"){
+    window.addEventListener("hashchange", function(){
+      var jeton = cloudPendingReset();
+      if(jeton) showGate("reset", jeton);
+    });
+  }
+
+  /* Le jeton arrive dans le FRAGMENT de l'adresse : il n'est donc
+     jamais parti vers un serveur, ni écrit dans un journal d'accès. On
+     l'efface de la barre d'adresse dès qu'on l'a lu, pour qu'il ne
+     reste pas dans l'historique du navigateur. */
+  function cloudPendingReset(){
+    var m = String(location.hash || "").match(/#reset=([A-Za-z0-9\-_]{16,128})/);
+    if(!m) return null;
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+    return m[1];
   }
 
   function cloudLogout(p){
@@ -7163,14 +7427,12 @@ var qrcode = function() {
     if(el) el.textContent = message || "";
   }
 
-  /* Le seul avertissement qui compte, et il doit être dit partout où
-     l'on crée un compte : ce mot de passe ne se récupère pas encore par
-     e-mail. Le cacher serait un piège — d'autant que la progression
-     locale, elle, ne dépend d'aucun compte. */
+  /* Ce que la personne a besoin de savoir au moment où elle choisit un
+     mot de passe : qu'un oubli se répare, et par où. */
   function cloudRecoveryNote(){
     return "<p class='gate-note'>" + TS(
-      "Garde ce mot de passe : il n'existe pas encore de récupération par e-mail. Ta progression sur cet appareil reste de toute façon intacte, avec ou sans compte.",
-      "احتفظ بكلمة السر: لا توجد بعد استعادة عبر البريد. يبقى تقدّمك على هذا الجهاز سليما، بحساب أو بدونه.") + "</p>";
+      "Si tu l'oublies, « Mot de passe oublié ? » t'enverra un lien sur cette adresse — vérifie donc qu'elle est juste.",
+      "إن نسيتها، سيرسل لك « نسيت كلمة السر؟ » رابطا إلى هذا البريد — تأكّد إذن من صحّته.") + "</p>";
   }
 
   function cloudFieldsHtml(prefix, opts){
@@ -7232,20 +7494,21 @@ var qrcode = function() {
     }
     var c = cloudOf(p);
 
+    /* On n'arrive ici qu'avec une session expirée : depuis que le compte
+       est obligatoire, un profil actif en a toujours un. La progression
+       de l'appareil continue de tourner pendant ce temps — c'est la
+       synchronisation qui est en pause, pas l'application. */
     if(!c || !c.token){
       openSheet(
         "<h2 id='sheet-title'>" + T("Compte en ligne","الحساب على الإنترنت") + "</h2>" +
+        "<p class='gate-err' style='margin:0 0 10px'>" +
+          TL("Ta session a expiré — reconnecte-toi pour resynchroniser.",
+             "انتهت جلستك — أعد الاتصال لاستئناف المزامنة.") + "</p>" +
         "<p class='sub'>" + TS(
-          "Relie « " + esc(p.name) + " » à un compte : ta progression se retrouvera sur ton téléphone, ta tablette, n'importe quel appareil où tu te connectes.",
-          "اربط « " + esc(p.name) + " » بحساب: ستجد تقدّمك على هاتفك ولوحك وأي جهاز تتصل منه.") + "</p>" +
-        (c && !c.token
-          ? "<p class='gate-err' style='margin:10px 0'>" + TL("Ta session a expiré — reconnecte-toi.","انتهت جلستك — أعد الاتصال.") + "</p>"
-          : "") +
-        "<button class='btn' id='cloud-go-register' style='margin-top:14px;'>" + T("Créer un compte","أنشئ حسابا") + "</button>" +
-        "<button class='btn ghost' id='cloud-go-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" +
-        "<p class='gate-note'>" + TS(
-          "Sans compte, l'application fonctionne exactement pareil — la progression reste sur cet appareil.",
-          "بدون حساب، يعمل التطبيق تماما كما هو — يبقى التقدّم على هذا الجهاز.") + "</p>" +
+          "Ta progression sur cet appareil est intacte et repartira sur le compte dès la reconnexion.",
+          "تقدّمك على هذا الجهاز سليم وسيُرسل إلى الحساب فور إعادة الاتصال.") + "</p>" +
+        "<button class='btn' id='cloud-go-login' style='margin-top:14px;'>" + T("Se reconnecter","أعد الاتصال") + "</button>" +
+        "<button class='btn ghost' id='cloud-go-register' style='margin-top:9px;'>" + T("Utiliser un autre compte","استخدم حسابا آخر") + "</button>" +
         "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Fermer","إغلاق") + "</button>"
       );
       document.getElementById("cloud-go-register").addEventListener("click", function(){ openCloudForm("register"); });
@@ -7363,6 +7626,7 @@ var qrcode = function() {
         cloudFieldsHtml("clog", {}) +
         "<p class='gate-err' id='clog-err' role='alert'></p>" +
         "<button class='btn' id='clog-go'>" + T("Se connecter","ادخل") + "</button>" +
+        "<button class='btn ghost' id='clog-forgot' style='margin-top:9px;'>" + T("Mot de passe oublié ?","نسيت كلمة السر؟") + "</button>" +
         "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>"
       );
       var logBtn = document.getElementById("clog-go");
@@ -7386,8 +7650,51 @@ var qrcode = function() {
       document.getElementById("clog-pw").addEventListener("keydown", function(e){
         if(e.key === "Enter") doLogin();
       });
+      document.getElementById("clog-forgot").addEventListener("click", function(){
+        openCloudForm("forgot");
+      });
       document.getElementById("sheet-close").addEventListener("click", openCloudSheet);
       document.getElementById("clog-email").focus();
+      return;
+    }
+
+    if(mode === "forgot"){
+      openSheet(
+        "<h2 id='sheet-title'>" + T("Mot de passe oublié","نسيت كلمة السر") + "</h2>" +
+        "<p class='sub'>" + TS("Donne ton adresse : on t'envoie un lien pour en choisir un nouveau.",
+                               "أدخل بريدك: سنرسل لك رابطا لاختيار كلمة سر جديدة.") + "</p>" +
+        "<label class='sr-only' for='cfor-email'>" + TL("Adresse e-mail","البريد الإلكتروني") + "</label>" +
+        "<input class='gate-input' id='cfor-email' type='email' inputmode='email' autocomplete='email' " +
+          "autocapitalize='off' spellcheck='false' placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
+        "<p class='gate-err' id='cfor-err' role='alert'></p>" +
+        "<p class='gate-note' id='cfor-done' style='display:none' role='status'></p>" +
+        "<button class='btn' id='cfor-go'>" + T("Envoyer le lien","أرسل الرابط") + "</button>" +
+        "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>"
+      );
+      var cforBtn = document.getElementById("cfor-go");
+      var cforEmail = document.getElementById("cfor-email");
+      var c0 = cloudOf(p);
+      if(c0 && c0.email) cforEmail.value = c0.email;
+      function doCloudForgot(){
+        var mail = cforEmail.value.trim();
+        cloudErrInto("cfor-err", "");
+        if(!mail){ return cloudErrInto("cfor-err", cloudErrorText("bad_email")); }
+        cloudBusy(cforBtn, true, TL("Envoi…","جارٍ الإرسال…"));
+        cloudForgot(mail).then(function(r){
+          cloudBusy(cforBtn, false);
+          if(!r.ok){ return cloudErrInto("cfor-err", r.message); }
+          var done = document.getElementById("cfor-done");
+          done.style.display = "";
+          done.innerHTML = TS(
+            "Si un compte existe avec cette adresse, le lien vient de partir. Il est valable une heure — pense à regarder dans les indésirables.",
+            "إن كان هناك حساب بهذا البريد، فقد أُرسل الرابط. صالح لمدة ساعة — تحقّق من البريد غير المرغوب فيه.");
+          cforBtn.disabled = true;
+        });
+      }
+      cforBtn.addEventListener("click", doCloudForgot);
+      cforEmail.addEventListener("keydown", function(e){ if(e.key === "Enter") doCloudForgot(); });
+      document.getElementById("sheet-close").addEventListener("click", openCloudSheet);
+      cforEmail.focus();
       return;
     }
 
@@ -7830,11 +8137,21 @@ var qrcode = function() {
   buildLedger();
   initSyncPanel();
 
+  /* Un lien de réinitialisation reçu par courriel passe avant tout le
+     reste : la personne est bloquée dehors, c'est la seule chose qui
+     l'intéresse en ouvrant l'application. */
+  var pendingReset = cloudPendingReset();
   var startProfile = activeProfile();
-  if(!account.profiles.length){
+  if(pendingReset){
+    showGate("reset", pendingReset);
+  }else if(!account.profiles.length){
     showGate("create");
   }else if(!startProfile){
     showGate("pick");
+  }else if(!cloudOf(startProfile)){
+    /* Profil d'avant les comptes : le rattachement passe avant l'entrée.
+       Sa progression part sur le compte, elle n'est pas remplacée. */
+    showGate("create", startProfile);
   }else if(startProfile.pin){
     showGate("pin", startProfile);
   }else{

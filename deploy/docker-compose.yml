@@ -41,6 +41,23 @@ services:
     restart: unless-stopped
     volumes:
       - wilaya-data:/data
+    # Adresse fixe : c'est elle, et elle seule, qui est autorisée à
+    # remettre du courrier au postfix de bigpc (mynetworks). Sans
+    # adresse fixe il faudrait ouvrir tout le sous-réseau Docker, donc
+    # aussi n'importe quel futur conteneur qui atterrirait dessus.
+    networks:
+      default:
+        ipv4_address: 172.28.0.10
+    # « host-gateway » désigne bigpc vu depuis le conteneur : le postfix
+    # qui y tourne déjà relaie vers Gmail (voir DEPLOY.md). Aucun mot de
+    # passe à stocker ici — c'est tout l'intérêt de passer par lui.
+    extra_hosts:
+      - "hote-bigpc:host-gateway"
+    environment:
+      SMTP_HOST: hote-bigpc
+      SMTP_PORT: "25"
+      MAIL_FROM: "WilayaDZ <wilayadz@smnc.win>"
+      APP_URL: "https://wilayadz.smnc.win"
     # scrypt réserve ~16 Mio par mot de passe vérifié ; quelques requêtes
     # simultanées tiennent très largement dans 128 Mio.
     mem_limit: 128m
@@ -54,6 +71,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+networks:
+  # Sous-réseau figé pour que l'adresse de wilaya-api ne bouge jamais :
+  # elle est inscrite dans le mynetworks du postfix de bigpc, et un
+  # changement silencieux couperait l'envoi des courriels.
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
 
 volumes:
   # La base des comptes. C'est la SEULE donnée de tout ce déploiement qui

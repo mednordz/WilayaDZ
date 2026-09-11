@@ -9,12 +9,18 @@ fonctions : ce qui est verifie, c'est ce qu'un appareil verra.
     python3 tests/test_api.py
 """
 
+import email as emaillib
+import hashlib
 import json
 import os
+import re
 import socket
+import socketserver
+import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -39,6 +45,51 @@ def free_port():
     port = s.getsockname()[1]
     s.close()
     return port
+
+
+class MailSink(socketserver.ThreadingTCPServer):
+    """
+    Un serveur SMTP jetable, juste assez complet pour que smtplib lui
+    parle. Sans lui on ne saurait pas si l'envoi lui-meme fonctionne —
+    seulement que le service croit l'avoir tente.
+    """
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def __init__(self, port):
+        self.messages = []
+        socketserver.ThreadingTCPServer.__init__(self, ("127.0.0.1", port),
+                                                 MailSink.Session)
+
+    class Session(socketserver.StreamRequestHandler):
+        def handle(self):
+            self.wfile.write(b"220 sink\r\n")
+            body, in_data = [], False
+            while True:
+                line = self.rfile.readline()
+                if not line:
+                    return
+                if in_data:
+                    if line in (b".\r\n", b".\n"):
+                        in_data = False
+                        self.server.messages.append(b"".join(body).decode("utf-8", "replace"))
+                        self.wfile.write(b"250 ok\r\n")
+                        continue
+                    body.append(line)
+                    continue
+                cmd = line.strip().upper()
+                if cmd.startswith(b"EHLO") or cmd.startswith(b"HELO"):
+                    self.wfile.write(b"250 sink\r\n")
+                elif cmd.startswith(b"MAIL") or cmd.startswith(b"RCPT"):
+                    self.wfile.write(b"250 ok\r\n")
+                elif cmd.startswith(b"DATA"):
+                    in_data = True
+                    self.wfile.write(b"354 go\r\n")
+                elif cmd.startswith(b"QUIT"):
+                    self.wfile.write(b"221 bye\r\n")
+                    return
+                else:
+                    self.wfile.write(b"250 ok\r\n")
 
 
 class Api:
@@ -76,13 +127,28 @@ def progress(**boxes):
 
 def main():
     port = free_port()
+    mail_port = free_port()
     tmp = tempfile.mkdtemp(prefix="wilayadz-test-")
     db = os.path.join(tmp, "test.sqlite3")
-    env = dict(os.environ, WILAYA_DB=db, PORT=str(port))
+
+    sink = MailSink(mail_port)
+    threading.Thread(target=sink.serve_forever, daemon=True).start()
+
+    env = dict(os.environ, WILAYA_DB=db, PORT=str(port),
+               SMTP_HOST="127.0.0.1", SMTP_PORT=str(mail_port),
+               APP_URL="https://exemple.test")
     proc = subprocess.Popen([sys.executable, os.path.join(ROOT, "server", "app.py")],
                             env=env, stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL)
     api = Api("http://127.0.0.1:%d/api" % port)
+
+    def wait_mail(before, seconds=10):
+        end = time.time() + seconds
+        while time.time() < end:
+            if len(sink.messages) > before:
+                return sink.messages[-1]
+            time.sleep(0.1)
+        return None
 
     try:
         for _ in range(50):
@@ -280,18 +346,111 @@ def main():
         check("la progression est intacte",
               code == 200 and res["version"] == 3 and res["data"]["p"]["16"][0] == 5, res)
 
-        print("\nSuppression du compte")
-        check("401 sans le mot de passe",
-              api.call("DELETE", "/account", {"password": "faux"}, token=token)[0] == 401)
-        check("204 avec le mot de passe",
-              api.call("DELETE", "/account", {"password": "nouveaumotdepasse"},
-                       token=token)[0] == 204)
-        check("le jeton ne vaut plus rien",
-              api.call("GET", "/me", token=token)[0] == 401)
-        check("on ne peut plus se connecter",
+        print("\nMot de passe oublie")
+        before = len(sink.messages)
+        code, _ = api.call("POST", "/auth/forgot", {"email": "personne@example.com"})
+        check("204 sur une adresse inconnue", code == 204, code)
+        check("aucun mail pour une adresse inconnue",
+              wait_mail(before, 2) is None)
+
+        before = len(sink.messages)
+        code, _ = api.call("POST", "/auth/forgot", {"email": "AMINE@example.com"})
+        check("204 sur une adresse connue", code == 204, code)
+        mail = wait_mail(before)
+        check("un mail est parti", mail is not None)
+
+        # Decoder le message comme le ferait un vrai client : le corps
+        # part en quoted-printable, qui coupe les longues lignes avec un
+        # « = » final. Chercher le lien dans le message brut donnerait un
+        # jeton tronque — ce qui n'arrive a personne dans sa boite mail,
+        # mais fausserait completement ce test.
+        parsed = emaillib.message_from_string(mail or "")
+        textes = []
+        for part in parsed.walk():
+            if part.get_content_maintype() == "text":
+                charge = part.get_payload(decode=True)
+                if charge:
+                    textes.append(charge.decode(part.get_content_charset() or "utf-8",
+                                                "replace"))
+        lisible = "\n".join(textes)
+        check("le mail a bien deux parties (texte et HTML)", len(textes) == 2, len(textes))
+
+        found = re.search(r"https://exemple\.test/#reset=([A-Za-z0-9_-]+)", lisible)
+        check("le mail contient un lien de reinitialisation", found is not None)
+        check("le lien porte un jeton entier",
+              found is not None and len(found.group(1)) >= 40,
+              found.group(1) if found else None)
+        check("le mail est ecrit dans les deux langues",
+              "nouveau mot de passe" in lisible and "كلمة سر جديدة" in lisible)
+        check("le sujet est bilingue",
+              "WilayaDZ" in (parsed["Subject"] or "")
+              and "كلمة" in (emaillib.header.make_header(
+                  emaillib.header.decode_header(parsed["Subject"] or "")).__str__()))
+        reset_token = found.group(1) if found else "x" * 43
+
+        check("400 sur un jeton fantaisiste",
+              api.call("POST", "/auth/reset",
+                       {"token": "pas!un!jeton", "password": "unautremotdepasse"})[0] == 400)
+        check("400 sur un jeton inconnu",
+              api.call("POST", "/auth/reset",
+                       {"token": "z" * 43, "password": "unautremotdepasse"})[0] == 400)
+        check("400 si le nouveau mot de passe est trop court",
+              api.call("POST", "/auth/reset",
+                       {"token": reset_token, "password": "court"})[0] == 400)
+
+        # Un jeton perime doit etre refuse comme un inconnu. On l'ecrit
+        # directement dans la base : attendre une heure n'est pas un test.
+        raw_old = "o" * 43
+        conn = sqlite3.connect(db)
+        acc_id = conn.execute("SELECT id FROM accounts WHERE email = ?",
+                              ("amine@example.com",)).fetchone()[0]
+        conn.execute("INSERT INTO resets (token_hash, account_id, created, expires)"
+                     " VALUES (?,?,?,?)",
+                     (hashlib.sha256(raw_old.encode("ascii")).digest(), acc_id,
+                      int(time.time()) - 7200, int(time.time()) - 3600))
+        conn.commit(); conn.close()
+        check("400 sur un jeton perime",
+              api.call("POST", "/auth/reset",
+                       {"token": raw_old, "password": "unautremotdepasse"})[0] == 400)
+
+        code, res = api.call("POST", "/auth/reset",
+                             {"token": reset_token, "password": "motdepasseapresoubli"})
+        check("200 avec un jeton valide", code == 200, (code, res))
+        check("une session est ouverte directement", bool(res and res.get("token")))
+        after_reset = res["token"] if res else ""
+
+        check("le jeton de reinitialisation ne resservira pas",
+              api.call("POST", "/auth/reset",
+                       {"token": reset_token, "password": "encoreunautre"})[0] == 400)
+        check("l'ancien mot de passe ne marche plus",
               api.call("POST", "/auth/login",
                        {"email": "amine@example.com",
                         "password": "nouveaumotdepasse"})[0] == 401)
+        check("le nouveau mot de passe marche",
+              api.call("POST", "/auth/login",
+                       {"email": "amine@example.com",
+                        "password": "motdepasseapresoubli"})[0] == 200)
+        check("tous les appareils ont ete deconnectes",
+              api.call("GET", "/me", token=token)[0] == 401)
+        check("la session ouverte par la reinitialisation est valable",
+              api.call("GET", "/me", token=after_reset)[0] == 200)
+
+        code, res = api.call("GET", "/sync", token=after_reset)
+        check("la progression a survecu a la reinitialisation",
+              code == 200 and res["data"]["p"]["16"][0] == 5, res)
+
+        print("\nSuppression du compte")
+        check("401 sans le mot de passe",
+              api.call("DELETE", "/account", {"password": "faux"}, token=after_reset)[0] == 401)
+        check("204 avec le mot de passe",
+              api.call("DELETE", "/account", {"password": "motdepasseapresoubli"},
+                       token=after_reset)[0] == 204)
+        check("le jeton ne vaut plus rien",
+              api.call("GET", "/me", token=after_reset)[0] == 401)
+        check("on ne peut plus se connecter",
+              api.call("POST", "/auth/login",
+                       {"email": "amine@example.com",
+                        "password": "motdepasseapresoubli"})[0] == 401)
         check("l'adresse est de nouveau libre",
               api.call("POST", "/auth/register",
                        {"email": "amine@example.com", "name": "Amine",
@@ -308,6 +467,7 @@ def main():
               api.call("GET", "/health")[1] == {"ok": True})
 
     finally:
+        sink.shutdown()
         proc.terminate()
         try:
             proc.wait(timeout=5)

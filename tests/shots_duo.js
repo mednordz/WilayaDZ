@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
@@ -9,12 +10,7 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
   page.on('pageerror', e => errs.push('PAGEERR: ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !/net::/.test(m.text())) errs.push('CONSOLE: ' + m.text()); });
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', 'Yasmine');
-  await page.locator('.lang-opt[data-lang="fr"]').click();
-  await page.locator('#gate-create').click();
+  await seedSignedIn(page, URL, { name: 'Yasmine', lang: 'fr', data: { keyDone: true } });
   await page.waitForTimeout(500);
 
   await page.screenshot({ path: '/tmp/wilayas/duo_path.png' });
@@ -25,12 +21,9 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
   // Complete "La Clé" quickly? Skip -> start unit 1 lesson directly isn't possible until key done.
   // Instead force keyDone via localStorage to reach the path with colored units, then start a lesson.
-  await page.evaluate(() => {
-    const acc = JSON.parse(localStorage.getItem('wilaya-account-v1'));
-    acc.profiles[0].data.keyDone = true;
-    localStorage.setItem('wilaya-account-v1', JSON.stringify(acc));
-  });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  // keyDone part avec la graine (voir seed_profile.js) : l'injecter
+  // apres coup puis recharger ne tiendrait pas, la page reecrit sa
+  // memoire vive en se dechargeant.
   await page.waitForTimeout(500);
   await page.screenshot({ path: '/tmp/wilayas/duo_path_units.png' });
 

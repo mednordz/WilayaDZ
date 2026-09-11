@@ -8,10 +8,12 @@ tout tient dans un fichier lisible d'un bout a l'autre, ce qui est le
 seul moyen honnete d'auditer soi-meme du code qui manipule des mots de
 passe.
 
-Ce service est un COMPLEMENT, jamais un prerequis : l'application
-continue de fonctionner entierement hors ligne (PWA installee, APK
-Android, file://). Le compte en ligne ne fait qu'une chose de plus —
-porter la progression d'un appareil a l'autre sans code a recopier.
+Le compte est obligatoire pour se servir de l'application : c'est lui
+qui porte la progression d'un appareil a l'autre. Il n'est exige qu'UNE
+fois, a l'ouverture du compte ou a la connexion — ensuite la session
+reste sur l'appareil et tout continue de fonctionner hors ligne (PWA
+installee, APK Android), la synchronisation reprenant au retour du
+reseau.
 
 Il ne s'expose jamais directement : nginx (conteneur wilaya-web) est
 seul a pouvoir l'atteindre, lui-meme derriere le tunnel Cloudflare.
@@ -25,9 +27,11 @@ import json
 import os
 import re
 import secrets
+import smtplib
 import sqlite3
 import threading
 import time
+from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DB_PATH = os.environ.get("WILAYA_DB", "/data/wilayadz.sqlite3")
@@ -69,7 +73,20 @@ MAX_NAME = 18
 # accent suffit) ne fasse lever token_fingerprint.
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
 
-SCHEMA_VERSION = 1
+# Une heure pour aller relever ses mails et cliquer : assez long pour ne
+# pas etre une course, assez court pour qu'un lien oublie dans une boite
+# ne serve a personne des semaines plus tard.
+RESET_TTL = 3600
+
+# Envoi des courriels. Sans SMTP_HOST le service n'envoie rien et se
+# contente de journaliser le lien : c'est ce qui permet d'eprouver tout
+# le mecanisme (jetons, expiration, ecrans) sans serveur de mail.
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "25"))
+MAIL_FROM = os.environ.get("MAIL_FROM", "WilayaDZ <wilayadz@bigpc>")
+APP_URL = os.environ.get("APP_URL", "https://wilayadz.smnc.win")
+
+SCHEMA_VERSION = 2
 
 
 # --------------------------------------------------------------------
@@ -127,7 +144,23 @@ class Store:
                   ON sessions(account_id);
                 """
             )
-            self._db.execute("PRAGMA user_version=%d" % SCHEMA_VERSION)
+            self._db.execute("PRAGMA user_version=1")
+            self._db.commit()
+        if version < 2:
+            self._db.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS resets (
+                  token_hash BLOB    PRIMARY KEY,
+                  account_id INTEGER NOT NULL
+                             REFERENCES accounts(id) ON DELETE CASCADE,
+                  created    INTEGER NOT NULL,
+                  expires    INTEGER NOT NULL,
+                  used       INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE INDEX IF NOT EXISTS resets_account ON resets(account_id);
+                """
+            )
+            self._db.execute("PRAGMA user_version=2")
             self._db.commit()
 
     def query(self, sql, args=()):
@@ -147,6 +180,9 @@ class Store:
     def prune_sessions(self):
         self.write("DELETE FROM sessions WHERE last_seen < ?",
                    (int(time.time()) - SESSION_TTL,))
+
+    def prune_resets(self):
+        self.write("DELETE FROM resets WHERE expires < ?", (int(time.time()),))
 
 
 # --------------------------------------------------------------------
@@ -174,6 +210,89 @@ def new_token():
 
 def token_fingerprint(raw):
     return hashlib.sha256(raw.encode("ascii")).digest()
+
+
+# --------------------------------------------------------------------
+# Courriel
+# --------------------------------------------------------------------
+
+def reset_mail(name, link):
+    """
+    Le message part en francais ET en arabe, comme tout le reste de
+    l'application : on ne sait pas laquelle des deux langues la personne
+    lit, et ce message arrive justement au moment ou elle est bloquee.
+
+    Texte brut d'abord, HTML ensuite : un client qui n'affiche que le
+    premier doit rester parfaitement utilisable — le lien y figure en
+    clair, jamais cache derriere un libelle.
+    """
+    msg = EmailMessage()
+    msg["Subject"] = "WilayaDZ — nouveau mot de passe / كلمة سر جديدة"
+    msg["From"] = MAIL_FROM
+    msg.set_content(
+        "Bonjour %s,\n\n"
+        "Tu as demande un nouveau mot de passe pour ton compte WilayaDZ.\n"
+        "Ouvre ce lien (valable une heure) :\n\n%s\n\n"
+        "Si tu n'as rien demande, ignore ce message : rien n'a change, "
+        "et ta progression reste intacte.\n\n"
+        "— WilayaDZ\n\n"
+        "----------------------------------------\n\n"
+        "مرحبا %s،\n\n"
+        "لقد طلبت كلمة سر جديدة لحسابك في WilayaDZ.\n"
+        "افتح هذا الرابط (صالح لمدة ساعة):\n\n%s\n\n"
+        "إن لم تطلب شيئا، تجاهل هذه الرسالة: لم يتغير شيء، وتقدّمك سليم.\n\n"
+        "— WilayaDZ\n" % (name, link, name, link)
+    )
+    # Le lien est place tel quel dans un href : il ne contient que des
+    # caracteres de token_urlsafe et l'URL du site, jamais de saisie
+    # d'utilisateur. Le prenom, lui, est echappe.
+    safe_name = (name.replace("&", "&amp;").replace("<", "&lt;")
+                     .replace(">", "&gt;").replace('"', "&quot;"))
+    msg.add_alternative(
+        "<div style=\"font-family:system-ui,sans-serif;max-width:520px;"
+        "margin:0 auto;color:#2A2118\">"
+        "<p style=\"font-size:1.25rem;font-weight:700;color:#9C5015\">WilayaDZ</p>"
+        "<p>Bonjour %s,</p>"
+        "<p>Tu as demandé un nouveau mot de passe. Ce lien est valable "
+        "<b>une heure</b> :</p>"
+        "<p><a href=\"%s\" style=\"background:#9C5015;color:#F2E4CE;"
+        "padding:12px 18px;border-radius:10px;text-decoration:none;"
+        "display:inline-block;font-weight:700\">Choisir un mot de passe</a></p>"
+        "<p style=\"font-size:.85rem;color:#6A5A44\">Si tu n'as rien demandé, "
+        "ignore ce message : rien n'a changé et ta progression reste intacte.</p>"
+        "<hr style=\"border:none;border-top:1px solid #E3D5BE\">"
+        "<div dir=\"rtl\" lang=\"ar\">"
+        "<p>مرحبا %s،</p>"
+        "<p>لقد طلبت كلمة سر جديدة. هذا الرابط صالح <b>لمدة ساعة</b>:</p>"
+        "<p><a href=\"%s\" style=\"background:#9C5015;color:#F2E4CE;"
+        "padding:12px 18px;border-radius:10px;text-decoration:none;"
+        "display:inline-block;font-weight:700\">اختر كلمة سر</a></p>"
+        "<p style=\"font-size:.85rem;color:#6A5A44\">إن لم تطلب شيئا، تجاهل هذه "
+        "الرسالة: لم يتغير شيء وتقدّمك سليم.</p>"
+        "</div></div>" % (safe_name, link, safe_name, link),
+        subtype="html")
+    return msg
+
+
+def send_mail(to_address, msg):
+    """
+    Renvoie True si le message est parti. Un echec d'envoi ne doit
+    JAMAIS remonter au client : sinon la reponse de « mot de passe
+    oublie » differerait selon que l'adresse existe ou non, et cette
+    porte deviendrait un moyen de savoir qui a un compte ici.
+    """
+    msg["To"] = to_address
+    if not SMTP_HOST:
+        return False
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as smtp:
+            smtp.send_message(msg)
+        print("mail de reinitialisation envoye", flush=True)
+        return True
+    except Exception as exc:
+        # Ni l'adresse ni le contenu dans les journaux.
+        print("echec d'envoi du mail : %s" % type(exc).__name__, flush=True)
+        return False
 
 
 # --------------------------------------------------------------------
@@ -453,6 +572,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._logout()
         if path == "/auth/password":
             return self._change_password(body)
+        if path == "/auth/forgot":
+            return self._forgot(body)
+        if path == "/auth/reset":
+            return self._reset(body)
         self._fail(404, "not_found")
 
     def _do_put(self):
@@ -582,6 +705,84 @@ class Handler(BaseHTTPRequestHandler):
                     (row["id"], keep))
         self._send(204)
 
+    def _forgot(self, body):
+        """
+        Repond TOUJOURS 204, quoi qu'il arrive — adresse inconnue, mal
+        formee, quota atteint, serveur de mail en panne. Une reponse qui
+        differerait ferait de cette porte un moyen de savoir qui a un
+        compte ici, ce que personne n'a a apprendre en la poussant.
+        """
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        if not limiter.allow("forgot:" + self._client(), 5, 3600):
+            return self._send(204)
+
+        email = clean_email(body.get("email"))
+        row = store.one("SELECT * FROM accounts WHERE email = ?",
+                        (email,)) if email else None
+        if row is None:
+            return self._send(204)
+        # Et personne ne doit pouvoir faire pleuvoir des mails sur la
+        # boite de quelqu'un d'autre en rejouant le formulaire.
+        if not limiter.allow("forgot-acc:%d" % row["id"], 3, 3600):
+            return self._send(204)
+
+        store.prune_resets()
+        raw, digest = new_token()
+        now = int(time.time())
+        store.write(
+            "INSERT INTO resets (token_hash, account_id, created, expires)"
+            " VALUES (?,?,?,?)", (digest, row["id"], now, now + RESET_TTL))
+
+        # Le jeton voyage dans le FRAGMENT de l'URL : un fragment n'est
+        # jamais envoye au serveur, donc il ne se retrouve ni dans les
+        # journaux d'acces, ni dans ceux d'un intermediaire.
+        link = APP_URL + "/#reset=" + raw
+        if not send_mail(row["email"], reset_mail(row["name"], link)):
+            if not SMTP_HOST:
+                print("mail non configure — lien : %s" % link, flush=True)
+        self._send(204)
+
+    def _reset(self, body):
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        if not limiter.allow("reset:" + self._client(), 10, 3600):
+            return self._fail(429, "too_many")
+
+        raw = str(body.get("token") or "")
+        if not TOKEN_RE.match(raw):
+            return self._fail(400, "bad_token")
+        password = str(body.get("password") or "")
+        if len(password) < MIN_PASSWORD:
+            return self._fail(400, "weak_password")
+
+        row = store.one(
+            "SELECT token_hash, account_id FROM resets"
+            " WHERE token_hash = ? AND used = 0 AND expires > ?",
+            (token_fingerprint(raw), int(time.time())))
+        if row is None:
+            return self._fail(400, "bad_token")
+
+        salt = secrets.token_bytes(16)
+        store.write("UPDATE accounts SET pw_salt = ?, pw_hash = ? WHERE id = ?",
+                    (salt, hash_password(password, salt), row["account_id"]))
+        store.write("UPDATE resets SET used = 1 WHERE token_hash = ?",
+                    (row["token_hash"],))
+        # On demande un nouveau mot de passe quand on craint que
+        # quelqu'un d'autre soit entre : toutes les autres demandes en
+        # cours et tous les appareils connectes doivent donc tomber.
+        store.write("DELETE FROM resets WHERE account_id = ? AND used = 0",
+                    (row["account_id"],))
+        store.write("DELETE FROM sessions WHERE account_id = ?",
+                    (row["account_id"],))
+
+        # La personne vient de prouver qu'elle releve ces mails : lui
+        # redemander de se connecter juste apres n'apprendrait rien a
+        # personne et la renverrait sur un formulaire de plus.
+        acc = store.one("SELECT * FROM accounts WHERE id = ?", (row["account_id"],))
+        token = self._open_session(acc["id"])
+        self._send(200, {"token": token, "account": self._public(acc)})
+
     def _delete_account(self, body):
         if not isinstance(body, dict):
             return self._fail(400, "bad_request")
@@ -644,6 +845,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     store.prune_sessions()
+    store.prune_resets()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     server.daemon_threads = True
     print("wilayadz-api : ecoute sur le port %d, base %s" % (PORT, DB_PATH),

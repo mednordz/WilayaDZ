@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const fs = require('fs');
 const html = fs.readFileSync('/tmp/wilayas/wilaya-v6.html', 'utf8');
 const DATA = eval(html.match(/var DATA = (\[[\s\S]*?\]);/)[1].replace(/(\w+):/g, '"$1":').replace(/"(\-?\d)/g, '$1'));
@@ -12,14 +13,10 @@ const pad = n => String(n).padStart(2, '0');
   p.on('pageerror', e => errs.push(e.message));
   p.on('console', m => { if (m.type() === 'error' && !/net::/.test(m.text())) errs.push(m.text()); });
 
-  await p.goto('file:///tmp/wilayas/wilaya-v6.html'); await p.waitForTimeout(400);
-  await p.fill('#gate-name', 'Test'); await p.locator('.lang-opt[data-lang="bi"]').click(); await p.waitForTimeout(150); await p.locator('#gate-create').click(); await p.waitForTimeout(400);
-  await p.evaluate(() => {
-    const a = JSON.parse(localStorage.getItem('wilaya-account-v1'));
-    a.profiles[0].data.keyDone = true;
-    localStorage.setItem('wilaya-account-v1', JSON.stringify(a));
-  });
-  await p.reload(); await p.waitForTimeout(500);
+  // keyDone part avec la graine : l'injecter apres coup puis recharger
+  // ne marcherait pas, la page reecrit sa memoire vive en se dechargeant.
+  await seedSignedIn(p, 'file:///tmp/wilayas/wilaya-v6.html',
+                     { name: 'Test', lang: 'bi', settle: 500, data: { keyDone: true } });
 
   const seen = {}; let lessons = 0, q = 0;
   for (let L = 0; L < 6; L++) {

@@ -3,8 +3,9 @@
  *
  * audit_a11y.js couvre l'application en file:// ; ces ecrans-la n'y
  * apparaissent jamais, puisqu'ils n'existent qu'avec une origine http.
- * Ils sont pourtant les seuls a comporter de vrais formulaires — c'est
- * exactement ce qu'un lecteur d'ecran a le plus de mal a traverser.
+ * Ce sont pourtant les seuls a comporter de vrais formulaires — et,
+ * depuis que le compte est obligatoire, les premiers que voit qui que
+ * ce soit en ouvrant l'application.
  *
  *   python3 tests/serve_test.py 8390 &
  *   node tests/audit_a11y_cloud.js
@@ -14,7 +15,6 @@ const fs = require('fs');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8390/';
 const axeSrc = fs.readFileSync('/tmp/wilayas/node_modules/axe-core/axe.min.js', 'utf8');
-const EMAIL = 'a11y-' + Date.now() + '@example.com';
 const PASSWORD = 'motdepassesolide';
 const T = 8000;
 
@@ -36,30 +36,54 @@ async function runAxe(page, label) {
   });
 }
 
+const attendre = async (fn, ms) => {
+  const fin = Date.now() + (ms || 20000);
+  for (;;) {
+    try { if (await fn()) return true; } catch (e) { /* page occupée */ }
+    if (Date.now() > fin) return false;
+    await new Promise(r => setTimeout(r, 250));
+  }
+};
+
 (async () => {
   const browser = await chromium.launch();
   const errs = [];
 
   for (const lang of ['fr', 'ar']) {
+    const email = 'a11y-' + lang + '-' + Date.now() + '@example.com';
     const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => errs.push(lang + ': ' + e.message));
 
+    // --- Les trois portes que l'on peut rencontrer sans compte ---
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
+    await page.locator('.lang-opt[data-lang="' + lang + '"]').click({ timeout: T });
+    await page.waitForTimeout(250);
+    await runAxe(page, 'Porte — creation de compte (' + lang + ')');
 
-    // Porte d'entree : connexion sur un appareil neuf.
     await page.locator('#gate-login').click({ timeout: T });
     await page.waitForTimeout(350);
-    await runAxe(page, 'Porte d entree — connexion (' + lang + ')');
+    await runAxe(page, 'Porte — connexion (' + lang + ')');
 
-    // Retour, puis creation d'un profil local pour atteindre les feuilles.
-    await page.locator('#gate-back').click({ timeout: T });
-    await page.waitForTimeout(300);
+    await page.locator('#glog-forgot').click({ timeout: T });
+    await page.waitForTimeout(350);
+    await runAxe(page, 'Porte — mot de passe oublie (' + lang + ')');
+
+    // L'ecran atteint depuis le lien recu par courriel.
+    await page.goto(BASE + '#reset=' + 'z'.repeat(43), { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(700);
+    await runAxe(page, 'Porte — nouveau mot de passe (' + lang + ')');
+
+    // --- Entrer pour de bon, puis auditer les feuilles ---
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(600);
     await page.fill('#gate-name', 'Amine', { timeout: T });
+    await page.fill('#gate-email', email, { timeout: T });
+    await page.fill('#gate-pw', PASSWORD, { timeout: T });
     await page.locator('.lang-opt[data-lang="' + lang + '"]').click({ timeout: T });
     await page.locator('#gate-create').click({ timeout: T });
-    await page.waitForTimeout(600);
+    await attendre(async () => await page.locator('#profile-btn').isVisible());
 
     await page.locator('#profile-btn').click({ timeout: T });
     await page.waitForTimeout(400);
@@ -67,35 +91,17 @@ async function runAxe(page, label) {
 
     await page.locator('#prof-cloud').click({ timeout: T });
     await page.waitForTimeout(400);
-    await runAxe(page, 'Compte — non relie (' + lang + ')');
+    await runAxe(page, 'Compte — relie (' + lang + ')');
 
-    await page.locator('#cloud-go-register').click({ timeout: T });
+    await page.locator('#cloud-pw').click({ timeout: T });
     await page.waitForTimeout(400);
-    await runAxe(page, 'Compte — creation (' + lang + ')');
+    await runAxe(page, 'Compte — changement de mot de passe (' + lang + ')');
 
-    if (lang === 'fr') {
-      await page.fill('#creg-email', EMAIL, { timeout: T });
-      await page.fill('#creg-pw', PASSWORD, { timeout: T });
-      await page.locator('#creg-go').click({ timeout: T });
-      await page.waitForTimeout(2500);
-      await runAxe(page, 'Compte — relie (fr)');
-
-      await page.locator('#cloud-pw').click({ timeout: T });
-      await page.waitForTimeout(400);
-      await runAxe(page, 'Compte — changement de mot de passe (fr)');
-
-      await page.locator('#sheet-close').click({ timeout: T });
-      await page.waitForTimeout(400);
-      await page.locator('#cloud-del').click({ timeout: T });
-      await page.waitForTimeout(400);
-      await runAxe(page, 'Compte — suppression (fr)');
-    } else {
-      await page.locator('#sheet-close').click({ timeout: T });
-      await page.waitForTimeout(300);
-      await page.locator('#cloud-go-login').click({ timeout: T });
-      await page.waitForTimeout(400);
-      await runAxe(page, 'Compte — connexion (ar)');
-    }
+    await page.locator('#sheet-close').click({ timeout: T });
+    await page.waitForTimeout(400);
+    await page.locator('#cloud-del').click({ timeout: T });
+    await page.waitForTimeout(400);
+    await runAxe(page, 'Compte — suppression (' + lang + ')');
 
     await ctx.close();
   }

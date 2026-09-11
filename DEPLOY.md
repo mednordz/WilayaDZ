@@ -32,15 +32,16 @@ requêtes déjà filtrées par nginx, lui-même derrière le tunnel.
 >   tar czf /out/wilaya-data.tgz -C /d .
 > ```
 
-⚠️ **Cette session Claude Code tourne dans un conteneur cloud isolé, sans
-accès réseau à `bigpc`** (pas de SSH, pas de Tailscale) : aucune commande
-de cette page n'a pu être exécutée depuis cet environnement. Deux étapes
-sont **à faire une seule fois, à la main, sur `bigpc`** (0. et 2. — elles
-touchent l'auth GitHub et la config partagée du tunnel, utilisée aussi par
-`wa.smnc.win`) ; ensuite, l'étape 1 (construire/relancer le conteneur à
-chaque changement) est automatisée par `.github/workflows/deploy.yml` sur
-un runner GitHub Actions self-hosted, et Claude Code peut la déclencher
-lui-même (`workflow_dispatch`) sans plus rien te redemander.
+Les étapes 0 et 2 ne se font qu'**une seule fois**, à la main sur `bigpc` :
+elles touchent l'auth GitHub et la configuration du tunnel, partagée avec
+`wa.smnc.win`. Elles sont faites. L'étape 1 — reconstruire et relancer les
+conteneurs à chaque changement — est automatisée par
+`.github/workflows/deploy.yml` sur un runner GitHub Actions self-hosted,
+déclenchable aussi à la main (`workflow_dispatch`).
+
+Une troisième chose se règle sur `bigpc` et non dans ce dépôt : l'envoi
+des courriels, qui passe par le postfix de la machine (voir « Mot de passe
+oublié » plus bas).
 
 ## 0. Mise en place unique du runner (à faire une fois, sur bigpc)
 
@@ -167,8 +168,18 @@ vérifier que la progression est bien là.
 
 Un compte (adresse e-mail + mot de passe) rattache un profil au serveur :
 la même progression se retrouve sur n'importe quel appareil où l'on se
-connecte. **L'application n'en a jamais besoin** — sans réseau, sans
-compte, dans l'APK, tout continue de fonctionner sur la mémoire locale.
+connecte.
+
+**Le compte est obligatoire** pour se servir de l'application — mais il
+n'est exigé qu'**une seule fois**, à l'inscription ou à la connexion.
+Ensuite la session reste sur l'appareil et tout fonctionne hors ligne
+(PWA installée, APK, avion), la synchronisation reprenant d'elle-même au
+retour du réseau. Une panne du service de comptes n'empêche donc jamais
+de réviser — c'est vérifié à chaque déploiement.
+
+Un profil créé **avant** les comptes n'est pas perdu : la porte d'entrée
+le signale « à rattacher », et l'inscription (ou la connexion) envoie sa
+progression sur le compte au lieu de la remplacer.
 
 Routes, toutes sous `/api` :
 
@@ -178,10 +189,12 @@ Routes, toutes sous `/api` :
 | `POST /auth/login` | ouvre une session sur cet appareil |
 | `POST /auth/logout` | ferme **cette** session seulement |
 | `POST /auth/password` | change le mot de passe et ferme les autres appareils |
+| `POST /auth/forgot` | envoie un lien de réinitialisation — **toujours 204** |
+| `POST /auth/reset` | pose un nouveau mot de passe et ouvre une session |
 | `GET /me` | le compte courant |
 | `GET /sync` · `PUT /sync` | lire / écrire la progression |
 | `DELETE /account` | supprime le compte (mot de passe exigé) |
-| `GET /health` | sonde du healthcheck |
+| `GET /health` | sonde du healthcheck (répond aussi en `HEAD`) |
 
 Ce qui protège quoi :
 
@@ -204,18 +217,62 @@ Ce qui protège quoi :
   fonction que les codes de transfert (`mergeInto`) — pour chaque wilaya,
   la meilleure des deux mémoires gagne.
 
-Ce qui n'existe pas encore, et que l'interface dit franchement :
-**la récupération de mot de passe par e-mail**. Un mot de passe perdu est
-un compte perdu — mais pas une progression perdue, puisqu'elle reste sur
-l'appareil.
+### Mot de passe oublié
+
+`POST /auth/forgot` répond **204 quoi qu'il arrive** : adresse inconnue,
+mal formée, quota atteint, serveur de mail en panne. Une réponse qui
+différerait ferait de cette porte un moyen de savoir qui a un compte
+ici. L'interface dit donc elle aussi exactement la même chose dans tous
+les cas — « si un compte existe avec cette adresse… ».
+
+Le jeton voyage dans le **fragment** de l'URL
+(`https://wilayadz.smnc.win/#reset=…`) : un fragment n'est jamais envoyé
+au serveur, donc il n'apparaît ni dans les journaux d'accès de nginx, ni
+dans ceux de Cloudflare. L'application l'efface de la barre d'adresse dès
+qu'elle l'a lu. Il vaut **une heure**, ne sert **qu'une fois**, et sa
+consommation déconnecte tous les appareils du compte — c'est le geste
+qu'on fait précisément quand on craint que quelqu'un d'autre soit entré.
+
+**Comment le courriel part.** `wilaya-api` remet le message au **postfix
+déjà installé sur bigpc**, qui relaie vers Gmail — le même chemin que les
+alertes de la machine. Aucun mot de passe n'est donc stocké dans ce
+déploiement.
+
+Deux choses doivent rester d'accord, sans quoi l'envoi s'arrête en
+silence :
+
+1. `deploy/docker-compose.yml` fige l'adresse du conteneur à
+   **`172.28.0.10`** (sous-réseau `172.28.0.0/16`) ;
+2. le `mynetworks` de `/etc/postfix/main.cf` sur bigpc autorise
+   **exactement cette adresse** :
+
+   ```
+   mynetworks = 127.0.0.0/8 … 10.10.10.25/32 172.28.0.10/32
+   ```
+
+   Posé le 2026-09-11 (sauvegarde `main.cf.bak-20260911-230757`,
+   `postfix check` OK, `systemctl reload postfix`). Une seule ligne
+   ajoutée — vérifiée par `diff` contre la sauvegarde.
+
+Si les courriels cessent de partir, regarder dans cet ordre :
+
+```bash
+docker logs wilaya-api --tail 30 | grep -i mail      # « echec d'envoi » ?
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' wilaya-api
+sudo postconf -h mynetworks                          # les deux doivent concorder
+sudo tail -20 /var/log/mail.log
+```
+
+Sans `SMTP_HOST`, le service n'envoie rien et se contente de journaliser
+le lien : c'est le mode de mise au point, jamais la production.
 
 Éprouver le service sans rien déployer :
 
 ```bash
-python3 tests/test_api.py              # 59 vérifications, service jetable
+python3 tests/test_api.py              # 88 vérifications, service jetable + faux SMTP
 python3 tests/serve_test.py 8390 &     # l'app + son API sur une même origine
-node tests/test_cloud_e2e.js           # deux « appareils » qui se synchronisent
-node tests/audit_a11y_cloud.js         # accessibilité des écrans de compte
+node tests/test_cloud_e2e.js           # 36 : deux appareils, migration, mot de passe oublié
+node tests/audit_a11y_cloud.js         # 16 écrans de compte audités
 ```
 
 ## Pourquoi ces choix

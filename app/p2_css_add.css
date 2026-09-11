@@ -319,6 +319,11 @@
   [dir="rtl"] .profile-btn.cloud-on::after,
   [dir="rtl"] .profile-btn.cloud-stale::after{ right:auto; left:-1px; }
 
+  /* Profil d'avant les comptes : signale, jamais barre ni grise —
+     sa progression est intacte, il lui manque juste un rattachement. */
+  .gate-profile.orphan{ border-style:dashed; border-color:var(--border-strong); }
+  .gate-profile.orphan .gate-profile-body span{ color:var(--accent-deep); }
+
   .cloud-row .gate-profile-body b{ color:var(--ink); }
   .cloud-row-icon{
     width:42px; height:42px; border-radius:13px; flex:none;

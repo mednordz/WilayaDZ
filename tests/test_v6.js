@@ -1,18 +1,10 @@
 const { chromium } = require('playwright');
+const { seedSignedIn, seedAccount, signedInProfile } = require('./seed_profile');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 const log = (...a) => console.log(...a);
 
 async function mk(page, name, lang) {
-  await page.goto(URL); await page.waitForTimeout(400);
-  if (await page.locator('#gate-name').count() === 0) {
-    await page.evaluate(() => localStorage.clear());
-    await page.reload(); await page.waitForTimeout(400);
-  }
-  await page.fill('#gate-name', name);
-  await page.locator(`.lang-opt[data-lang="${lang}"]`).click();
-  await page.waitForTimeout(200);
-  await page.locator('#gate-create').click();
-  await page.waitForTimeout(500);
+  await seedSignedIn(page, URL, { name: name, lang: lang, settle: 500 });
 }
 
 (async () => {
@@ -108,12 +100,18 @@ async function mk(page, name, lang) {
   await page.reload(); await page.waitForTimeout(500);
   log('après rechargement:', await page.evaluate(() => document.documentElement.getAttribute('data-lang')));
 
-  // deux profils, deux langues
-  await page.locator('#profile-btn').click(); await page.waitForTimeout(300);
-  await page.locator('#prof-new').click(); await page.waitForTimeout(300);
-  await page.fill('#gate-name', 'Yacine');
-  await page.locator('.lang-opt[data-lang="fr"]').click(); await page.waitForTimeout(200);
-  await page.locator('#gate-create').click(); await page.waitForTimeout(500);
+  // Deux profils, deux langues. On ne peut plus en creer un second hors
+  // ligne depuis que le compte est obligatoire : les deux sont semes
+  // d'un coup, puis on bascule comme le ferait l'utilisateur.
+  await seedAccount(page, URL, {
+    profiles: [
+      signedInProfile({ id: 'pseed1', name: 'Switch', lang: 'ar', email: 'switch@example.com' }),
+      signedInProfile({ id: 'pseed2', name: 'Yacine', lang: 'fr', email: 'yacine@example.com', color: 1 })
+    ],
+    activeId: 'pseed1'
+  }, 600);
+  await page.locator('#profile-btn').click(); await page.waitForTimeout(400);
+  await page.locator(".profile-row[data-id='pseed2']").click(); await page.waitForTimeout(700);
   log('profil 2 (fr):', await page.evaluate(() => document.documentElement.getAttribute('data-lang')));
   const both = await page.evaluate(() => {
     const a = JSON.parse(localStorage.getItem('wilaya-account-v1'));

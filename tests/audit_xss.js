@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { seedAccount, signedInProfile } = require('./seed_profile');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
@@ -8,41 +9,22 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
   let xssFired = false;
   await page.exposeFunction('__xssProbe', () => { xssFired = true; });
 
-  await page.goto(URL);
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-
-  // Create profile #1: normal
-  await page.fill('#gate-name', 'Amel');
-  await page.locator('.lang-opt[data-lang="fr"]').click();
-  await page.locator('#gate-create').click();
-  await page.waitForTimeout(400);
-
-  // Inject a malicious second profile directly into localStorage, simulating
-  // a profile that arrived via an imported sync code (transfer code) with an
-  // attacker-controlled name, then reload so the "pick a profile" screen renders it.
+  // Les deux profils sont semes d'un coup, aucun actif : c'est
+  // exactement l'etat « appareil partage, personne n'a encore choisi »
+  // que showGate("pick") doit rendre. Les injecter APRES le demarrage
+  // ne marcherait pas : en se dechargeant, la page reecrit localStorage
+  // depuis sa memoire vive et effacerait l'injection.
   const payload = 'X" onmouseover="window.__xssProbe && window.__xssProbe()" data-x="';
-  await page.evaluate((payload) => {
-    const acc = JSON.parse(localStorage.getItem('wilaya-account-v1'));
-    const clone = JSON.parse(JSON.stringify(acc.profiles[0]));
-    clone.id = 'evil-' + Date.now();
-    clone.name = payload;
-    acc.profiles.push(clone);
-    // Simulate the ordinary "shared device, nobody picked yet" state that
-    // showGate("pick") is designed for: two profiles exist, none active.
-    acc.activeId = null;
-    localStorage.setItem('wilaya-account-v1', JSON.stringify(acc));
-  }, payload);
+  await seedAccount(page, URL, {
+    profiles: [
+      signedInProfile({ id: 'sain', name: 'Amel', lang: 'fr', email: 'amel@example.com' }),
+      signedInProfile({ id: 'evil', name: payload, lang: 'fr', email: 'evil@example.com', color: 1 })
+    ],
+    activeId: null
+  });
 
-  // Force the "pick" gate to render (simulate switching profiles from the profile sheet,
-  // which calls showGate("pick") and rebuilds gate.innerHTML from account.profiles)
-  await page.reload();
-  await page.waitForTimeout(400);
-  const hasGateName = await page.locator('#gate-name').count();
-  if (hasGateName) {
-    // only one profile existed at boot before injection; now two -> should show pick list
-    console.log('Still on create screen, forcing pick via localStorage activeId trick not needed, reload should show pick list since 2 profiles now exist and none is active by pin-less default... checking DOM');
-  }
+  // Le nom vient d'un profil recu par code de transfert : il est
+  // entierement controle par celui qui l'envoie.
   const html = await page.evaluate(() => document.getElementById('gate') ? document.getElementById('gate').innerHTML.length : -1);
   console.log('gate innerHTML length:', html);
 

@@ -17,6 +17,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8390/';
 // compte d'essai : node tests/test_cloud_e2e.js puis DELETE /account.
 const EMAIL = process.env.EMAIL || ('e2e-' + Date.now() + '@example.com');
 const PASSWORD = 'motdepassesolide';
+const NEW_PASSWORD = 'unnouveaumotdepasse';
 
 let checks = 0;
 const failures = [];
@@ -84,20 +85,29 @@ const cloudEmail = (page) => page.evaluate(() => {
   await a.reload();
   await a.waitForTimeout(700);
 
-  check('A demarre sur le profil garni', (await countProgress(a)) === 5, await countProgress(a));
+  check('A a bien sa progression locale', (await countProgress(a)) === 5, await countProgress(a));
+  // Le compte est obligatoire : un profil d'avant les comptes ne peut
+  // plus entrer sans etre rattache. Sa progression ne doit pas pour
+  // autant disparaitre — c'est tout l'enjeu de ce passage.
+  check('A est retenu par la porte tant qu il n a pas de compte',
+        await a.locator('#gate-create').isVisible());
+  check('le prenom du profil est deja rempli',
+        (await a.locator('#gate-name').inputValue()) === 'Amine');
+
+  await a.fill('#gate-email', EMAIL);
+  await a.fill('#gate-pw', PASSWORD);
+  await a.locator('#gate-create').click();
+  await waitFor(async () => (await cloudEmail(a)) === EMAIL);
+
+  check('A est relie au compte', (await cloudEmail(a)) === EMAIL, await cloudEmail(a));
+  check('la progression locale a survecu au rattachement',
+        (await countProgress(a)) === 5, await countProgress(a));
+  check('A est entre dans l application',
+        !(await a.locator('#gate-box').isVisible().catch(() => false)));
 
   await a.locator('#profile-btn').click(); await a.waitForTimeout(400);
   check('A voit la ligne « Compte en ligne »', await a.locator('#prof-cloud').isVisible());
   await a.locator('#prof-cloud').click(); await a.waitForTimeout(400);
-  await a.locator('#cloud-go-register').click(); await a.waitForTimeout(400);
-
-  check('le prenom est deja rempli', (await a.locator('#creg-name').inputValue()) === 'Amine');
-  await a.fill('#creg-email', EMAIL);
-  await a.fill('#creg-pw', PASSWORD);
-  await a.locator('#creg-go').click();
-  await waitFor(async () => (await cloudEmail(a)) === EMAIL);
-
-  check('A est relie au compte', (await cloudEmail(a)) === EMAIL, await cloudEmail(a));
   const statusA = await a.locator('.cloud-status-body b').first().innerText().catch(() => '');
   check('la feuille affiche l adresse', statusA.trim() === EMAIL, statusA);
   await a.keyboard.press('Escape'); await a.waitForTimeout(300);
@@ -110,6 +120,7 @@ const cloudEmail = (page) => page.evaluate(() => {
 
   await b.goto(BASE); await b.waitForTimeout(700);
   check('B demarre sans aucun profil', (await countProgress(b)) === -1);
+  check('B ne peut pas entrer sans compte', await b.locator('#gate-create').isVisible());
   check('B propose « J ai deja un compte »', await b.locator('#gate-login').isVisible());
 
   await b.locator('#gate-login').click(); await b.waitForTimeout(400);
@@ -215,6 +226,67 @@ const cloudEmail = (page) => page.evaluate(() => {
   const errC = (await c.locator('#glog-err').innerText()).trim();
   check('un mauvais mot de passe est refuse', errC.length > 0, errC);
   check('aucun profil n a ete cree au passage', (await countProgress(c)) === -1);
+
+  /* ------------- Mot de passe oublie, de bout en bout -------------
+     Le lien est relu dans le message capture par le serveur d'essai,
+     exactement comme le ferait un client de messagerie. */
+  console.log('\nMot de passe oublie');
+  const ctxD = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const d = await ctxD.newPage();
+  d.on('pageerror', e => errs.push('D: ' + e.message));
+
+  await d.goto(BASE); await d.waitForTimeout(700);
+  await d.locator('#gate-login').click(); await d.waitForTimeout(400);
+  check('la connexion propose « Mot de passe oublié ? »',
+        await d.locator('#glog-forgot').isVisible());
+  await d.locator('#glog-forgot').click(); await d.waitForTimeout(400);
+
+  await d.fill('#gfor-email', EMAIL);
+  await d.locator('#gfor-go').click();
+  await waitFor(async () => await d.locator('#gfor-done').isVisible());
+  const neutre = (await d.locator('#gfor-done').innerText()).trim();
+  check('la confirmation ne dit pas si le compte existe',
+        /Si un compte existe/.test(neutre), neutre.slice(0, 60));
+
+  let lien = '';
+  await waitFor(async () => {
+    const r = await fetch(BASE + '__essai__/dernier-lien');
+    lien = (await r.json()).lien;
+    return !!lien;
+  });
+  check('un lien de reinitialisation a ete envoye', !!lien, lien);
+
+  await d.goto(lien);
+  await d.waitForTimeout(900);
+  check('le lien ouvre l ecran de nouveau mot de passe',
+        await d.locator('#gres-pw').isVisible());
+  check('le jeton est retire de la barre d adresse',
+        !d.url().includes('reset='), d.url());
+
+  await d.fill('#gres-pw', NEW_PASSWORD);
+  await d.locator('#gres-go').click();
+  await waitFor(async () => (await cloudEmail(d)) === EMAIL);
+  check('la reinitialisation connecte directement',
+        (await cloudEmail(d)) === EMAIL, await cloudEmail(d));
+  check('la progression du compte est arrivee',
+        (await countProgress(d)) === 6, await countProgress(d));
+
+  const apres = await fetch(BASE + 'api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD })
+  });
+  check('l ancien mot de passe ne marche plus', apres.status === 401, apres.status);
+
+  /* ------------- Un lien perime ------------- */
+  const ctxE = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const e2 = await ctxE.newPage();
+  await e2.goto(BASE + '#reset=' + 'z'.repeat(43));
+  await e2.waitForTimeout(900);
+  await e2.fill('#gres-pw', 'unautremotdepasse');
+  await e2.locator('#gres-go').click();
+  await waitFor(async () => (await e2.locator('#gres-err').innerText()).trim().length > 0);
+  check('un lien invalide est refuse et propose d en redemander un',
+        await e2.locator('#gres-again').isVisible());
 
   console.log('\nERREURS JS : ' + (errs.length ? errs.join(' | ') : 'aucune'));
   if (errs.length) failures.push('erreurs JS');

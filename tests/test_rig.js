@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const fs = require('fs');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
@@ -10,12 +11,7 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
   page.on('pageerror', e => errs.push('PAGEERR ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !/net::/.test(m.text())) errs.push('CONSOLE ' + m.text()); });
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', 'Rig');
-  await page.locator('.lang-opt[data-lang="fr"]').click();
-  await page.locator('#gate-create').click();
+  await seedSignedIn(page, URL, { name: 'Rig', lang: 'fr' });
   await page.waitForTimeout(500);
 
   // 1. les deux calques sont-ils présents et superposés ?

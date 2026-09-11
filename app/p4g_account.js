@@ -1,14 +1,18 @@
 
   /* ============================================================
      PROFILS & SYNCHRONISATION
-     Il n'y a pas de serveur derrière cette application : elle
-     fonctionne hors ligne, y compris dans l'APK Android. Donc
-     pas de compte en ligne — ce serait mentir que d'en afficher un.
-     À la place :
-       · plusieurs profils sur un même appareil, chacun sa mémoire ;
-       · un code d'accès local facultatif par profil ;
-       · un code de transfert qui déplace une progression d'un
-         appareil à l'autre, et qui FUSIONNE au lieu d'écraser.
+     Un compte est désormais obligatoire pour se servir de
+     l'application : c'est lui qui porte la progression d'un appareil à
+     l'autre (voir p4k_cloud.js). Il n'est exigé qu'UNE fois — ensuite
+     la session reste sur l'appareil et tout fonctionne hors ligne.
+
+     Ce fichier reste le dépôt local, et il garde son rôle :
+       · plusieurs profils sur un même appareil, chacun sa mémoire,
+         chacun son compte — un téléphone de famille marche toujours ;
+       · un code d'accès local facultatif, qui verrouille un profil sur
+         CET appareil et ne remplace pas le mot de passe du compte ;
+       · un code de transfert d'appareil à appareil, qui FUSIONNE au
+         lieu d'écraser — la même fusion que la synchronisation.
      ============================================================ */
   var ACCOUNT_KEY = "wilaya-account-v1";
   var PROFILE_COLORS = ["var(--accent)","var(--teal)","var(--slate)","var(--olive)","var(--rose)","var(--gold)"];
@@ -83,9 +87,17 @@
     return prof;
   }
 
+  /* Quel profil l'état de travail contient-il réellement ? Tant que
+     personne n'a franchi la porte d'entrée, `state` est vide : l'écrire
+     dans un profil effacerait sa progression. Ce garde-fou a été posé
+     après exactement cet accident, lors du rattachement d'un profil
+     existant à un compte tout neuf. */
+  var loadedProfileId = null;
+
   /* Charge le profil actif dans l'état de travail. */
   function loadState(){
     var p = activeProfile();
+    loadedProfileId = p ? p.id : null;
     applyLang(p ? (p.lang || "bi") : "bi");
     var d = p ? p.data : blankData();
     state.progress   = d.progress || {};
@@ -100,6 +112,11 @@
   function persist(){
     var p = activeProfile();
     if(!p) return;
+    /* On n'écrit que ce qui a été chargé depuis CE profil. Sans cela,
+       toute écriture faite avant le premier loadState() — ou juste
+       après un changement de profil — remplacerait une progression
+       réelle par un état de travail vide. */
+    if(p.id !== loadedProfileId) return;
     p.data = {
       progress:state.progress, confusions:state.confusions, crowns:state.crowns,
       xp:state.xp, streak:state.streak, keyDone:state.keyDone, bestBlitz:state.bestBlitz

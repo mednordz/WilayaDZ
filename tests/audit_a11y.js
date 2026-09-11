@@ -1,17 +1,12 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const fs = require('fs');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 const axeSrc = fs.readFileSync('/tmp/wilayas/node_modules/axe-core/axe.min.js', 'utf8');
 const T = 8000;
 
 async function setupProfile(page, name, lang) {
-  await page.goto(URL, { timeout: 20000, waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ timeout: 20000, waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', name, { timeout: T });
-  await page.locator(`.lang-opt[data-lang="${lang}"]`).click({ timeout: T });
-  await page.locator('#gate-create').click({ timeout: T });
-  await page.waitForTimeout(400);
+  await seedSignedIn(page, URL, { name: name, lang: lang, settle: 400 });
 }
 
 async function runAxe(page, label, results) {

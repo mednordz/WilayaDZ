@@ -367,11 +367,21 @@
   buildLedger();
   initSyncPanel();
 
+  /* Un lien de réinitialisation reçu par courriel passe avant tout le
+     reste : la personne est bloquée dehors, c'est la seule chose qui
+     l'intéresse en ouvrant l'application. */
+  var pendingReset = cloudPendingReset();
   var startProfile = activeProfile();
-  if(!account.profiles.length){
+  if(pendingReset){
+    showGate("reset", pendingReset);
+  }else if(!account.profiles.length){
     showGate("create");
   }else if(!startProfile){
     showGate("pick");
+  }else if(!cloudOf(startProfile)){
+    /* Profil d'avant les comptes : le rattachement passe avant l'entrée.
+       Sa progression part sur le compte, elle n'est pas remplacée. */
+    showGate("create", startProfile);
   }else if(startProfile.pin){
     showGate("pin", startProfile);
   }else{

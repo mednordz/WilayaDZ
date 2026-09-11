@@ -23,14 +23,12 @@
     if(el) el.textContent = message || "";
   }
 
-  /* Le seul avertissement qui compte, et il doit être dit partout où
-     l'on crée un compte : ce mot de passe ne se récupère pas encore par
-     e-mail. Le cacher serait un piège — d'autant que la progression
-     locale, elle, ne dépend d'aucun compte. */
+  /* Ce que la personne a besoin de savoir au moment où elle choisit un
+     mot de passe : qu'un oubli se répare, et par où. */
   function cloudRecoveryNote(){
     return "<p class='gate-note'>" + TS(
-      "Garde ce mot de passe : il n'existe pas encore de récupération par e-mail. Ta progression sur cet appareil reste de toute façon intacte, avec ou sans compte.",
-      "احتفظ بكلمة السر: لا توجد بعد استعادة عبر البريد. يبقى تقدّمك على هذا الجهاز سليما، بحساب أو بدونه.") + "</p>";
+      "Si tu l'oublies, « Mot de passe oublié ? » t'enverra un lien sur cette adresse — vérifie donc qu'elle est juste.",
+      "إن نسيتها، سيرسل لك « نسيت كلمة السر؟ » رابطا إلى هذا البريد — تأكّد إذن من صحّته.") + "</p>";
   }
 
   function cloudFieldsHtml(prefix, opts){
@@ -92,20 +90,21 @@
     }
     var c = cloudOf(p);
 
+    /* On n'arrive ici qu'avec une session expirée : depuis que le compte
+       est obligatoire, un profil actif en a toujours un. La progression
+       de l'appareil continue de tourner pendant ce temps — c'est la
+       synchronisation qui est en pause, pas l'application. */
     if(!c || !c.token){
       openSheet(
         "<h2 id='sheet-title'>" + T("Compte en ligne","الحساب على الإنترنت") + "</h2>" +
+        "<p class='gate-err' style='margin:0 0 10px'>" +
+          TL("Ta session a expiré — reconnecte-toi pour resynchroniser.",
+             "انتهت جلستك — أعد الاتصال لاستئناف المزامنة.") + "</p>" +
         "<p class='sub'>" + TS(
-          "Relie « " + esc(p.name) + " » à un compte : ta progression se retrouvera sur ton téléphone, ta tablette, n'importe quel appareil où tu te connectes.",
-          "اربط « " + esc(p.name) + " » بحساب: ستجد تقدّمك على هاتفك ولوحك وأي جهاز تتصل منه.") + "</p>" +
-        (c && !c.token
-          ? "<p class='gate-err' style='margin:10px 0'>" + TL("Ta session a expiré — reconnecte-toi.","انتهت جلستك — أعد الاتصال.") + "</p>"
-          : "") +
-        "<button class='btn' id='cloud-go-register' style='margin-top:14px;'>" + T("Créer un compte","أنشئ حسابا") + "</button>" +
-        "<button class='btn ghost' id='cloud-go-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" +
-        "<p class='gate-note'>" + TS(
-          "Sans compte, l'application fonctionne exactement pareil — la progression reste sur cet appareil.",
-          "بدون حساب، يعمل التطبيق تماما كما هو — يبقى التقدّم على هذا الجهاز.") + "</p>" +
+          "Ta progression sur cet appareil est intacte et repartira sur le compte dès la reconnexion.",
+          "تقدّمك على هذا الجهاز سليم وسيُرسل إلى الحساب فور إعادة الاتصال.") + "</p>" +
+        "<button class='btn' id='cloud-go-login' style='margin-top:14px;'>" + T("Se reconnecter","أعد الاتصال") + "</button>" +
+        "<button class='btn ghost' id='cloud-go-register' style='margin-top:9px;'>" + T("Utiliser un autre compte","استخدم حسابا آخر") + "</button>" +
         "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Fermer","إغلاق") + "</button>"
       );
       document.getElementById("cloud-go-register").addEventListener("click", function(){ openCloudForm("register"); });
@@ -223,6 +222,7 @@
         cloudFieldsHtml("clog", {}) +
         "<p class='gate-err' id='clog-err' role='alert'></p>" +
         "<button class='btn' id='clog-go'>" + T("Se connecter","ادخل") + "</button>" +
+        "<button class='btn ghost' id='clog-forgot' style='margin-top:9px;'>" + T("Mot de passe oublié ?","نسيت كلمة السر؟") + "</button>" +
         "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>"
       );
       var logBtn = document.getElementById("clog-go");
@@ -246,8 +246,51 @@
       document.getElementById("clog-pw").addEventListener("keydown", function(e){
         if(e.key === "Enter") doLogin();
       });
+      document.getElementById("clog-forgot").addEventListener("click", function(){
+        openCloudForm("forgot");
+      });
       document.getElementById("sheet-close").addEventListener("click", openCloudSheet);
       document.getElementById("clog-email").focus();
+      return;
+    }
+
+    if(mode === "forgot"){
+      openSheet(
+        "<h2 id='sheet-title'>" + T("Mot de passe oublié","نسيت كلمة السر") + "</h2>" +
+        "<p class='sub'>" + TS("Donne ton adresse : on t'envoie un lien pour en choisir un nouveau.",
+                               "أدخل بريدك: سنرسل لك رابطا لاختيار كلمة سر جديدة.") + "</p>" +
+        "<label class='sr-only' for='cfor-email'>" + TL("Adresse e-mail","البريد الإلكتروني") + "</label>" +
+        "<input class='gate-input' id='cfor-email' type='email' inputmode='email' autocomplete='email' " +
+          "autocapitalize='off' spellcheck='false' placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
+        "<p class='gate-err' id='cfor-err' role='alert'></p>" +
+        "<p class='gate-note' id='cfor-done' style='display:none' role='status'></p>" +
+        "<button class='btn' id='cfor-go'>" + T("Envoyer le lien","أرسل الرابط") + "</button>" +
+        "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>"
+      );
+      var cforBtn = document.getElementById("cfor-go");
+      var cforEmail = document.getElementById("cfor-email");
+      var c0 = cloudOf(p);
+      if(c0 && c0.email) cforEmail.value = c0.email;
+      function doCloudForgot(){
+        var mail = cforEmail.value.trim();
+        cloudErrInto("cfor-err", "");
+        if(!mail){ return cloudErrInto("cfor-err", cloudErrorText("bad_email")); }
+        cloudBusy(cforBtn, true, TL("Envoi…","جارٍ الإرسال…"));
+        cloudForgot(mail).then(function(r){
+          cloudBusy(cforBtn, false);
+          if(!r.ok){ return cloudErrInto("cfor-err", r.message); }
+          var done = document.getElementById("cfor-done");
+          done.style.display = "";
+          done.innerHTML = TS(
+            "Si un compte existe avec cette adresse, le lien vient de partir. Il est valable une heure — pense à regarder dans les indésirables.",
+            "إن كان هناك حساب بهذا البريد، فقد أُرسل الرابط. صالح لمدة ساعة — تحقّق من البريد غير المرغوب فيه.");
+          cforBtn.disabled = true;
+        });
+      }
+      cforBtn.addEventListener("click", doCloudForgot);
+      cforEmail.addEventListener("keydown", function(e){ if(e.key === "Enter") doCloudForgot(); });
+      document.getElementById("sheet-close").addEventListener("click", openCloudSheet);
+      cforEmail.focus();
       return;
     }
 

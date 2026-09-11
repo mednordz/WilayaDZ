@@ -13,15 +13,61 @@ vrai navigateur sans installer Docker.
 import os
 import sys
 
+import email as emaillib
+import re
+import socket
+import threading
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "server"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-os.environ.setdefault("WILAYA_DB", "/tmp/wilayadz-e2e.sqlite3")
-import app as api  # noqa: E402  (doit suivre la mise en place de WILAYA_DB)
+from test_api import MailSink  # noqa: E402  (voisin, pas une dependance)
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8390
 PAGE = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "app", "wilaya-v6.html")
 SW = os.path.join(os.path.dirname(PAGE), "sw.js")
+
+
+def _free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+
+# Un serveur de mail jetable, pour que le parcours « mot de passe
+# oublie » soit eprouvable depuis un navigateur sans rien envoyer a
+# personne. Le lien capture est relu par le test via /__essai__/dernier-lien.
+MAIL_PORT = _free_port()
+SINK = MailSink(MAIL_PORT)
+threading.Thread(target=SINK.serve_forever, daemon=True).start()
+
+os.environ.setdefault("WILAYA_DB", "/tmp/wilayadz-e2e.sqlite3")
+os.environ["SMTP_HOST"] = "127.0.0.1"
+os.environ["SMTP_PORT"] = str(MAIL_PORT)
+os.environ.setdefault("APP_URL", "http://127.0.0.1:%d" % PORT)
+
+import app as api  # noqa: E402  (doit suivre la mise en place de l'environnement)
+
+
+def dernier_lien():
+    """Le lien de reinitialisation du dernier message recu, decode comme
+    le ferait un client de messagerie (le corps part en
+    quoted-printable, qui coupe les longues lignes)."""
+    if not SINK.messages:
+        return ""
+    parsed = emaillib.message_from_string(SINK.messages[-1])
+    morceaux = []
+    for part in parsed.walk():
+        if part.get_content_maintype() == "text":
+            charge = part.get_payload(decode=True)
+            if charge:
+                morceaux.append(charge.decode(part.get_content_charset() or "utf-8",
+                                              "replace"))
+    trouve = re.search(r"https?://[^\s\"<>]+/#reset=[A-Za-z0-9_-]+", "\n".join(morceaux))
+    return trouve.group(0) if trouve else ""
 
 
 class Combined(api.Handler):
@@ -48,6 +94,11 @@ class Combined(api.Handler):
         self.wfile.write(body)
 
     def do_GET(self):
+        # Reserve aux essais : jamais servi par nginx en production, qui
+        # ne relaie que /api/ vers le service et sert des fichiers pour
+        # tout le reste.
+        if self.path.split("?")[0] == "/__essai__/dernier-lien":
+            return self._send(200, {"lien": dernier_lien()})
         if self._is_api():
             return api.Handler.do_GET(self)
         self._static()

@@ -6,9 +6,12 @@
      n'importe quel appareil où l'on se connecte.
 
      Trois règles tiennent tout le reste :
-       1. L'application n'a jamais BESOIN du serveur. Sans réseau, sans
-          compte, hors ligne, dans l'APK : tout continue de marcher sur
-          la mémoire locale. Le compte n'ajoute que le transport.
+       1. Le serveur n'est exigé qu'UNE fois : à l'ouverture du compte
+          ou à la connexion. Ensuite la session reste sur l'appareil et
+          l'application travaille sur sa mémoire locale — hors ligne,
+          dans l'APK, en avion — la synchronisation reprenant d'elle
+          même au retour du réseau. Une panne du service ne doit jamais
+          empêcher de réviser.
        2. On ne remplace jamais, on FUSIONNE — avec exactement la même
           fonction (mergeInto) que les codes de transfert, déjà éprouvée :
           pour chaque wilaya, la meilleure des deux mémoires gagne.
@@ -261,28 +264,107 @@
       });
   }
 
+  /* Un compte vient d'être reconnu (connexion, inscription ou nouveau
+     mot de passe) : on lui donne un profil local — le sien s'il en a
+     déjà un sur cet appareil, un neuf sinon — puis on synchronise. */
+  function adoptSession(acc, token){
+    var existing = profileForEmail(acc.email);
+    var p;
+    if(existing){
+      account.activeId = existing.id;
+      existing.cloud = existing.cloud || {};
+      existing.cloud.email = acc.email;
+      existing.cloud.token = token;
+      existing.cloud.lastError = null;
+      saveAccount();
+      p = existing;
+    }else{
+      p = createProfile(acc.name, null, "bi");
+      attachCloud(p, acc, token);
+    }
+    cloudBooted[p.id] = true;
+    return cloudSync(p).then(function(r){
+      return {ok:true, profile:p, added:(r && r.added) || 0,
+              improved:(r && r.improved) || 0};
+    });
+  }
+
   /* Connexion sur un appareil neuf : le compte amène son propre profil
      local, puis récupère sa progression. */
   function cloudLoginNewProfile(email, password){
     return cloudCall("POST", "/auth/login", {email:email, password:password})
       .then(function(res){
         if(res.status !== 200) return {ok:false, message:cloudFailText(res)};
-        var acc = res.data.account;
-        var existing = profileForEmail(acc.email);
-        if(existing){
-          account.activeId = existing.id;
-          existing.cloud.token = res.data.token;
-          saveAccount();
-          cloudBooted[existing.id] = true;
-          return cloudSync(existing).then(function(){ return {ok:true, profile:existing}; });
-        }
-        var p = createProfile(acc.name, null, "bi");
-        attachCloud(p, acc, res.data.token);
-        cloudBooted[p.id] = true;
-        return cloudSync(p).then(function(r){
-          return {ok:true, profile:p, added:(r && r.added) || 0};
-        });
+        return adoptSession(res.data.account, res.data.token);
       });
+  }
+
+  /* Inscription depuis la porte d'entrée : on n'écrit RIEN en local
+     tant que le serveur n'a pas accepté, sinon un refus (adresse déjà
+     prise, mot de passe trop court) laisserait derrière lui un profil
+     fantôme que personne n'a demandé. */
+  function cloudRegisterNew(name, email, password, lang){
+    return cloudCall("POST", "/auth/register",
+                     {email:email, name:name, password:password})
+      .then(function(res){
+        if(res.status !== 201) return {ok:false, message:cloudFailText(res)};
+        var p = createProfile(name, null, lang || "bi");
+        attachCloud(p, res.data.account, res.data.token);
+        cloudBooted[p.id] = true;
+        return cloudSync(p).then(function(){ return {ok:true, profile:p}; });
+      });
+  }
+
+  /* ---------------- Mot de passe oublié ---------------- */
+
+  /* Le serveur répond 204 quoi qu'il arrive — adresse connue ou non.
+     L'interface doit donc dire exactement la même chose dans les deux
+     cas, sinon elle réintroduit elle-même la fuite que le serveur
+     s'applique à éviter. */
+  function cloudForgot(email){
+    return cloudCall("POST", "/auth/forgot", {email:email})
+      .then(function(res){
+        if(res.status === 204) return {ok:true};
+        return {ok:false, message:cloudFailText(res)};
+      });
+  }
+
+  function cloudResetWithToken(token, password){
+    return cloudCall("POST", "/auth/reset", {token:token, password:password})
+      .then(function(res){
+        if(res.status !== 200){
+          var code = res.data && res.data.error;
+          if(code === "bad_token"){
+            return {ok:false, message:TL(
+              "Ce lien n'est plus valable — il expire au bout d'une heure. Demandes-en un nouveau.",
+              "هذا الرابط لم يعد صالحا — ينتهي بعد ساعة. اطلب رابطا جديدا.")};
+          }
+          return {ok:false, message:cloudFailText(res)};
+        }
+        return adoptSession(res.data.account, res.data.token);
+      });
+  }
+
+  /* Ouvrir le lien alors que l'application tourne déjà ne change que le
+     fragment : le navigateur ne recharge pas la page, donc rien ne
+     relirait le jeton. C'est le cas de quelqu'un qui a l'onglet ouvert
+     et colle le lien reçu par courriel. */
+  if(typeof window !== "undefined"){
+    window.addEventListener("hashchange", function(){
+      var jeton = cloudPendingReset();
+      if(jeton) showGate("reset", jeton);
+    });
+  }
+
+  /* Le jeton arrive dans le FRAGMENT de l'adresse : il n'est donc
+     jamais parti vers un serveur, ni écrit dans un journal d'accès. On
+     l'efface de la barre d'adresse dès qu'on l'a lu, pour qu'il ne
+     reste pas dans l'historique du navigateur. */
+  function cloudPendingReset(){
+    var m = String(location.hash || "").match(/#reset=([A-Za-z0-9\-_]{16,128})/);
+    if(!m) return null;
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+    return m[1];
   }
 
   function cloudLogout(p){

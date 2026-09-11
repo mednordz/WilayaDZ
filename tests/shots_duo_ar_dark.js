@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
@@ -7,19 +8,11 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
   // Arabic / RTL, light
   let ctx = await b.newContext({ viewport: { width: 420, height: 900 } });
   let page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', 'سارة');
-  await page.locator('.lang-opt[data-lang="ar"]').click();
-  await page.locator('#gate-create').click();
+  await seedSignedIn(page, URL, { name: 'سارة', lang: 'ar', data: { keyDone: true } });
   await page.waitForTimeout(400);
-  await page.evaluate(() => {
-    const acc = JSON.parse(localStorage.getItem('wilaya-account-v1'));
-    acc.profiles[0].data.keyDone = true;
-    localStorage.setItem('wilaya-account-v1', JSON.stringify(acc));
-  });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  // keyDone part avec la graine (voir seed_profile.js) : l'injecter
+  // apres coup puis recharger ne tiendrait pas, la page reecrit sa
+  // memoire vive en se dechargeant.
   await page.waitForTimeout(400);
   await page.screenshot({ path: '/tmp/wilayas/duo_ar_path.png' });
   await ctx.close();
@@ -27,19 +20,11 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
   // Dark mode, French
   ctx = await b.newContext({ viewport: { width: 420, height: 900 }, colorScheme: 'dark' });
   page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', 'Karim');
-  await page.locator('.lang-opt[data-lang="fr"]').click();
-  await page.locator('#gate-create').click();
+  await seedSignedIn(page, URL, { name: 'Karim', lang: 'fr', data: { keyDone: true } });
   await page.waitForTimeout(400);
-  await page.evaluate(() => {
-    const acc = JSON.parse(localStorage.getItem('wilaya-account-v1'));
-    acc.profiles[0].data.keyDone = true;
-    localStorage.setItem('wilaya-account-v1', JSON.stringify(acc));
-  });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  // keyDone part avec la graine (voir seed_profile.js) : l'injecter
+  // apres coup puis recharger ne tiendrait pas, la page reecrit sa
+  // memoire vive en se dechargeant.
   await page.waitForTimeout(400);
   await page.screenshot({ path: '/tmp/wilayas/duo_dark_path.png' });
   await ctx.close();

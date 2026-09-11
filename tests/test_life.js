@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
@@ -9,12 +10,7 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
   page.on('pageerror', e => errs.push('PAGEERR ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !/net::/.test(m.text())) errs.push('CONSOLE ' + m.text()); });
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', 'Vie');
-  await page.locator('.lang-opt[data-lang="fr"]').click();
-  await page.locator('#gate-create').click();
+  await seedSignedIn(page, URL, { name: 'Vie', lang: 'fr' });
   await page.waitForTimeout(500);
 
   // 1. la mascotte respire-t-elle ? on échantillonne la matrice de transformation

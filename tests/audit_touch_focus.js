@@ -1,16 +1,12 @@
 const { chromium } = require('playwright');
+const { seedSignedIn } = require('./seed_profile');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.fill('#gate-name', 'Test');
-  await page.locator('.lang-opt[data-lang="fr"]').click();
-  await page.locator('#gate-create').click();
+  await seedSignedIn(page, URL, { name: 'Test', lang: 'fr' });
   await page.waitForTimeout(400);
 
   // Touch target sizes (WCAG 2.5.5: >= 44x44 CSS px) for all visible interactive elements
