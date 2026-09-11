@@ -16,9 +16,9 @@ services:
     # Écoute uniquement sur la boucle locale : c'est le tunnel Cloudflare
     # existant (smnc-portal-tunnel) qui route 69.smnc.win vers ce port,
     # exactement comme wa.smnc.win → 127.0.0.1:8091 (voir DEPLOY.md).
-    # Choisir un port libre sur bigpc ; 8092 est une simple proposition.
+    # Choisir un port libre sur bigpc ; 8099 est une simple proposition.
     ports:
-      - "127.0.0.1:8092:8080"
+      - "127.0.0.1:8099:8080"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
       interval: 30s

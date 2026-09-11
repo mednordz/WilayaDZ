@@ -53,10 +53,10 @@ commande marche lancée à la main sur `bigpc` :
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --build
-curl -s http://127.0.0.1:8092/ | head -c 200   # doit renvoyer le HTML, en UTF-8 lisible
+curl -s http://127.0.0.1:8099/ | head -c 200   # doit renvoyer le HTML, en UTF-8 lisible
 ```
 
-Si le port `8092` est déjà pris par autre chose sur `bigpc`, changer le
+Si le port `8099` est déjà pris par autre chose sur `bigpc`, changer le
 mappage dans `deploy/docker-compose.yml` (`"127.0.0.1:<PORT>:8080"`) et
 adapter la route ci-dessous en conséquence.
 
@@ -72,7 +72,7 @@ qui existe aussi mais n'est pas celle utilisée par le service systemd) :
 
 ```yaml
   - hostname: 69.smnc.win
-    service: http://127.0.0.1:8092
+    service: http://127.0.0.1:8099
 ```
 
 Puis :
