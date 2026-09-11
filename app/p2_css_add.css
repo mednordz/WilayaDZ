@@ -256,10 +256,29 @@
   /* ---- Porte d'entrée « Qui apprend ? » ---- */
   .gate{
     position:fixed; inset:0; z-index:120; background:var(--bg);
-    display:none; align-items:center; justify-content:center; padding:22px;
-    overflow-y:auto;
+    display:none; justify-content:center; overflow-y:auto;
+    /* flex-start, et JAMAIS center : avec `align-items:center`, un
+       formulaire plus haut que l'écran déborde des DEUX côtés, et un
+       conteneur défilant ne peut pas remonter au-dessus de zéro — le
+       haut devenait donc définitivement inatteignable. C'est ce qui
+       arrivait dès l'ouverture du clavier, et même sans lui sur un
+       petit écran. Le centrage revient par `margin:auto` ci-dessous :
+       les marges automatiques absorbent l'espace libre quand il y en
+       a, et valent zéro quand il n'y en a pas. */
+    align-items:flex-start;
+    padding:22px;
+    /* viewport-fit=cover laisse le contenu passer sous l'encoche et la
+       barre d'accueil : on reprend la place qu'il faut. */
+    padding-top:max(22px, env(safe-area-inset-top));
+    padding-bottom:max(22px, env(safe-area-inset-bottom));
+    /* Le doigt fait défiler la porte, pas la page derrière. */
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
   }
-  .gate-box{ width:100%; max-width:420px; text-align:center; }
+  .gate-box{ width:100%; max-width:420px; text-align:center; margin:auto; }
+  /* Quand le navigateur amène de lui-même le champ actif au-dessus du
+     clavier, qu'il ne le colle pas au bord. */
+  .gate-box input, .gate-box .btn{ scroll-margin-block:18px; }
   .gate-brand{
     font-family:var(--font-display); font-size:1.15rem; color:var(--ink); margin-bottom:26px;
   }
