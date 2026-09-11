@@ -70,10 +70,14 @@ const attendre = async (fn, ms) => {
     await page.waitForTimeout(350);
     await runAxe(page, 'Porte — mot de passe oublie (' + lang + ')');
 
-    // L'ecran atteint depuis le lien recu par courriel.
+    // Les ecrans atteints depuis un lien recu par courriel.
     await page.goto(BASE + '#reset=' + 'z'.repeat(43), { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(700);
     await runAxe(page, 'Porte — nouveau mot de passe (' + lang + ')');
+
+    await page.goto(BASE + '#confirm=' + 'z'.repeat(43), { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1200);
+    await runAxe(page, 'Porte — lien de confirmation perime (' + lang + ')');
 
     // --- Entrer pour de bon, puis auditer les feuilles ---
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
@@ -83,6 +87,18 @@ const attendre = async (fn, ms) => {
     await page.fill('#gate-pw', PASSWORD, { timeout: T });
     await page.locator('.lang-opt[data-lang="' + lang + '"]').click({ timeout: T });
     await page.locator('#gate-create').click({ timeout: T });
+
+    // L'inscription mene desormais a l'attente de confirmation.
+    await attendre(async () => await page.locator('#gpen-resend').isVisible());
+    await runAxe(page, 'Porte — en attente de confirmation (' + lang + ')');
+
+    let lien = '';
+    await attendre(async () => {
+      const r = await fetch(BASE + '__essai__/dernier-lien?genre=confirm');
+      lien = (await r.json()).lien;
+      return !!lien;
+    });
+    await page.goto(lien, { waitUntil: 'domcontentloaded' });
     await attendre(async () => await page.locator('#profile-btn').isVisible());
 
     await page.locator('#profile-btn').click({ timeout: T });

@@ -52,10 +52,10 @@ os.environ.setdefault("APP_URL", "http://127.0.0.1:%d" % PORT)
 import app as api  # noqa: E402  (doit suivre la mise en place de l'environnement)
 
 
-def dernier_lien():
-    """Le lien de reinitialisation du dernier message recu, decode comme
-    le ferait un client de messagerie (le corps part en
-    quoted-printable, qui coupe les longues lignes)."""
+def dernier_lien(genre="reset"):
+    """Le lien du dernier message recu, decode comme le ferait un client
+    de messagerie (le corps part en quoted-printable, qui coupe les
+    longues lignes). `genre` vaut « reset » ou « confirm »."""
     if not SINK.messages:
         return ""
     parsed = emaillib.message_from_string(SINK.messages[-1])
@@ -66,7 +66,8 @@ def dernier_lien():
             if charge:
                 morceaux.append(charge.decode(part.get_content_charset() or "utf-8",
                                               "replace"))
-    trouve = re.search(r"https?://[^\s\"<>]+/#reset=[A-Za-z0-9_-]+", "\n".join(morceaux))
+    trouve = re.search(r"https?://[^\s\"<>]+/#%s=[A-Za-z0-9_-]+" % genre,
+                       "\n".join(morceaux))
     return trouve.group(0) if trouve else ""
 
 
@@ -98,7 +99,8 @@ class Combined(api.Handler):
         # ne relaie que /api/ vers le service et sert des fichiers pour
         # tout le reste.
         if self.path.split("?")[0] == "/__essai__/dernier-lien":
-            return self._send(200, {"lien": dernier_lien()})
+            genre = "confirm" if "genre=confirm" in self.path else "reset"
+            return self._send(200, {"lien": dernier_lien(genre)})
         if self._is_api():
             return api.Handler.do_GET(self)
         self._static()

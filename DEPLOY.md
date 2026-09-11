@@ -185,8 +185,10 @@ Routes, toutes sous `/api` :
 
 | Route | Effet |
 |---|---|
-| `POST /auth/register` | crée un compte, renvoie un jeton |
-| `POST /auth/login` | ouvre une session sur cet appareil |
+| `POST /auth/register` | ouvre un compte **non confirmé** — 202, aucun jeton |
+| `POST /auth/confirm` | confirme l'adresse et ouvre une session |
+| `POST /auth/resend` | renvoie le lien de confirmation — **toujours 204** |
+| `POST /auth/login` | ouvre une session — **403 `not_verified`** si l'adresse ne l'est pas |
 | `POST /auth/logout` | ferme **cette** session seulement |
 | `POST /auth/password` | change le mot de passe et ferme les autres appareils |
 | `POST /auth/forgot` | envoie un lien de réinitialisation — **toujours 204** |
@@ -216,6 +218,36 @@ Ce qui protège quoi :
 - **Fusion, jamais écrasement** : côté client, exactement la même
   fonction que les codes de transfert (`mergeInto`) — pour chaque wilaya,
   la meilleure des deux mémoires gagne.
+
+### Confirmation de l'adresse
+
+**L'inscription ne donne rien tant que l'adresse n'est pas confirmée** :
+`register` répond 202 sans aucun jeton, et `login` refuse avec
+`not_verified`. C'est ce qui empêche d'ouvrir un compte avec l'adresse de
+quelqu'un d'autre — et, surtout, ce qui évite qu'une faute de frappe
+produise un compte **irrécupérable** : le lien de mot de passe oublié
+partirait vers une boîte qu'on ne relève pas.
+
+Le lien vaut **24 heures** (on ne relève pas forcément ses mails dans
+l'heure, et c'est le tout premier geste). Le confirmer ouvre la session
+dans la foulée : la personne vient de prouver qu'elle relève cette boîte,
+lui redemander de se connecter n'apprendrait rien à personne.
+
+Deux garde-fous qui comptent :
+
+- Se réinscrire par-dessus une inscription **jamais confirmée** la
+  remplace (nouveau mot de passe, nouveau lien, l'ancien meurt). Sans
+  cela, une faute de frappe sur l'adresse d'un tiers bloquerait cette
+  adresse pour toujours. Un compte **confirmé**, lui, est intouchable :
+  409.
+- Une inscription jamais confirmée est effacée au bout de **7 jours**,
+  ce qui libère l'adresse.
+
+Côté application, tant que la confirmation n'a pas eu lieu : aucun profil
+local n'est créé, rien n'est rattaché, et la progression déjà présente
+sur l'appareil reste intacte. Un code d'accès local choisi à
+l'inscription est gardé sous forme d'**empreinte** (jamais le code), et
+le profil la reprend en naissant.
 
 ### Mot de passe oublié
 
@@ -266,6 +298,9 @@ silence :
 
 ### L'adresse d'expéditeur
 
+Les deux courriels — confirmation et mot de passe oublié — partent par
+le même chemin et le même gabarit (`build_mail`).
+
 `MAIL_FROM` vaut **`WilayaDZ <bigpc.alg@gmail.com>`** : le compte sous
 lequel le relais s'authentifie réellement. Ce n'est pas un détail
 cosmétique — la zone `smnc.win` n'a **ni SPF ni DMARC**, donc un
@@ -289,10 +324,10 @@ le lien : c'est le mode de mise au point, jamais la production.
 Éprouver le service sans rien déployer :
 
 ```bash
-python3 tests/test_api.py              # 88 vérifications, service jetable + faux SMTP
+python3 tests/test_api.py              # 111 vérifications, service jetable + faux SMTP
 python3 tests/serve_test.py 8390 &     # l'app + son API sur une même origine
-node tests/test_cloud_e2e.js           # 36 : deux appareils, migration, mot de passe oublié
-node tests/audit_a11y_cloud.js         # 16 écrans de compte audités
+node tests/test_cloud_e2e.js           # 42 : confirmation, migration, mot de passe oublié
+node tests/audit_a11y_cloud.js         # 20 écrans de compte audités
 ```
 
 ## Pourquoi ces choix

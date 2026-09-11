@@ -202,10 +202,11 @@
         cloudRegister(p, f.email, f.name, f.pw).then(function(r){
           cloudBusy(regBtn, false);
           if(!r.ok) return cloudErrInto("creg-err", r.message);
-          renderCloudBadge(); renderAvatar();
-          toast(TL("Compte créé — ta progression est synchronisée.",
-                   "أُنشئ الحساب — تقدّمك متزامن."));
-          openCloudSheet();
+          /* Rien n'est rattaché tant que l'adresse n'est pas confirmée :
+             on emmène donc vers la boîte mail, sans annoncer une
+             synchronisation qui n'a pas eu lieu. */
+          closeSheet();
+          showGate("pending", f.email);
         });
       });
       document.getElementById("sheet-close").addEventListener("click", openCloudSheet);
@@ -233,7 +234,14 @@
         cloudBusy(logBtn, true, TL("Connexion…","جارٍ الاتصال…"));
         cloudLoginInto(p, f.email, f.pw).then(function(r){
           cloudBusy(logBtn, false);
-          if(!r.ok) return cloudErrInto("clog-err", r.message);
+          if(!r.ok){
+            if(r.code === "not_verified"){
+              setPending(f.email, f.email.split("@")[0], p.lang || "bi", p.id);
+              closeSheet();
+              return showGate("pending", f.email);
+            }
+            return cloudErrInto("clog-err", r.message);
+          }
           renderCloudBadge(); renderAvatar();
           toast(r.added || r.improved
             ? TL(r.added + " ajoutées, " + r.improved + " améliorées.",

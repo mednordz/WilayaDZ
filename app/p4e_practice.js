@@ -370,10 +370,17 @@
   /* Un lien de réinitialisation reçu par courriel passe avant tout le
      reste : la personne est bloquée dehors, c'est la seule chose qui
      l'intéresse en ouvrant l'application. */
+  var pendingConfirm = cloudPendingConfirm();
   var pendingReset = cloudPendingReset();
   var startProfile = activeProfile();
-  if(pendingReset){
+  if(pendingConfirm){
+    showGate("confirming", pendingConfirm);
+  }else if(pendingReset){
     showGate("reset", pendingReset);
+  }else if(cloudPending()){
+    /* Inscription faite, adresse pas encore confirmée : on ne laisse pas
+       entrer, sinon la confirmation ne servirait à rien. */
+    showGate("pending");
   }else if(!account.profiles.length){
     showGate("create");
   }else if(!startProfile){

@@ -76,6 +76,7 @@
       case "bad_credentials": return TL("Adresse ou mot de passe incorrect.","البريد أو كلمة السر غير صحيحة.");
       case "too_many":        return TL("Trop de tentatives. Réessaie dans un moment.","محاولات كثيرة. أعد المحاولة بعد قليل.");
       case "unauthorized":    return TL("Session expirée — reconnecte-toi.","انتهت الجلسة — أعد الاتصال.");
+      case "not_verified":    return TL("Confirme d'abord ton adresse e-mail.","أكّد بريدك الإلكتروني أولا.");
       case "too_large":       return TL("Progression trop volumineuse pour être envoyée.","التقدّم أكبر من أن يُرسل.");
       case "offline":         return TL("Pas de connexion — réessaie plus tard.","لا يوجد اتصال — أعد المحاولة لاحقا.");
       default:                return TL("Le service est indisponible pour le moment.","الخدمة غير متاحة حاليا.");
@@ -234,21 +235,92 @@
 
   /* ---------------- Opérations de compte ---------------- */
 
+  /* Rattacher un profil existant à un compte tout neuf. Rien n'est
+     attaché tout de suite : tant que l'adresse n'est pas confirmée,
+     rien ne prouve qu'elle appartient à celui qui vient de la saisir. */
   function cloudRegister(p, email, name, password){
     return cloudCall("POST", "/auth/register",
                      {email:email, name:name, password:password})
       .then(function(res){
-        if(res.status !== 201) return {ok:false, message:cloudFailText(res)};
-        attachCloud(p, res.data.account, res.data.token);
-        cloudBooted[p.id] = true;
-        return cloudSync(p).then(function(){ return {ok:true}; });
+        if(res.status !== 202) return {ok:false, message:cloudFailText(res)};
+        setPending(res.data.email, name, p.lang || "bi", p.id);
+        return {ok:true, pending:true};
       });
+  }
+
+  /* ---------------- Inscription en attente ---------------- */
+
+  /* Entre l'inscription et la confirmation, il faut se souvenir de ce
+     qu'on attend : quelle adresse, sous quel prénom, et — si l'on
+     rattachait un profil déjà garni — lequel. C'est rangé avec les
+     profils, donc ça survit à la fermeture de l'application. */
+  function setPending(email, name, lang, profileId){
+    account.pending = { email:email, name:name, lang:lang || "bi",
+                        profileId: profileId || null, since: Date.now() };
+    saveAccount();
+  }
+  function clearPending(){
+    if(account.pending){ account.pending = null; saveAccount(); }
+  }
+  function cloudPending(){ return account.pending || null; }
+
+  function cloudResend(email){
+    return cloudCall("POST", "/auth/resend", {email:email})
+      .then(function(res){
+        return res.status === 204 ? {ok:true} : {ok:false, message:cloudFailText(res)};
+      });
+  }
+
+  function cloudConfirm(token){
+    return cloudCall("POST", "/auth/confirm", {token:token})
+      .then(function(res){
+        if(res.status !== 200){
+          var code = res.data && res.data.error;
+          if(code === "bad_token"){
+            return {ok:false, expired:true, message:TL(
+              "Ce lien n'est plus valable — il expire au bout de 24 heures. Fais-t'en renvoyer un.",
+              "هذا الرابط لم يعد صالحا — ينتهي بعد 24 ساعة. اطلب رابطا جديدا.")};
+          }
+          return {ok:false, message:cloudFailText(res)};
+        }
+        var attente = cloudPending();
+        var cible = null;
+        if(attente && attente.profileId){
+          for(var i=0;i<account.profiles.length;i++){
+            if(account.profiles[i].id === attente.profileId) cible = account.profiles[i];
+          }
+        }
+        if(cible && attente.lang) cible.lang = attente.lang;
+        return adoptSession(res.data.account, res.data.token, cible)
+          .then(function(r){
+            /* Le code d'accès local choisi à l'inscription attendait que
+               le profil existe. On n'a jamais stocké le code, seulement
+               son empreinte et son sel. */
+            if(attente && attente.pinHash && r.profile && !r.profile.pin){
+              r.profile.salt = attente.pinSalt;
+              r.profile.pin = attente.pinHash;
+              saveAccount();
+            }
+            clearPending();
+            return r;
+          });
+      });
+  }
+
+  function cloudPendingConfirm(){
+    var m = String(location.hash || "").match(/#confirm=([A-Za-z0-9\-_]{16,128})/);
+    if(!m) return null;
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+    return m[1];
   }
 
   function cloudLoginInto(p, email, password){
     return cloudCall("POST", "/auth/login", {email:email, password:password})
       .then(function(res){
-        if(res.status !== 200) return {ok:false, message:cloudFailText(res)};
+        if(res.status !== 200){
+          return {ok:false, code:(res.data && res.data.error),
+                  message:cloudFailText(res)};
+        }
         var acc = res.data.account;
         var clash = profileForEmail(acc.email);
         if(clash && clash.id !== p.id){
@@ -267,8 +339,8 @@
   /* Un compte vient d'être reconnu (connexion, inscription ou nouveau
      mot de passe) : on lui donne un profil local — le sien s'il en a
      déjà un sur cet appareil, un neuf sinon — puis on synchronise. */
-  function adoptSession(acc, token){
-    var existing = profileForEmail(acc.email);
+  function adoptSession(acc, token, cible){
+    var existing = cible || profileForEmail(acc.email);
     var p;
     if(existing){
       account.activeId = existing.id;
@@ -294,7 +366,10 @@
   function cloudLoginNewProfile(email, password){
     return cloudCall("POST", "/auth/login", {email:email, password:password})
       .then(function(res){
-        if(res.status !== 200) return {ok:false, message:cloudFailText(res)};
+        if(res.status !== 200){
+          return {ok:false, code:(res.data && res.data.error),
+                  message:cloudFailText(res)};
+        }
         return adoptSession(res.data.account, res.data.token);
       });
   }
@@ -307,11 +382,12 @@
     return cloudCall("POST", "/auth/register",
                      {email:email, name:name, password:password})
       .then(function(res){
-        if(res.status !== 201) return {ok:false, message:cloudFailText(res)};
-        var p = createProfile(name, null, lang || "bi");
-        attachCloud(p, res.data.account, res.data.token);
-        cloudBooted[p.id] = true;
-        return cloudSync(p).then(function(){ return {ok:true, profile:p}; });
+        if(res.status !== 202) return {ok:false, message:cloudFailText(res)};
+        /* Aucun profil local n'est créé ici : tant que l'adresse n'est
+           pas confirmée, il ne servirait à rien et resterait en travers
+           du chemin si la personne abandonne. */
+        setPending(res.data.email, name, lang || "bi", null);
+        return {ok:true, pending:true};
       });
   }
 
@@ -351,6 +427,8 @@
      et colle le lien reçu par courriel. */
   if(typeof window !== "undefined"){
     window.addEventListener("hashchange", function(){
+      var conf = cloudPendingConfirm();
+      if(conf) return showGate("confirming", conf);
       var jeton = cloudPendingReset();
       if(jeton) showGate("reset", jeton);
     });

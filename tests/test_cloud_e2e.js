@@ -58,6 +58,24 @@ async function waitFor(fn, ms, step) {
   }
 }
 
+/* Le lien du dernier courriel, relu comme le ferait un client de
+ * messagerie. Seul le serveur d'essai le capture ; contre la production
+ * ce point d'entree n'existe pas. */
+async function lienDuMail(genre) {
+  let lien = '';
+  await waitFor(async () => {
+    const r = await fetch(BASE + '__essai__/dernier-lien?genre=' + genre);
+    if (!r.ok) return false;
+    lien = (await r.json()).lien;
+    return !!lien;
+  });
+  return lien;
+}
+async function courrielLisible() {
+  try { return (await fetch(BASE + '__essai__/dernier-lien')).ok; }
+  catch (e) { return false; }
+}
+
 const countProgress = (page) => page.evaluate(() => {
   const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
   const p = (a.profiles || []).find(x => x.id === a.activeId) || (a.profiles || [])[0];
@@ -98,14 +116,29 @@ const cloudEmail = (page) => page.evaluate(() => {
   await a.fill('#gate-pw', PASSWORD);
   const porteA = () => a.locator('#gate-box').isVisible().catch(() => false).then(v => !v);
   await a.locator('#gate-create').click();
-  // Le compte est ecrit pendant cloudSync ; la porte ne se ferme qu'une
-  // fois la promesse resolue. Attendre les deux, pas la premiere des deux.
+
+  // Rien n'est acquis a l'inscription : on attend la confirmation.
+  await waitFor(async () => await a.locator('#gpen-resend').isVisible());
+  check('A est renvoye vers sa boite mail', await a.locator('#gpen-resend').isVisible());
+  check('A n est PAS entre dans l application', !(await porteA()));
+  check('aucun compte n est encore rattache', (await cloudEmail(a)) === null,
+        await cloudEmail(a));
+  check('la progression locale est intacte pendant l attente',
+        (await countProgress(a)) === 5, await countProgress(a));
+
+  const lienConf = await lienDuMail('confirm');
+  check('un lien de confirmation a ete envoye', !!lienConf, lienConf);
+
+  await a.goto(lienConf);
   await waitFor(async () => (await cloudEmail(a)) === EMAIL && (await porteA()));
 
-  check('A est relie au compte', (await cloudEmail(a)) === EMAIL, await cloudEmail(a));
+  check('A est relie au compte apres confirmation',
+        (await cloudEmail(a)) === EMAIL, await cloudEmail(a));
   check('la progression locale a survecu au rattachement',
         (await countProgress(a)) === 5, await countProgress(a));
   check('A est entre dans l application', await porteA());
+  check('le jeton de confirmation est retire de la barre d adresse',
+        !a.url().includes('confirm='), a.url());
 
   await a.locator('#profile-btn').click(); await a.waitForTimeout(400);
   check('A voit la ligne « Compte en ligne »', await a.locator('#prof-cloud').isVisible());
@@ -253,22 +286,13 @@ const cloudEmail = (page) => page.evaluate(() => {
   // Lire le courriel n'est possible qu'avec le serveur d'essai, qui
   // capture les messages. Contre la production ce point d'entree
   // n'existe pas : on le dit au lieu de sauter en silence.
+  const lisible = await courrielLisible();
   let lien = '';
-  let lisible = true;
-  try {
-    const sonde = await fetch(BASE + '__essai__/dernier-lien');
-    lisible = sonde.ok;
-  } catch (e) { lisible = false; }
-
   if (!lisible) {
     console.log('  --   suite du parcours non verifiable ici : le courriel');
     console.log('       n\'est lisible qu\'avec tests/serve_test.py.');
   } else {
-    await waitFor(async () => {
-      const r = await fetch(BASE + '__essai__/dernier-lien');
-      lien = (await r.json()).lien;
-      return !!lien;
-    });
+    lien = await lienDuMail('reset');
     check('un lien de reinitialisation a ete envoye', !!lien, lien);
   }
   if (lisible) {

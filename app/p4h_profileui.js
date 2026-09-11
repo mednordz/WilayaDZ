@@ -3,6 +3,7 @@
      INTERFACE DES PROFILS
      ============================================================ */
   var USER_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></svg>';
+  var MAIL_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.5l8.5 6 8.5-6"/></svg>';
   var LOCKSM_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
 
   /* Le sélecteur de langue reste volontairement écrit dans les deux
@@ -142,7 +143,17 @@
           : cloudLoginNewProfile(f.email, f.pw);
         demarche.then(function(r){
           cloudBusy(glogBtn, false);
-          if(!r.ok) return cloudErrInto("glog-err", r.message);
+          if(!r.ok){
+            /* Le mot de passe est bon mais l'adresse n'a jamais été
+               confirmée : ce n'est pas un refus, c'est une étape qui
+               reste à faire. On y emmène au lieu d'afficher une erreur. */
+            if(r.code === "not_verified"){
+              setPending(f.email, f.email.split("@")[0], "bi",
+                         loginInto ? loginInto.id : null);
+              return showGate("pending", f.email);
+            }
+            return cloudErrInto("glog-err", r.message);
+          }
           hideGate(); bootProfile();
           toast(TL("Bon retour, " + esc(r.profile.name) + ".",
                    "مرحبا بعودتك، " + esc(r.profile.name) + "."));
@@ -160,6 +171,97 @@
         showGate(account.profiles.length ? "pick" : "create");
       });
       document.getElementById("glog-email").focus();
+      return;
+    }
+
+    /* Inscription faite, adresse pas encore confirmée. C'est un état
+       qui dure : la personne doit sortir de l'application, aller dans sa
+       boîte, cliquer. L'écran doit donc dire exactement quoi faire, et
+       offrir les deux sorties de secours — renvoyer, ou corriger une
+       adresse mal saisie. */
+    if(mode === "pending"){
+      var attente = cloudPending() || {};
+      var adresse = (typeof targetProfile === "string" && targetProfile) || attente.email || "";
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<div class='gate-avatar'>" + MAIL_ICON + "</div>" +
+          "<h2 id='gate-title'>" + T("Vérifie ta boîte mail","تحقّق من بريدك") + "</h2>" +
+          "<p class='gate-sub'>" + TS(
+            "Un lien vient de partir à " + esc(adresse) + ". Ouvre-le et tu seras connecté — le lien est valable 24 heures.",
+            "أُرسل رابط إلى " + esc(adresse) + ". افتحه وستدخل مباشرة — الرابط صالح 24 ساعة.") + "</p>" +
+          "<p class='gate-note'>" + TS(
+            "Rien ne t'arrivera tant que tu n'auras pas confirmé : c'est ce qui empêche quelqu'un d'ouvrir un compte avec l'adresse de quelqu'un d'autre. Pense à regarder dans les indésirables.",
+            "لن يحدث شيء قبل التأكيد: هكذا لا يفتح أحد حسابا ببريد غيره. تحقّق أيضا من البريد غير المرغوب فيه.") + "</p>" +
+          "<p class='gate-err' id='gpen-err' role='alert'></p>" +
+          "<p class='gate-note' id='gpen-done' style='display:none' role='status'></p>" +
+          "<button class='btn' id='gpen-resend'>" + T("Renvoyer le lien","أعد إرسال الرابط") + "</button>" +
+          "<button class='btn ghost' id='gpen-change' style='margin-top:9px;'>" + T("Ce n'est pas la bonne adresse","ليس هذا البريد الصحيح") + "</button>" +
+          "<button class='btn ghost' id='gpen-login' style='margin-top:9px;'>" + T("J'ai déjà confirmé, me connecter","لقد أكّدت، أدخلني") + "</button>" +
+        "</div>";
+      var penBtn = document.getElementById("gpen-resend");
+      penBtn.addEventListener("click", function(){
+        cloudErrInto("gpen-err", "");
+        cloudBusy(penBtn, true, TL("Envoi…","جارٍ الإرسال…"));
+        cloudResend(adresse).then(function(r){
+          cloudBusy(penBtn, false);
+          if(!r.ok) return cloudErrInto("gpen-err", r.message);
+          var fait = document.getElementById("gpen-done");
+          fait.style.display = "";
+          fait.innerHTML = TS("C'est reparti. Si rien n'arrive, l'adresse est peut-être mal écrite.",
+                              "أُرسل من جديد. إن لم يصلك شيء، فقد يكون البريد مكتوبا بشكل خاطئ.");
+        });
+      });
+      document.getElementById("gpen-change").addEventListener("click", function(){
+        clearPending();
+        showGate("create");
+      });
+      document.getElementById("gpen-login").addEventListener("click", function(){
+        showGate("login");
+      });
+      document.getElementById("gate-box").focus();
+      return;
+    }
+
+    /* Arrivée par le lien de confirmation. targetProfile porte ici le
+       jeton, déjà retiré de la barre d'adresse. */
+    if(mode === "confirming"){
+      gate.innerHTML =
+        "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
+          "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
+          "<h2 id='gate-title'>" + T("Confirmation…","جارٍ التأكيد…") + "</h2>" +
+          "<p class='gate-sub' id='gcon-msg' role='status'>" +
+            TS("On vérifie ton adresse, ça prend deux secondes.",
+               "نتحقّق من بريدك، لن يطول الأمر.") + "</p>" +
+          "<p class='gate-err' id='gcon-err' role='alert'></p>" +
+          "<button class='btn' id='gcon-again' style='display:none'>" + T("Me renvoyer un lien","أرسل لي رابطا جديدا") + "</button>" +
+          "<button class='btn ghost' id='gcon-back' style='display:none;margin-top:9px;'>" + T("Retour","رجوع") + "</button>" +
+        "</div>";
+      cloudConfirm(targetProfile).then(function(r){
+        if(r.ok){
+          hideGate(); bootProfile();
+          toast(TL("Adresse confirmée — bienvenue, " + esc(r.profile.name) + ".",
+                   "تم تأكيد البريد — مرحبا، " + esc(r.profile.name) + "."));
+          return;
+        }
+        document.getElementById("gcon-msg").style.display = "none";
+        cloudErrInto("gcon-err", r.message);
+        var encore = document.getElementById("gcon-again");
+        var retour = document.getElementById("gcon-back");
+        retour.style.display = "";
+        retour.addEventListener("click", function(){
+          showGate(cloudPending() ? "pending" : (account.profiles.length ? "pick" : "create"));
+        });
+        var att = cloudPending();
+        if(r.expired && att && att.email){
+          encore.style.display = "";
+          encore.addEventListener("click", function(){
+            cloudBusy(encore, true, TL("Envoi…","جارٍ الإرسال…"));
+            cloudResend(att.email).then(function(){ showGate("pending"); });
+          });
+        }
+      });
+      document.getElementById("gate-box").focus();
       return;
     }
 
@@ -321,11 +423,20 @@
           cloudBusy(createBtn, false);
           if(!r.ok){ cloudErrInto("gate-err", r.message); return; }
           if(pin){
-            r.profile.pin = hashPin(pin, r.profile.salt);
-            saveAccount();
+            if(attachTo){
+              attachTo.pin = hashPin(pin, attachTo.salt);
+              saveAccount();
+            }else if(cloudPending()){
+              /* Le profil n'existe pas encore — il ne naîtra qu'à la
+                 confirmation. On range donc l'empreinte du code, jamais
+                 le code lui-même, et le profil la reprendra en naissant. */
+              var sel = Math.random().toString(36).slice(2);
+              account.pending.pinSalt = sel;
+              account.pending.pinHash = hashPin(pin, sel);
+              saveAccount();
+            }
           }
-          hideGate(); bootProfile();
-          toast(TL("Bienvenue, " + esc(f.name) + ".","مرحبا، " + esc(f.name) + "."));
+          showGate("pending", f.email);
         });
       }
       createBtn.addEventListener("click", doCreate);

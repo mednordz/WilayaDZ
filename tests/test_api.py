@@ -96,7 +96,7 @@ class Api:
     def __init__(self, base):
         self.base = base
 
-    def call(self, method, path, body=None, token=None, raw_auth=None):
+    def call(self, method, path, body=None, token=None, raw_auth=None, ip=None):
         data = None
         headers = {}
         if body is not None:
@@ -106,6 +106,11 @@ class Api:
             headers["Authorization"] = "Bearer " + token
         if raw_auth is not None:
             headers["Authorization"] = raw_auth
+        # En production nginx impose X-Real-IP et le client ne peut pas
+        # le choisir ; ici il sert a simuler des appareils distincts,
+        # donc des compteurs de debit distincts.
+        if ip is not None:
+            headers["X-Real-IP"] = ip
         req = urllib.request.Request(self.base + path, data=data,
                                      headers=headers, method=method)
         try:
@@ -115,6 +120,30 @@ class Api:
         except urllib.error.HTTPError as e:
             raw = e.read().decode("utf-8")
             return e.code, (json.loads(raw) if raw else None)
+
+
+def texte_du_mail(brut):
+    """Le message tel qu'un client de messagerie l'affiche. Le corps part
+    en quoted-printable, qui coupe les longues lignes avec un « = »
+    final et encode les accents : lire le message brut donnerait un
+    jeton tronque et du texte illisible."""
+    if not brut:
+        return ""
+    parsed = emaillib.message_from_string(brut)
+    textes = []
+    for part in parsed.walk():
+        if part.get_content_maintype() == "text":
+            charge = part.get_payload(decode=True)
+            if charge:
+                textes.append(charge.decode(part.get_content_charset() or "utf-8",
+                                            "replace"))
+    return "\n".join(textes)
+
+
+def lien_du_mail(brut, genre):
+    trouve = re.search(r"https://exemple\.test/#%s=([A-Za-z0-9_-]+)" % genre,
+                       texte_du_mail(brut))
+    return trouve.group(1) if trouve else None
 
 
 def progress(**boxes):
@@ -160,22 +189,75 @@ def main():
         else:
             raise SystemExit("le service n'a pas demarre")
 
-        print("\nCreation de compte")
+        print("\nInscription : rien n'est acquis avant la confirmation")
+        before = len(sink.messages)
         code, res = api.call("POST", "/auth/register",
                              {"email": "  Amine@Example.COM ", "name": "Amine",
                               "password": "correcthorse"})
-        check("201 a la creation", code == 201, code)
-        check("un jeton est rendu", bool(res and res.get("token")))
+        check("202 a l'inscription", code == 202, (code, res))
+        check("AUCUN jeton tant que l'adresse n'est pas confirmee",
+              not (res or {}).get("token"), res)
         check("l'adresse est normalisee",
-              res["account"]["email"] == "amine@example.com",
-              res["account"]["email"])
+              res["email"] == "amine@example.com", res["email"])
+
+        mail = wait_mail(before)
+        check("un mail de confirmation est parti", mail is not None)
+        lisible = texte_du_mail(mail)
+        check("c'est bien une confirmation, pas une reinitialisation",
+              "confirmer que cette adresse est bien la tienne" in lisible
+              and "nouveau mot de passe" not in lisible, lisible[:80])
+        check("la confirmation est ecrite dans les deux langues",
+              "Bienvenue" in lisible and "أكّد بريدي" in lisible)
+        jeton_conf = lien_du_mail(mail, "confirm")
+        check("le mail porte un lien de confirmation entier",
+              jeton_conf is not None and len(jeton_conf) >= 40, jeton_conf)
+
+        code, res = api.call("POST", "/auth/login",
+                             {"email": "amine@example.com", "password": "correcthorse"})
+        check("403 a la connexion tant que l'adresse n'est pas confirmee",
+              code == 403 and res["error"] == "not_verified", (code, res))
+
+        code, _ = api.call("POST", "/auth/forgot", {"email": "amine@example.com"})
+        check("« mot de passe oublie » reste muet sur un compte non confirme",
+              code == 204, code)
+        check("et n'envoie rien", wait_mail(len(sink.messages), 2) is None)
+
+        check("400 sur un jeton de confirmation fantaisiste",
+              api.call("POST", "/auth/confirm", {"token": "pas!un!jeton"})[0] == 400)
+        check("400 sur un jeton de confirmation inconnu",
+              api.call("POST", "/auth/confirm", {"token": "z" * 43})[0] == 400)
+
+        # Se reinscrire par-dessus une inscription JAMAIS confirmee doit
+        # la remplacer : sinon une faute de frappe sur l'adresse de
+        # quelqu'un d'autre bloquerait cette adresse pour toujours.
+        before = len(sink.messages)
+        code, res = api.call("POST", "/auth/register",
+                             {"email": "amine@example.com", "name": "Amine",
+                              "password": "correcthorse"})
+        check("202 en se reinscrivant sur une adresse non confirmee", code == 202, code)
+        jeton_conf2 = lien_du_mail(wait_mail(before), "confirm")
+        check("un nouveau lien est envoye", jeton_conf2 is not None)
+        check("l'ancien lien ne vaut plus rien",
+              api.call("POST", "/auth/confirm", {"token": jeton_conf})[0] == 400)
+
+        code, res = api.call("POST", "/auth/confirm", {"token": jeton_conf2})
+        check("200 a la confirmation", code == 200, (code, res))
+        check("une session est ouverte dans la foulee", bool(res and res.get("token")))
+        check("le compte est marque confirme", res["account"]["verified"] is True, res)
         token = res["token"]
+        check("le jeton de confirmation ne ressert pas",
+              api.call("POST", "/auth/confirm", {"token": jeton_conf2})[0] == 400)
+        check("la connexion marche maintenant",
+              api.call("POST", "/auth/login",
+                       {"email": "amine@example.com", "password": "correcthorse"})[0] == 200)
 
         code, res = api.call("POST", "/auth/register",
                              {"email": "amine@example.com", "name": "X",
                               "password": "correcthorse"})
-        check("409 sur adresse deja prise", code == 409 and res["error"] == "email_taken", code)
+        check("409 sur une adresse deja CONFIRMEE",
+              code == 409 and res["error"] == "email_taken", code)
 
+        print("\nValidation a l'inscription")
         code, res = api.call("POST", "/auth/register",
                              {"email": "pasunemail", "name": "X",
                               "password": "correcthorse"})
@@ -204,7 +286,7 @@ def main():
                      'x-y_z@sous-domaine.example.org']:
             code, res = api.call("POST", "/auth/register",
                                  {"email": good, "name": "X", "password": "correcthorse"})
-            check("adresse acceptee : " + good, code == 201, (code, res))
+            check("adresse acceptee : " + good, code == 202, (code, res))
 
         print("\nConnexion")
         code, res = api.call("POST", "/auth/login",
@@ -221,6 +303,15 @@ def main():
                              {"email": "AMINE@example.com", "password": "correcthorse"})
         check("200 a la connexion", code == 200, code)
         second = res["token"]
+
+        print("\nRenvoi du lien de confirmation")
+        before = len(sink.messages)
+        check("204 sur une adresse inconnue",
+              api.call("POST", "/auth/resend", {"email": "personne@example.com"})[0] == 204)
+        check("204 sur une adresse deja confirmee",
+              api.call("POST", "/auth/resend", {"email": "amine@example.com"})[0] == 204)
+        check("et aucun mail n'est parti dans ces deux cas",
+              wait_mail(before, 2) is None)
         check("un second appareil recoit un autre jeton", second != token)
 
         print("\nAcces protege")
@@ -447,17 +538,54 @@ def main():
                        token=after_reset)[0] == 204)
         check("le jeton ne vaut plus rien",
               api.call("GET", "/me", token=after_reset)[0] == 401)
-        check("on ne peut plus se connecter",
-              api.call("POST", "/auth/login",
-                       {"email": "amine@example.com",
-                        "password": "motdepasseapresoubli"})[0] == 401)
-        check("l'adresse est de nouveau libre",
-              api.call("POST", "/auth/register",
-                       {"email": "amine@example.com", "name": "Amine",
-                        "password": "correcthorse"})[0] == 201)
+        code, _ = api.call("POST", "/auth/login",
+                           {"email": "amine@example.com",
+                            "password": "motdepasseapresoubli"})
+        check("on ne peut plus se connecter", code == 401, code)
+        code, _ = api.call("POST", "/auth/register",
+                           {"email": "amine@example.com", "name": "Amine",
+                            "password": "correcthorse"})
+        check("l'adresse est de nouveau libre", code == 202, code)
 
         print("\nRoutes inconnues")
         check("404 sur une route inventee", api.call("GET", "/nexistepas")[0] == 404)
+
+        # Placé en dernier : ces échecs saturent volontairement le
+        # compteur de l'adresse IP, plus rien ne peut se connecter après.
+        print("\nLa limite compte les echecs, pas les reussites")
+        # Une IP a elle seule : les echecs des sections precedentes ne
+        # doivent pas fausser le compte, et cela verifie du meme coup que
+        # les compteurs sont bien separes par client.
+        IP = "203.0.113.7"
+        before = len(sink.messages)
+        api.call("POST", "/auth/register",
+                 {"email": "quota@example.com", "name": "Quota",
+                  "password": "correcthorse"}, ip=IP)
+        jeton_q = lien_du_mail(wait_mail(before), "confirm")
+        api.call("POST", "/auth/confirm", {"token": jeton_q}, ip=IP)
+
+        for i in range(9):
+            api.call("POST", "/auth/login",
+                     {"email": "quota@example.com", "password": "faux%d" % i}, ip=IP)
+        code, _ = api.call("POST", "/auth/login",
+                           {"email": "quota@example.com", "password": "correcthorse"},
+                           ip=IP)
+        check("9 echecs ne bloquent pas une connexion valable", code == 200, code)
+
+        code, _ = api.call("POST", "/auth/login",
+                           {"email": "quota@example.com", "password": "correcthorse"},
+                           ip="203.0.113.99")
+        check("un autre appareil n'est pas puni pour ces echecs", code == 200, code)
+
+        for i in range(6):
+            api.call("POST", "/auth/login",
+                     {"email": "quota@example.com", "password": "encorefaux%d" % i},
+                     ip=IP)
+        code, res = api.call("POST", "/auth/login",
+                             {"email": "quota@example.com", "password": "correcthorse"},
+                             ip=IP)
+        check("au-dela, tout est refuse le temps que ca retombe",
+              code == 429 and res["error"] == "too_many", (code, res))
 
         print("\nHEAD (sondes de supervision)")
         code, res = api.call("HEAD", "/health")

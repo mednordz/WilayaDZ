@@ -79,6 +79,16 @@ TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
 # ne serve a personne des semaines plus tard.
 RESET_TTL = 3600
 
+# Une journee pour confirmer son adresse : on ne releve pas forcement ses
+# mails dans l'heure, et c'est le tout premier geste — echouer la ferait
+# recommencer toute l'inscription.
+CONFIRM_TTL = 24 * 3600
+
+# Une inscription jamais confirmee finit par liberer l'adresse : sans
+# cela, une faute de frappe sur le courriel de quelqu'un d'autre bloque
+# cette adresse pour toujours.
+UNVERIFIED_TTL = 7 * 86400
+
 # Envoi des courriels. Sans SMTP_HOST le service n'envoie rien et se
 # contente de journaliser le lien : c'est ce qui permet d'eprouver tout
 # le mecanisme (jetons, expiration, ecrans) sans serveur de mail.
@@ -92,7 +102,7 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "25"))
 MAIL_FROM = os.environ.get("MAIL_FROM", "WilayaDZ <bigpc.alg@gmail.com>")
 APP_URL = os.environ.get("APP_URL", "https://wilayadz.smnc.win")
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 # --------------------------------------------------------------------
@@ -168,6 +178,29 @@ class Store:
             )
             self._db.execute("PRAGMA user_version=2")
             self._db.commit()
+        if version < 3:
+            self._db.executescript(
+                """
+                ALTER TABLE accounts
+                  ADD COLUMN verified INTEGER NOT NULL DEFAULT 0;
+                CREATE TABLE IF NOT EXISTS confirms (
+                  token_hash BLOB    PRIMARY KEY,
+                  account_id INTEGER NOT NULL
+                             REFERENCES accounts(id) ON DELETE CASCADE,
+                  created    INTEGER NOT NULL,
+                  expires    INTEGER NOT NULL,
+                  used       INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE INDEX IF NOT EXISTS confirms_account ON confirms(account_id);
+                -- Les comptes ouverts avant que la confirmation existe sont
+                -- consideres confirmes : ils n'ont jamais eu l'occasion de
+                -- l'etre, les enfermer dehors serait les punir d'un choix
+                -- qui n'etait pas le leur.
+                UPDATE accounts SET verified = 1;
+                """
+            )
+            self._db.execute("PRAGMA user_version=3")
+            self._db.commit()
 
     def query(self, sql, args=()):
         with self._lock:
@@ -189,6 +222,14 @@ class Store:
 
     def prune_resets(self):
         self.write("DELETE FROM resets WHERE expires < ?", (int(time.time()),))
+        self.write("DELETE FROM confirms WHERE expires < ?", (int(time.time()),))
+
+    def prune_unverified(self):
+        """Une inscription abandonnee ne doit pas retenir l'adresse
+        indefiniment — surtout si c'est celle de quelqu'un d'autre,
+        saisie par erreur."""
+        self.write("DELETE FROM accounts WHERE verified = 0 AND created < ?",
+                   (int(time.time()) - UNVERIFIED_TTL,))
 
 
 # --------------------------------------------------------------------
@@ -222,68 +263,93 @@ def token_fingerprint(raw):
 # Courriel
 # --------------------------------------------------------------------
 
-def reset_mail(name, link):
+def build_mail(subject, name, link, textes):
     """
     Le message part en francais ET en arabe, comme tout le reste de
     l'application : on ne sait pas laquelle des deux langues la personne
-    lit, et ce message arrive justement au moment ou elle est bloquee.
+    lit, et ces messages arrivent justement au moment ou elle est
+    bloquee dehors.
 
     Texte brut d'abord, HTML ensuite : un client qui n'affiche que le
     premier doit rester parfaitement utilisable — le lien y figure en
     clair, jamais cache derriere un libelle.
     """
     msg = EmailMessage()
-    msg["Subject"] = "WilayaDZ — nouveau mot de passe / كلمة سر جديدة"
+    msg["Subject"] = subject
     msg["From"] = MAIL_FROM
     # Sans Date ni Message-ID, le message part avec « message-id=<> » et
     # nombre de filtres anti-spam le penalisent — au pire moment, celui
-    # ou quelqu'un ne peut plus entrer dans son compte.
+    # ou quelqu'un ne peut pas entrer dans son compte.
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="wilayadz.smnc.win")
     msg["Auto-Submitted"] = "auto-generated"
+
     msg.set_content(
-        "Bonjour %s,\n\n"
-        "Tu as demande un nouveau mot de passe pour ton compte WilayaDZ.\n"
-        "Ouvre ce lien (valable une heure) :\n\n%s\n\n"
-        "Si tu n'as rien demande, ignore ce message : rien n'a change, "
-        "et ta progression reste intacte.\n\n"
-        "— WilayaDZ\n\n"
+        "Bonjour %s,\n\n%s\n\n%s\n\n%s\n\n— WilayaDZ\n\n"
         "----------------------------------------\n\n"
-        "مرحبا %s،\n\n"
-        "لقد طلبت كلمة سر جديدة لحسابك في WilayaDZ.\n"
-        "افتح هذا الرابط (صالح لمدة ساعة):\n\n%s\n\n"
-        "إن لم تطلب شيئا، تجاهل هذه الرسالة: لم يتغير شيء، وتقدّمك سليم.\n\n"
-        "— WilayaDZ\n" % (name, link, name, link)
+        "مرحبا %s،\n\n%s\n\n%s\n\n%s\n\n— WilayaDZ\n"
+        % (name, textes["fr_intro"], link, textes["fr_note"],
+           name, textes["ar_intro"], link, textes["ar_note"])
     )
+
     # Le lien est place tel quel dans un href : il ne contient que des
     # caracteres de token_urlsafe et l'URL du site, jamais de saisie
     # d'utilisateur. Le prenom, lui, est echappe.
-    safe_name = (name.replace("&", "&amp;").replace("<", "&lt;")
-                     .replace(">", "&gt;").replace('"', "&quot;"))
+    safe = (name.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace('"', "&quot;"))
+    bouton = ("padding:12px 18px;border-radius:10px;text-decoration:none;"
+              "display:inline-block;font-weight:700;"
+              "background:#9C5015;color:#F2E4CE")
     msg.add_alternative(
         "<div style=\"font-family:system-ui,sans-serif;max-width:520px;"
         "margin:0 auto;color:#2A2118\">"
         "<p style=\"font-size:1.25rem;font-weight:700;color:#9C5015\">WilayaDZ</p>"
-        "<p>Bonjour %s,</p>"
-        "<p>Tu as demandé un nouveau mot de passe. Ce lien est valable "
-        "<b>une heure</b> :</p>"
-        "<p><a href=\"%s\" style=\"background:#9C5015;color:#F2E4CE;"
-        "padding:12px 18px;border-radius:10px;text-decoration:none;"
-        "display:inline-block;font-weight:700\">Choisir un mot de passe</a></p>"
-        "<p style=\"font-size:.85rem;color:#6A5A44\">Si tu n'as rien demandé, "
-        "ignore ce message : rien n'a changé et ta progression reste intacte.</p>"
+        "<p>Bonjour %s,</p><p>%s</p>"
+        "<p><a href=\"%s\" style=\"%s\">%s</a></p>"
+        "<p style=\"font-size:.85rem;color:#6A5A44\">%s</p>"
         "<hr style=\"border:none;border-top:1px solid #E3D5BE\">"
         "<div dir=\"rtl\" lang=\"ar\">"
-        "<p>مرحبا %s،</p>"
-        "<p>لقد طلبت كلمة سر جديدة. هذا الرابط صالح <b>لمدة ساعة</b>:</p>"
-        "<p><a href=\"%s\" style=\"background:#9C5015;color:#F2E4CE;"
-        "padding:12px 18px;border-radius:10px;text-decoration:none;"
-        "display:inline-block;font-weight:700\">اختر كلمة سر</a></p>"
-        "<p style=\"font-size:.85rem;color:#6A5A44\">إن لم تطلب شيئا، تجاهل هذه "
-        "الرسالة: لم يتغير شيء وتقدّمك سليم.</p>"
-        "</div></div>" % (safe_name, link, safe_name, link),
+        "<p>مرحبا %s،</p><p>%s</p>"
+        "<p><a href=\"%s\" style=\"%s\">%s</a></p>"
+        "<p style=\"font-size:.85rem;color:#6A5A44\">%s</p>"
+        "</div></div>"
+        % (safe, textes["fr_intro"], link, bouton, textes["fr_cta"], textes["fr_note"],
+           safe, textes["ar_intro"], link, bouton, textes["ar_cta"], textes["ar_note"]),
         subtype="html")
     return msg
+
+
+def reset_mail(name, link):
+    return build_mail(
+        "WilayaDZ — nouveau mot de passe / كلمة سر جديدة", name, link, {
+            "fr_intro": "Tu as demande un nouveau mot de passe pour ton compte "
+                        "WilayaDZ. Ouvre ce lien (valable une heure) :",
+            "fr_cta": "Choisir un mot de passe",
+            "fr_note": "Si tu n'as rien demande, ignore ce message : rien n'a "
+                       "change, et ta progression reste intacte.",
+            "ar_intro": "لقد طلبت كلمة سر جديدة لحسابك في WilayaDZ. "
+                        "افتح هذا الرابط (صالح لمدة ساعة):",
+            "ar_cta": "اختر كلمة سر",
+            "ar_note": "إن لم تطلب شيئا، تجاهل هذه الرسالة: لم يتغير شيء، وتقدّمك سليم.",
+        })
+
+
+def confirm_mail(name, link):
+    return build_mail(
+        "WilayaDZ — confirme ton adresse / أكّد بريدك", name, link, {
+            "fr_intro": "Bienvenue ! Il reste une chose a faire : confirmer "
+                        "que cette adresse est bien la tienne. Ouvre ce lien "
+                        "(valable 24 heures) et tu seras connecte :",
+            "fr_cta": "Confirmer mon adresse",
+            "fr_note": "Si tu n'as pas ouvert de compte WilayaDZ, ignore ce "
+                       "message : sans cette confirmation, le compte ne "
+                       "servira a personne et sera efface.",
+            "ar_intro": "مرحبا بك! بقي شيء واحد: تأكيد أن هذا البريد بريدك. "
+                        "افتح هذا الرابط (صالح 24 ساعة) وستدخل مباشرة:",
+            "ar_cta": "أكّد بريدي",
+            "ar_note": "إن لم تفتح حسابا في WilayaDZ، تجاهل هذه الرسالة: بدون "
+                       "هذا التأكيد لن يفيد الحساب أحدا وسيُحذف.",
+        })
 
 
 def send_mail(to_address, msg):
@@ -319,6 +385,16 @@ class RateLimiter:
     def __init__(self):
         self._lock = threading.Lock()
         self._hits = {}
+
+    def over(self, key, limit, window):
+        """Le compteur est-il atteint ? Ne consomme rien — sert a
+        verifier un quota d'echecs sans que la simple verification
+        compte comme une tentative."""
+        now = time.time()
+        with self._lock:
+            times = [t for t in self._hits.get(key, []) if now - t < window]
+            self._hits[key] = times
+            return len(times) >= limit
 
     def allow(self, key, limit, window):
         now = time.time()
@@ -584,6 +660,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._logout()
         if path == "/auth/password":
             return self._change_password(body)
+        if path == "/auth/confirm":
+            return self._confirm(body)
+        if path == "/auth/resend":
+            return self._resend(body)
         if path == "/auth/forgot":
             return self._forgot(body)
         if path == "/auth/reset":
@@ -611,7 +691,76 @@ class Handler(BaseHTTPRequestHandler):
     def _public(self, row):
         return {"email": row["email"], "name": row["name"],
                 "created": row["created"], "version": row["version"],
-                "updated": row["updated"]}
+                "updated": row["updated"], "verified": bool(row["verified"])}
+
+    def _issue_confirm(self, account_id, email, name):
+        raw, digest = new_token()
+        now = int(time.time())
+        store.write(
+            "INSERT INTO confirms (token_hash, account_id, created, expires)"
+            " VALUES (?,?,?,?)", (digest, account_id, now, now + CONFIRM_TTL))
+        # Meme raisonnement que pour la reinitialisation : le jeton
+        # voyage dans le FRAGMENT, qui n'est jamais envoye au serveur et
+        # n'apparait donc dans aucun journal d'acces.
+        link = APP_URL + "/#confirm=" + raw
+        if not send_mail(email, confirm_mail(name, link)):
+            if not SMTP_HOST:
+                print("mail non configure — lien de confirmation : %s" % link,
+                      flush=True)
+
+    def _confirm(self, body):
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        if not limiter.allow("confirm:" + self._client(), 20, 3600):
+            return self._fail(429, "too_many")
+
+        raw = str(body.get("token") or "")
+        if not TOKEN_RE.match(raw):
+            return self._fail(400, "bad_token")
+
+        row = store.one(
+            "SELECT token_hash, account_id FROM confirms"
+            " WHERE token_hash = ? AND used = 0 AND expires > ?",
+            (token_fingerprint(raw), int(time.time())))
+        if row is None:
+            return self._fail(400, "bad_token")
+
+        store.write("UPDATE accounts SET verified = 1 WHERE id = ?",
+                    (row["account_id"],))
+        store.write("UPDATE confirms SET used = 1 WHERE token_hash = ?",
+                    (row["token_hash"],))
+        store.write("DELETE FROM confirms WHERE account_id = ? AND used = 0",
+                    (row["account_id"],))
+
+        # On ouvre la session dans la foulee : la personne vient de
+        # prouver qu'elle releve cette boite, lui redemander de se
+        # connecter juste apres n'apprendrait rien a personne.
+        acc = store.one("SELECT * FROM accounts WHERE id = ?", (row["account_id"],))
+        token = self._open_session(acc["id"])
+        self._send(200, {"token": token, "account": self._public(acc)})
+
+    def _resend(self, body):
+        """Comme « mot de passe oublie » : TOUJOURS 204. Repondre
+        differemment selon que l'adresse existe, ou qu'elle est deja
+        confirmee, ferait de cette porte un moyen de savoir qui a un
+        compte ici."""
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        if not limiter.allow("resend:" + self._client(), 5, 3600):
+            return self._send(204)
+
+        email = clean_email(body.get("email"))
+        row = store.one("SELECT * FROM accounts WHERE email = ?",
+                        (email,)) if email else None
+        if row is None or row["verified"]:
+            return self._send(204)
+        if not limiter.allow("resend-acc:%d" % row["id"], 3, 3600):
+            return self._send(204)
+
+        store.write("DELETE FROM confirms WHERE account_id = ? AND used = 0",
+                    (row["id"],))
+        self._issue_confirm(row["id"], row["email"], row["name"])
+        self._send(204)
 
     def _open_session(self, account_id):
         raw, digest = new_token()
@@ -644,22 +793,55 @@ class Handler(BaseHTTPRequestHandler):
 
         salt = secrets.token_bytes(16)
         now = int(time.time())
-        try:
-            cur = store.write(
-                "INSERT INTO accounts (email, name, pw_salt, pw_hash, created)"
-                " VALUES (?,?,?,?,?)",
-                (email, name, salt, hash_password(password, salt), now))
-        except sqlite3.IntegrityError:
+        store.prune_unverified()
+
+        # Une inscription laissee en plan ne doit pas retenir l'adresse :
+        # on la remplace. Le compte n'ayant jamais ete confirme, il
+        # n'appartenait encore a personne — rien a perdre. Un compte
+        # CONFIRME, lui, est intouchable.
+        existant = store.one("SELECT id, verified FROM accounts WHERE email = ?",
+                             (email,))
+        if existant and existant["verified"]:
             return self._fail(409, "email_taken")
 
-        token = self._open_session(cur.lastrowid)
-        row = store.one("SELECT * FROM accounts WHERE id = ?", (cur.lastrowid,))
-        self._send(201, {"token": token, "account": self._public(row)})
+        if existant:
+            store.write(
+                "UPDATE accounts SET name = ?, pw_salt = ?, pw_hash = ?, created = ?"
+                " WHERE id = ?",
+                (name, salt, hash_password(password, salt), now, existant["id"]))
+            account_id = existant["id"]
+            store.write("DELETE FROM confirms WHERE account_id = ?", (account_id,))
+        else:
+            try:
+                cur = store.write(
+                    "INSERT INTO accounts (email, name, pw_salt, pw_hash, created)"
+                    " VALUES (?,?,?,?,?)",
+                    (email, name, salt, hash_password(password, salt), now))
+                account_id = cur.lastrowid
+            except sqlite3.IntegrityError:
+                return self._fail(409, "email_taken")
+
+        # AUCUNE session n'est ouverte ici : tant que l'adresse n'est pas
+        # confirmee, rien ne prouve qu'elle appartient a celui qui vient
+        # de la saisir. Sans cela, une faute de frappe donnerait un
+        # compte irrecuperable — le lien de mot de passe oublie partirait
+        # vers une boite qui n'est pas la sienne.
+        self._issue_confirm(account_id, email, name)
+        self._send(202, {"pending": True, "email": email})
 
     def _login(self, body):
         if not isinstance(body, dict):
             return self._fail(400, "bad_request")
-        if not limiter.allow("log:" + self._client(), 10, 900):
+        client = self._client()
+
+        # Deux compteurs, et c'est volontaire. Le premier borne le
+        # martelage brut. Le second ne compte que les ECHECS : une
+        # famille qui se connecte a tour de role sur le meme telephone
+        # n'a aucune raison d'etre punie, alors que dix mots de passe
+        # faux d'affilee, si.
+        if not limiter.allow("log-try:" + client, 40, 900):
+            return self._fail(429, "too_many")
+        if limiter.over("log-bad:" + client, 10, 900):
             return self._fail(429, "too_many")
 
         email = clean_email(body.get("email"))
@@ -671,9 +853,17 @@ class Handler(BaseHTTPRequestHandler):
         # cette porte devient un moyen de savoir qui a un compte ici.
         if row is None:
             hash_password(password or "x", b"decoy-salt-00000")
+            limiter.allow("log-bad:" + client, 10, 900)
             return self._fail(401, "bad_credentials")
         if not verify_password(password, row["pw_salt"], row["pw_hash"]):
+            limiter.allow("log-bad:" + client, 10, 900)
             return self._fail(401, "bad_credentials")
+
+        # Le mot de passe est bon, mais l'adresse n'a jamais ete
+        # confirmee : c'est bien la personne qui a saisi l'inscription,
+        # pas forcement le proprietaire de la boite.
+        if not row["verified"]:
+            return self._fail(403, "not_verified")
 
         token = self._open_session(row["id"])
         self._send(200, {"token": token, "account": self._public(row)})
@@ -732,7 +922,10 @@ class Handler(BaseHTTPRequestHandler):
         email = clean_email(body.get("email"))
         row = store.one("SELECT * FROM accounts WHERE email = ?",
                         (email,)) if email else None
-        if row is None:
+        # Un compte jamais confirme n'a pas de mot de passe a recuperer :
+        # c'est la confirmation qu'il lui faut, et « renvoyer le lien »
+        # est la porte prevue pour cela.
+        if row is None or not row["verified"]:
             return self._send(204)
         # Et personne ne doit pouvoir faire pleuvoir des mails sur la
         # boite de quelqu'un d'autre en rejouant le formulaire.
@@ -858,6 +1051,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     store.prune_sessions()
     store.prune_resets()
+    store.prune_unverified()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     server.daemon_threads = True
     print("wilayadz-api : ecoute sur le port %d, base %s" % (PORT, DB_PATH),
