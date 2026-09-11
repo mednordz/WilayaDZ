@@ -199,6 +199,8 @@
   .topstat.streak{ color:var(--accent); }
   .topstat.xp{ color:var(--gold); }
   .topstat .icon{ width:16px; height:16px; }
+  button.topstat{ background:none; border:none; padding:0; cursor:pointer; font:inherit; }
+  button.topstat:active{ transform:scale(.94); }
 
   .view{ display:none; padding:0 clamp(14px,4vw,22px) 30px; }
   .view.active{ display:block; }

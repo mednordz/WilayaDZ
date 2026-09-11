@@ -484,6 +484,33 @@
     document.getElementById("stat-xp").textContent = state.xp || 0;
   }
 
+  function openStreakSheet(){
+    var n = state.streak.count || 0;
+    var practicedToday = state.streak.last === todayStr(new Date());
+    openSheet(
+      "<div class='streak-sheet'>" +
+        "<h2 id='sheet-title' class='sr-only'>" + T("Ta série","سلسلتك") + "</h2>" +
+        "<div class='streak-sheet-top'>" +
+          "<span class='streak-big'>" + n + "</span>" +
+          mascotHtml("fennec", 64, "happy") +
+        "</div>" +
+        "<p class='streak-unit'>" + T(n > 1 ? "jours d'affilée" : "jour d'affilée", "أيام متتالية") + "</p>" +
+        "<p class='sub'>" + pickLine("streak") + "</p>" +
+        "<div class='streak-tip'>" +
+          "<svg class='icon' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'><path d='M12 2c-1 3-4 4-4 8a4 4 0 008 0c0-1.5-.5-2.2-1-3.2.9.6 2 2.1 2 4.2a5 5 0 01-10 0c0-4.5 3.3-6.6 5-9z'/></svg>" +
+          "<span>" + (practicedToday
+            ? TS("Bien joué, aujourd'hui compte déjà.", "أحسنت، اليوم محسوب بالفعل.")
+            : TS("Termine une leçon aujourd'hui pour la faire durer.", "أنهِ درسا اليوم لتستمر السلسلة.")) +
+          "</span>" +
+        "</div>" +
+        "<button class='btn ghost' id='streak-sheet-close' style='margin-top:18px;'>" + T("Fermer","إغلاق") + "</button>" +
+      "</div>"
+    );
+    document.getElementById("streak-sheet-close").addEventListener("click", closeSheet);
+  }
+  var topstatStreakEl = document.getElementById("topstat-streak");
+  if(topstatStreakEl) topstatStreakEl.addEventListener("click", openStreakSheet);
+
   function renderSoundBtn(){
     var btn = document.getElementById("sound-btn");
     if(!btn) return;

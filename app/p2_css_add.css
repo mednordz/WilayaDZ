@@ -94,6 +94,24 @@
   }
   .key-arrow{ color:var(--ink-faint); font-size:1.4rem; margin:6px 0; }
 
+  /* ---- Détail de série (feuille) ---- */
+  .streak-sheet{ text-align:center; }
+  .streak-sheet-top{ display:flex; align-items:center; justify-content:center; gap:14px; margin:6px 0 10px; }
+  .streak-big{
+    font-family:var(--font-display); font-weight:800; font-size:3.4rem; line-height:1;
+    background:linear-gradient(180deg, var(--accent-bright), var(--accent));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .streak-sheet .streak-unit{ font-size:.95rem; color:var(--ink-dim); margin:0 0 14px; }
+  .streak-sheet .hero-mascot{ justify-content:center; margin:6px 0 4px; }
+  .streak-tip{
+    display:flex; align-items:center; gap:10px; text-align:left;
+    background:var(--surface-2); border-radius:var(--radius-sm);
+    padding:12px 14px; margin-top:14px; font-size:.86rem; color:var(--ink-dim);
+  }
+  .streak-tip .icon{ width:22px; height:22px; color:var(--accent); flex:none; }
+  [dir="rtl"] .streak-tip{ text-align:right; }
+
   /* ---- Chaîne (remise en ordre) ---- */
   .chain-slots{
     display:flex; gap:8px; justify-content:center; margin:18px 0 14px; flex-wrap:wrap;
