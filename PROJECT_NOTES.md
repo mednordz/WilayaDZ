@@ -241,6 +241,9 @@ profil par lien/QR (voir plus haut), mnémotechniques pour les 21 wilayas de
 2019/2025 (`HOOKS` dans `part_data.js`, codes 49–69 — auparavant seuls les
 codes 1–48 en avaient), et le correctif de charset ci-dessus (bloquant pour
 tout hébergement web). Reste à faire, hors de portée de cette session cloud
-(pas d'accès réseau à `bigpc`) : lancer réellement `deploy/` sur `bigpc` et
-router `69.smnc.win` — voir **DEPLOY.md**, qui contient le runbook complet
-et dit explicitement qui doit l'exécuter.
+(pas d'accès réseau à `bigpc`) : deux étapes manuelles, une seule fois, sur
+`bigpc` — installer un runner GitHub Actions self-hosted (label `bigpc`) et
+router `69.smnc.win` dans `cloudflared`. Une fois faites, `deploy/` tourne
+tout seul via `.github/workflows/deploy.yml` à chaque changement de `app/`
+ou `deploy/`, déclenchable aussi à la demande. Voir **DEPLOY.md** pour le
+runbook complet et le détail de ce qui reste manuel et pourquoi.
