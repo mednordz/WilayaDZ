@@ -13,7 +13,9 @@
 const { chromium } = require('playwright');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8390/';
-const EMAIL = 'e2e-' + Date.now() + '@example.com';
+// Surchargeable pour pouvoir viser la production et supprimer ensuite le
+// compte d'essai : node tests/test_cloud_e2e.js puis DELETE /account.
+const EMAIL = process.env.EMAIL || ('e2e-' + Date.now() + '@example.com');
 const PASSWORD = 'motdepassesolide';
 
 let checks = 0;
@@ -40,6 +42,19 @@ function seedAccount(codes) {
     }],
     activeId: 'ptest1'
   };
+}
+
+/* Attendre une condition plutôt qu'une durée : contre la production, un
+ * aller-retour réseau réel dure cent fois ce qu'il dure en local, et une
+ * pause fixe suffisamment longue pour être fiable rendrait le test
+ * interminable. */
+async function waitFor(fn, ms, step) {
+  const end = Date.now() + (ms || 20000);
+  for (;;) {
+    try { if (await fn()) return true; } catch (e) { /* page occupée */ }
+    if (Date.now() > end) return false;
+    await new Promise(r => setTimeout(r, step || 250));
+  }
 }
 
 const countProgress = (page) => page.evaluate(() => {
@@ -80,7 +95,7 @@ const cloudEmail = (page) => page.evaluate(() => {
   await a.fill('#creg-email', EMAIL);
   await a.fill('#creg-pw', PASSWORD);
   await a.locator('#creg-go').click();
-  await a.waitForTimeout(2500);
+  await waitFor(async () => (await cloudEmail(a)) === EMAIL);
 
   check('A est relie au compte', (await cloudEmail(a)) === EMAIL, await cloudEmail(a));
   const statusA = await a.locator('.cloud-status-body b').first().innerText().catch(() => '');
@@ -100,13 +115,16 @@ const cloudEmail = (page) => page.evaluate(() => {
   await b.locator('#gate-login').click(); await b.waitForTimeout(400);
   await b.fill('#glog-email', EMAIL);
   await b.fill('#glog-pw', PASSWORD);
+  const gateGone = () => b.locator('#gate-box').isVisible().catch(() => false).then(v => !v);
   await b.locator('#glog-go').click();
-  await b.waitForTimeout(2500);
+  // Les donnees arrivent pendant cloudSync ; la porte ne se ferme qu'une
+  // fois la promesse resolue. Attendre les deux, pas seulement la
+  // premiere des deux.
+  await waitFor(async () => (await countProgress(b)) === 5 && (await gateGone()));
 
   check('B a recupere la progression', (await countProgress(b)) === 5, await countProgress(b));
   check('B est relie au meme compte', (await cloudEmail(b)) === EMAIL, await cloudEmail(b));
-  const nameB = await b.locator('.brand').innerText().catch(() => '');
-  check('B a bien quitte la porte d entree', !(await b.locator('#gate-box').isVisible().catch(() => false)), nameB);
+  check('B a bien quitte la porte d entree', await gateGone());
 
   const xpB = await b.evaluate(() => {
     const acc = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
@@ -142,14 +160,14 @@ const cloudEmail = (page) => page.evaluate(() => {
     localStorage.setItem('wilaya-account-v1', JSON.stringify(acc));
   }, accB);
   await b2.reload();
-  await b2.waitForTimeout(3000);
+  await waitFor(async () => (await countProgress(b2)) === 6 && (await cloudEmail(b2)) === EMAIL);
   check('le 3e appareil a bien 6 wilayas', (await countProgress(b2)) === 6, await countProgress(b2));
   check('le 3e appareil est sur le meme compte', (await cloudEmail(b2)) === EMAIL);
 
   await a.locator('#profile-btn').click(); await a.waitForTimeout(400);
   await a.locator('#prof-cloud').click(); await a.waitForTimeout(400);
   await a.locator('#cloud-now').click();
-  await a.waitForTimeout(2800);
+  await waitFor(async () => (await countProgress(a)) === 6);
 
   check('A a recupere la 6e wilaya', (await countProgress(a)) === 6, await countProgress(a));
   const xpA = await a.evaluate(() => {
@@ -193,7 +211,7 @@ const cloudEmail = (page) => page.evaluate(() => {
   await c.fill('#glog-email', EMAIL);
   await c.fill('#glog-pw', 'pasbonnedutout');
   await c.locator('#glog-go').click();
-  await c.waitForTimeout(1800);
+  await waitFor(async () => (await c.locator('#glog-err').innerText()).trim().length > 0);
   const errC = (await c.locator('#glog-err').innerText()).trim();
   check('un mauvais mot de passe est refuse', errC.length > 0, errC);
   check('aucun profil n a ete cree au passage', (await countProgress(c)) === -1);
