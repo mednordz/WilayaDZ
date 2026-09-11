@@ -154,7 +154,7 @@
 
     gate.innerHTML =
       "<div class='gate-box' role='dialog' aria-modal='true' aria-labelledby='gate-title' tabindex='-1' id='gate-box'>" +
-        "<div class='gate-brand'>Wilaya <span>01–69</span></div>" +
+        "<div class='gate-brand'>Wilaya<span>DZ</span></div>" +
         "<h2 id='gate-title'>" + T("Qui apprend ?","من يتعلّم؟") + "</h2>" +
         "<p class='gate-sub'>" + TS("Chaque personne garde sa propre mémoire, ses propres cœurs, sa propre série.",
                                     "لكل شخص ذاكرته وقلوبه وسلسلته الخاصة.") + "</p>" +
@@ -385,9 +385,9 @@
       if(!url) return;
       if(navigator.share){
         navigator.share({
-          title:"Wilaya 01–69",
-          text:TL("Ma progression Wilaya 01–69 — importe-la sur ton appareil.",
-                  "تقدّمي في تطبيق الولايات — استورده على جهازك."),
+          title:"WilayaDZ",
+          text:TL("Ma progression WilayaDZ — importe-la sur ton appareil.",
+                  "تقدّمي في تطبيق WilayaDZ — استورده على جهازك."),
           url:url
         }).catch(function(){ /* annulé par l'utilisateur : rien à faire */ });
       }else if(navigator.clipboard && navigator.clipboard.writeText){

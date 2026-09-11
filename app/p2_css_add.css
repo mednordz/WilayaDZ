@@ -841,7 +841,7 @@
   .topstat{ font-weight:900; font-size:.95rem; font-variant-numeric:tabular-nums; }
   .topstat .icon{ width:19px; height:19px; }
   .topstat.xp{ color:var(--gold-ink); }
-  .brand{ font-weight:900; letter-spacing:-.02em; }
+  .brand{ font-weight:900; letter-spacing:-.02em; gap:0; }
 
   /* ---- Étapes du parcours ---- */
   .node{ width:86px; height:86px; font-size:1.18rem; }

@@ -1,4 +1,4 @@
-# Audit — Wilaya 01–69
+# Audit — WilayaDZ
 
 Portée : sécurité, accessibilité (WCAG 2.1 AA), régression fonctionnelle, conformité de licence. Méthode : lecture de code ciblée + tests automatisés (Playwright, axe-core) sur les deux langues (fr/ar) et les écrans principaux (parcours, feuille d'info, entraînement, infos, leçon).
 

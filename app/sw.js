@@ -1,4 +1,4 @@
-// Service worker — Wilaya 01–69
+// Service worker — WilayaDZ
 //
 // L'app entière tient dans UN SEUL fichier HTML autonome (tout est en
 // base64 inline : polices, images des mascottes — voir PROJECT_NOTES.md).

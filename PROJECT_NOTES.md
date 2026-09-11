@@ -1,4 +1,4 @@
-# Wilaya 01–69 — notes de reprise du projet
+# WilayaDZ — notes de reprise du projet
 
 Application bilingue (français/arabe, RTL) façon Duolingo pour mémoriser les
 codes des 69 wilayas d'Algérie. Ce document sert à reprendre le travail dans
