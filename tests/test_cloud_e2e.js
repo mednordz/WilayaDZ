@@ -91,6 +91,59 @@ const cloudEmail = (page) => page.evaluate(() => {
   const browser = await chromium.launch();
   const errs = [];
 
+  /* Depuis que l'adresse doit etre confirmee, le parcours complet exige
+     de lire le courriel — ce que seul tests/serve_test.py permet. Contre
+     la production on verifie donc ce qui est verifiable de l'exterieur,
+     et on le DIT, plutot que d'echouer en laissant croire a un bug. */
+  if (!(await courrielLisible())) {
+    console.log('\nParcours reduit — le courriel n\'est lisible qu\'avec');
+    console.log('tests/serve_test.py. Ce qui suit est tout ce qui se verifie');
+    console.log('depuis l\'exterieur.\n');
+    const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errs.push('prod: ' + e.message));
+    await page.goto(BASE); await page.waitForTimeout(800);
+
+    check('on ne peut pas entrer sans compte', await page.locator('#gate-create').isVisible());
+    check('la connexion est proposee', await page.locator('#gate-login').isVisible());
+
+    const reg = await fetch(BASE + 'api/auth/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: EMAIL, name: 'Essai', password: PASSWORD })
+    });
+    const regJson = await reg.json();
+    check('l inscription ne donne aucun jeton', reg.status === 202 && !regJson.token,
+          [reg.status, regJson]);
+
+    const log = await fetch(BASE + 'api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: EMAIL, password: PASSWORD })
+    });
+    const logJson = await log.json();
+    check('la connexion est refusee tant que l adresse n est pas confirmee',
+          log.status === 403 && logJson.error === 'not_verified', [log.status, logJson]);
+
+    await page.locator('#gate-login').click(); await page.waitForTimeout(400);
+    await page.fill('#glog-email', EMAIL);
+    await page.fill('#glog-pw', PASSWORD);
+    await page.locator('#glog-go').click();
+    await waitFor(async () => await page.locator('#gpen-resend').isVisible());
+    check('l application emmene vers la boite mail au lieu d une erreur',
+          await page.locator('#gpen-resend').isVisible());
+
+    await page.goto(BASE + '#reset=' + 'z'.repeat(43)); await page.waitForTimeout(900);
+    check('un lien de reinitialisation invalide est refuse proprement',
+          await page.locator('#gres-pw').isVisible());
+
+    console.log('\nERREURS JS : ' + (errs.length ? errs.join(' | ') : 'aucune'));
+    if (errs.length) failures.push('erreurs JS');
+    await browser.close();
+    console.log('\n' + checks + ' verifications, ' + failures.length + ' echec(s)');
+    if (failures.length) { failures.forEach(f => console.log('  - ' + f)); process.exit(1); }
+    console.log('Tout est vert (parcours reduit).');
+    return;
+  }
+
   /* ---------------- Appareil A : cree le compte ---------------- */
   console.log('\nAppareil A — creation du compte');
   const ctxA = await browser.newContext({ viewport: { width: 420, height: 900 } });

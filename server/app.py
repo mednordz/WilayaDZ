@@ -365,7 +365,10 @@ def send_mail(to_address, msg):
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as smtp:
             smtp.send_message(msg)
-        print("mail de reinitialisation envoye", flush=True)
+        # Le sujet, jamais l'adresse : les journaux de bigpc ne doivent
+        # pas accumuler les adresses des gens.
+        print("courriel envoye (%s)" % msg["Subject"].split("—")[-1].strip(),
+              flush=True)
         return True
     except Exception as exc:
         # Ni l'adresse ni le contenu dans les journaux.
