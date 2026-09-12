@@ -24,8 +24,8 @@ for asset in sorted(['architecture','logo','frise','medaillon','carte','enduit',
 parcours_css = R('parcours.css').replace('PARCOURS_MEDAILLON', 'data:image/webp;base64,'+B('assets/patio/noeud-faience.webp'))
 blanche_css = R('algerie-blanche.css').replace('BLANCHE_PATIO', 'data:image/webp;base64,'+B('assets/algerie-blanche/patio-jasmine.webp')).replace('BLANCHE_FRISE', 'data:image/webp;base64,'+B('assets/patio/frise.webp'))
 organisation_css = R('organisation.css').replace('CERAMIQUE_IMAGE', 'data:image/webp;base64,'+B('assets/illustrations/ceramique-algeroise.webp'))
-# The old banner remains in source assets, but is no longer loaded by this design.
-kit_bundle = re.sub(r'^    banniere:.*\n', '', R('p4o_kit.js'), flags=re.M)
+# Legacy artwork stays in the source archive; current CSS uses the new patio.
+kit_bundle = re.sub(r'^    (?:patio|banniere|chemin):.*\n', '', R('p4o_kit.js'), flags=re.M)
 out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), patio_css, parcours_css, R('pilot.css'), blanche_css, organisation_css, "\n</style>\n\n",
   R('p3_body.html'), "\n\n<script>\n(function(){\n  \"use strict\";\n",
   rive_bundle, R('part_data.js'), R('p4i_mascots.js'), R('qr_lib.js'), R('preferences.js'), R('p4a_core.js'), R('p4f_i18n.js'), R('p4g_account.js'),
@@ -34,8 +34,11 @@ out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_
   R('p4q_rive.js'), R('p4p_musique.js'), map_bundle, R('p4r_map.js'), R('settings.js'), R('connection_methods.js'), R('patio.js'), R('p4e_practice.js'), R('p4j_pwa.js'), "\n})();\n</script>\n"])
 target = sys.argv[1] if len(sys.argv) > 1 else 'wilaya-v6.html'
 open(target,'w',encoding='utf-8').write(out)
+compressed_bytes = gzip.compress(out.encode('utf-8'), compresslevel=9, mtime=0)
+if len(compressed_bytes) > 1_600_000:
+    raise SystemExit('Budget de transfert initial dépassé (1,6 Mo) : %d octets' % len(compressed_bytes))
 with open(target+'.gz','wb') as compressed:
-    compressed.write(gzip.compress(out.encode('utf-8'), compresslevel=9, mtime=0))
+    compressed.write(compressed_bytes)
 open('_check.js','w',encoding='utf-8').write(re.search(r'<script>(.*)</script>', out, re.S).group(1))
 # sw.js doit rester un fichier à part (un service worker ne peut pas
 # s'enregistrer depuis un <script> inline) : copié à côté du HTML produit,
