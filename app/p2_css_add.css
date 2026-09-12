@@ -1747,3 +1747,15 @@
   .pw-eye{ box-shadow:inset 1px 0 0 var(--line); }
   .link-btn{ text-decoration:underline; text-underline-offset:4px; text-decoration-color:var(--border-strong); }
   .google-btn{ box-shadow:inset 0 1px 0 #ffffff12,0 3px 7px #0002; }
+
+/* Rive keeps the original illustration as its failure/reduced-motion fallback. */
+.mascot-rive-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;}
+.mascot-stage.rive-ready > .mascot-rive-canvas{opacity:1;}
+.mascot-stage.rive-ready > .mascot-breathe{visibility:hidden;}
+.mascot-stage.rive-ready > .mascot-breathe,
+.mascot-stage.rive-ready .mascot-rig,
+.mascot-stage.rive-ready .rig-head{animation:none!important;}
+@media(prefers-reduced-motion:reduce){
+ .mascot-stage > .mascot-rive-canvas{display:none;}
+ .mascot-stage.rive-ready > .mascot-breathe{visibility:visible;}
+}

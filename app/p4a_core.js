@@ -318,7 +318,7 @@
   function mascotBeat(){
     var stages = Array.prototype.filter.call(
       document.querySelectorAll(".mascot-stage"),
-      function(el){ return el.offsetParent !== null; });
+      function(el){ return el.offsetParent !== null && !el.classList.contains("rive-ready"); });
     if(stages.length){
       var st = stages[Math.floor(Math.random()*stages.length)];
       /* Trois gestes de tête pour un geste de corps : c'est le regard
