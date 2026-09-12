@@ -301,6 +301,22 @@ adapter le chemin selon où le fichier généré se trouve localement.
     garde alors la taille de l'écran entier alors qu'on n'en voit qu'un
     tiers. Ne pas l'enlever.
 
+12. **Poser un fond sur un élément peut faire tomber son texte sous le
+    seuil de contraste.** L'onglet courant est passé d'un fond
+    `--surface` à un fond `--surface-2` : en thème clair, l'accent
+    (`#9C5015`) y tombait à **4,35:1**, sous les 4,5 exigés, alors qu'il
+    passait à 5,46 avant. Corrigé par un jeton par thème,
+    `--onglet-actif-ink` : l'accent PROFOND en clair, l'accent normal en
+    sombre — car « profond » veut dire plus foncé, ce qui aide sur du
+    clair et nuit sur du sombre. Un jeton unique ne peut pas servir les
+    deux thèmes ici. `tests/audit_a11y.js` attrape ce genre de chose ;
+    le relancer après toute modification de fond ou de couleur.
+
+13. **Un pseudo-élément dans un conteneur `display:grid` devient un
+    élément de grille.** Les angles de zellige de la carte
+    « prochaine étape » (`.hero::before/::after`) décalaient toute la
+    carte d'une case tant qu'ils n'étaient pas en `position:absolute`.
+
 ## Habillage : une seule langue, contenu : deux
 
 Le bilingue simultané est la colonne vertébrale de l'app : français ancré
@@ -324,6 +340,28 @@ bascule, habillage compris. Les deux langues restent dans le DOM, et les
 Porteurs de `ui1` aujourd'hui : `.topbar`, `.tabbar`, `.banner-text`,
 `.statstrip`, `#hero-card` (reposée à chaque rendu par `heroCarte`, qui
 réécrit `className`), `.chemin-head`, `.chemin`.
+
+## Le chemin : ce que montre chaque ligne
+
+Une étape = un nœud + un titre + une ligne d'état + une **jauge**.
+
+La jauge n'est pas les couronnes. Les couronnes comptent les leçons
+terminées (cinq crans) ; la jauge montre `unitStrength(u)`, c'est-à-dire
+la somme des boîtes de Leitner de l'unité rapportée au maximum. Elle
+bouge à chaque bonne réponse, pas une fois par leçon. Sa couleur suit
+l'état de la ligne : olive quand l'unité est maîtrisée, orange sinon,
+bronze quand elle est verrouillée. Le détail chiffré (couronnes,
+ancrées, pourcentage) reste à un tap, dans la feuille de l'unité.
+
+Le paysage derrière le chemin est fait de **deux moitiés** du kit
+(`decor-palmiers-gauche`, `decor-village-droite`) qui ne se rejoignent
+pas exactement. Chacune porte deux masques, sur deux éléments
+différents : le fondu des côtés sur le `<span>`, celui du haut sur
+l'`<img>`. Composer deux masques sur un seul élément (`mask-composite`)
+n'est pas fiable d'un navigateur à l'autre. En arabe, `inset-inline-start`
+se retourne tout seul mais `linear-gradient(to right, …)` non — d'où les
+deux règles `[dir="rtl"]`, sans lesquelles la couture réapparaît au
+milieu de l'écran.
 
 **Corollaire à ne pas oublier :** `TL()` est la version *texte pur*, faite
 pour les `aria-label` — elle colle les deux langues avec un tiret. Utilisée

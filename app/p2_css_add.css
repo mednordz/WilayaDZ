@@ -400,7 +400,10 @@
   .chemin-head .compte .bf, .chemin-head .compte .ba{ flex:none; white-space:nowrap; }
 
   .cle-badge{
-    display:inline-flex; align-items:center; gap:8px; margin:4px 0 2px;
+    /* Aligné sur la colonne des nœuds, pas centré : c'est de là que
+       part le chemin, et la liaison de la première étape le rejoint. */
+    align-self:flex-start; margin-inline-start:22px;
+    display:inline-flex; align-items:center; gap:8px; margin-block:4px 2px;
     min-height:44px; box-sizing:border-box;
     padding:7px 16px; border-radius:999px;
     border:1.5px solid var(--line); background:var(--surface);
@@ -447,18 +450,22 @@
      d'être du texte flottant et deviennent deux objets qu'on peut
      viser. */
   .topstat{
-    /* 44 px de haut : c'est la taille du compteur dans le kit, et le
+    /* Ni cadre ni fond : les deux compteurs sont posés sous la marque,
+       et un cercle autour de chacun ferait trois objets là où il n'y a
+       qu'une ligne d'information. 44 px de haut malgré tout — c'est le
        plancher en dessous duquel une cible tactile se rate. */
     min-height:44px; box-sizing:border-box;
-    padding:5px 13px; border-radius:999px;
-    border:1.5px solid var(--border-strong); background:var(--surface);
+    padding:4px 2px; border:none; background:none;
     gap:7px; font-family:var(--font-body); font-variant-numeric:tabular-nums;
     /* Le chiffre est de l'encre ordinaire ; seule l'icône porte la
        couleur. Un nombre coloré se lit moins bien, et deux couleurs
        côte à côte se disputeraient l'attention. */
     color:var(--ink);
   }
-  button.topstat{ padding:5px 13px; background:var(--surface); }
+  /* Une série à un chiffre ne fait que 38 px de large : la cible
+     tactile est élargie sans que rien ne se voie, le compteur restant
+     collé à gauche de sa zone. */
+  button.topstat{ padding:4px 2px; background:none; min-width:52px; }
   .topstat .icon{ width:17px; height:17px; }
   .topstat.streak .icon{ color:var(--accent); }
   .topstat.xp .icon{ color:var(--gold); }
@@ -478,28 +485,12 @@
   }
   .topbar-inner{ position:relative; z-index:1; }
 
-  .profil-bloc{
-    display:flex; flex-direction:column; align-items:center; gap:1px;
-    flex:none;
-  }
-  .profil-medaillon{
-    position:relative; width:62px; height:62px; flex:none;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .profil-anneau{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .profil-bloc{ display:flex; align-items:center; flex:none; }
   .profil-bloc .profile-btn{
     width:44px; height:44px; min-width:44px; margin:0; position:relative;
+    font-size:1.05rem;
   }
   [dir="rtl"] .profil-bloc .profile-btn{ margin:0; }
-  .profil-label{
-    font-size:.58rem; font-weight:700; color:var(--ink-dim);
-    line-height:1.15; text-align:center;
-  }
-  /* Empilé, pas côte à côte : sous un rond de 42 px, deux langues en
-     vis-à-vis ne tiennent pas et se coupent en morceaux. */
-  .profil-label .bi{ flex-direction:column; align-items:center; gap:0; }
-  .profil-label .bf, .profil-label .ba{ flex:none; text-align:center; white-space:nowrap; }
-  .profil-label .bs{ display:none; }
 
   /* ---- La carte « prochaine étape », d'après le kit ----
      Anatomie fixe : accroche et badge sur une ligne, le texte à
@@ -539,6 +530,20 @@
     letter-spacing:.02em; white-space:nowrap;
   }
   .hero-meta{ margin:10px 0 0; font-size:.82rem; color:var(--ink-dim); }
+
+  /* Les angles de zellige du kit, en coin de carte. `position:absolute`
+     n'est pas décoratif ici : un pseudo-élément en flux deviendrait un
+     ÉLÉMENT DE GRILLE et décalerait toute la carte d'une case. */
+  .hero::before, .hero::after, .statstrip::before{
+    content:""; position:absolute; width:34px; height:34px;
+    pointer-events:none; opacity:.4;
+    background:no-repeat center/contain
+      url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M2 36 L2 2 H36 M2 27 L27 2 M2 15 L15 2 M9 2 L13 12 L24 13 L19 22 L22 32 L11 30 L3 37 M10 17 L17 10 L24 17 L17 24 Z M26 2 L30 8 L37 10' fill='none' stroke='%23A66C3D' stroke-width='1.15'/%3E%3C/svg%3E");
+  }
+  .hero::before{ top:2px; left:2px; }
+  .hero::after{ bottom:2px; right:2px; transform:rotate(180deg); }
+  .statstrip{ position:relative; }
+  .statstrip::before{ top:2px; left:2px; width:26px; height:26px; opacity:.3; }
   /* Un triangle « lecture » pointe vers l'avant. En arabe l'avant est
      à gauche : sans miroir il désignerait la marge. */
   [dir="rtl"] .hero-go .icon{ transform:scaleX(-1); }
@@ -563,47 +568,121 @@
   }
 
   /* ---- Le chemin et son décor ----
-     Les silhouettes du kit sont posées en fond, très en retrait : elles
-     donnent le lieu sans jamais disputer la lisibilité aux nœuds. */
+     Le paysage du kit n'est plus une vignette dans un coin : c'est le
+     sol sur lequel le chemin est posé. Un dégradé chaud tient le haut,
+     les deux moitiés du décor tiennent le bas. */
   .chemin{
     position:relative; overflow:hidden;
     margin-inline:calc(-1 * clamp(14px,4vw,22px));
-    margin-block:2px 0;
-    padding:4px clamp(14px,4vw,22px) 20px;
+    /* La marge négative du bas mange le rembourrage de la vue : le
+       paysage descend jusqu'à la barre d'onglets, au lieu de s'arrêter
+       sur une bande vide. */
+    margin-block:2px -30px;
+    padding:10px clamp(14px,4vw,22px) 54px;
+    background:linear-gradient(180deg,
+      var(--chemin-ciel-haut) 0%, var(--chemin-ciel-bas) 62%, var(--chemin-sol) 100%);
   }
+  :root{
+    --chemin-ciel-haut:#F0E1C8; --chemin-ciel-bas:#E4CFAE; --chemin-sol:#D8BE98;
+    --chemin-voile:rgba(255,250,240,.30);
+    /* L'orange du thème clair est un brun assez sombre, mais pas assez
+       pour rester lisible sur le beige de l'onglet actif : 4,35:1, sous
+       le seuil de 4,5. C'est l'orange profond qui sert là. */
+    --onglet-actif-ink:var(--accent-deep);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --chemin-ciel-haut:#241C15; --chemin-ciel-bas:#33251A; --chemin-sol:#46311F;
+      --chemin-voile:rgba(22,16,11,.34);
+      /* En sombre c'est l'inverse : « profond » veut dire plus foncé,
+         donc moins lisible sur un fond foncé. L'accent normal convient. */
+      --onglet-actif-ink:var(--accent);
+    }
+  }
+  :root[data-theme="dark"]{
+    --chemin-ciel-haut:#241C15; --chemin-ciel-bas:#33251A; --chemin-sol:#46311F;
+    --chemin-voile:rgba(22,16,11,.34);
+    --onglet-actif-ink:var(--accent);
+  }
+
   .chemin-decor{
     position:absolute; bottom:0; pointer-events:none; user-select:none;
-    opacity:.5;
+    /* Les deux moitiés ne se rejoignent pas exactement : chacune
+       s'efface vers le centre, et la couture disparaît. */
+    width:47%; max-width:205px;
   }
-  .chemin-decor.gauche{ left:-10px; width:86px; }
-  .chemin-decor.droite{ right:-6px; width:74px; }
+  /* Le fondu du HAUT est porté par l'image, celui des CÔTÉS par son
+     conteneur : deux masques sur deux éléments, parce que composer
+     deux masques sur un seul élément n'est pas fiable d'un navigateur
+     à l'autre. Sans le fondu du haut, le bord supérieur du paysage
+     traçait un rectangle net en travers du chemin. */
+  .chemin-decor img{
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0%, #000 30%);
+            mask-image:linear-gradient(to bottom, transparent 0%, #000 30%);
+  }
+  /* `inset-inline-start` se retourne tout seul en arabe, mais pas
+     `to right` : sans ces deux lignes, chaque moitié s'effaçait vers le
+     bord au lieu du centre, et la couture réapparaissait au milieu. */
+  [dir="rtl"] .chemin-decor.gauche{
+    -webkit-mask-image:linear-gradient(to left, #000 62%, transparent 100%);
+            mask-image:linear-gradient(to left, #000 62%, transparent 100%);
+  }
+  [dir="rtl"] .chemin-decor.droite{
+    -webkit-mask-image:linear-gradient(to right, #000 62%, transparent 100%);
+            mask-image:linear-gradient(to right, #000 62%, transparent 100%);
+  }
+  .chemin-decor.gauche{
+    inset-inline-start:0;
+    -webkit-mask-image:linear-gradient(to right, #000 62%, transparent 100%);
+            mask-image:linear-gradient(to right, #000 62%, transparent 100%);
+  }
+  .chemin-decor.droite{
+    inset-inline-end:0;
+    -webkit-mask-image:linear-gradient(to left, #000 62%, transparent 100%);
+            mask-image:linear-gradient(to left, #000 62%, transparent 100%);
+  }
   .chemin-decor img{ display:block; width:100%; height:auto; }
-  :root[data-theme="light"] .chemin-decor,
-  .chemin-decor{ mix-blend-mode:normal; }
+  /* En thème clair le paysage est sombre : il doit s'effacer beaucoup
+     plus, sinon il mange la page au lieu de l'habiller. */
   @media (prefers-color-scheme: light){
-    :root:not([data-theme="dark"]) .chemin-decor{ opacity:.22; }
+    :root:not([data-theme="dark"]) .chemin-decor{ opacity:.20; }
   }
-  :root[data-theme="light"] .chemin-decor{ opacity:.22; }
+  :root[data-theme="light"] .chemin-decor{ opacity:.20; }
+
+  /* Un voile par-dessus le décor : les nœuds et les libellés doivent
+     rester lisibles partout, y compris au-dessus du village blanc. */
+  .chemin::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:var(--chemin-voile);
+  }
+  .chemin-angle{
+    position:absolute; width:40px; height:40px; pointer-events:none;
+    opacity:.5; z-index:1;
+    background:no-repeat center/contain
+      url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M2 36 L2 2 H36 M2 27 L27 2 M2 15 L15 2 M9 2 L13 12 L24 13 L19 22 L22 32 L11 30 L3 37 M10 17 L17 10 L24 17 L17 24 Z M26 2 L30 8 L37 10' fill='none' stroke='%23A66C3D' stroke-width='1.15'/%3E%3C/svg%3E");
+  }
+  .chemin-angle.ha{ left:4px;  bottom:4px; transform:rotate(-90deg); }
+  .chemin-angle.hb{ right:4px; bottom:4px; transform:rotate(180deg); }
 
   /* ---- Une étape du chemin ----
      La piste centre ses enfants (héritage du chemin vertical d'avant).
      Sur des lignes entières, cela les faisait flotter chacune à sa
      largeur : les nœuds ne s'alignaient plus d'une étape à l'autre. */
-  /* Le chemin est retiré du bord : la couronne à seize pointes déborde
-     de son carré, et collée à la marge elle se faisait rogner. */
-  .path-track{ padding:10px 0 8px; padding-inline-start:40px; }
+  .path-track{ position:relative; z-index:2; padding:4px 0 6px; padding-inline-start:22px; }
   .path-track > .etape{ align-self:stretch; }
   .etape{
-    position:relative; display:flex; align-items:flex-start; gap:16px;
-    padding:0 0 4px;
+    position:relative; display:flex; align-items:center; gap:14px;
+    padding:0;
   }
-  .etape + .etape{ margin-top:2px; }
-  .etape-noeud{ position:relative; width:84px; flex:none; }
-  .etape-corps{ flex:1; min-width:0; padding-top:14px; }
+  .etape-noeud{
+    position:relative; width:70px; flex:none;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .etape-corps{ flex:1; min-width:0; }
   .etape-corps h3{
-    margin:0 0 4px; font-family:var(--font-display); font-size:1.06rem; color:var(--ink);
+    margin:0 0 3px; font-family:var(--font-display); font-size:1.02rem; color:var(--ink);
   }
-  .etape-etat{ display:flex; align-items:center; gap:8px; font-size:.92rem; font-weight:700; }
+  .etape-etat{ display:flex; align-items:center; gap:8px; font-size:.9rem; font-weight:700; margin:0; }
   .etape-etat .icon{ width:22px; height:22px; flex:none; border-radius:50%; padding:3px; }
   .etape-etat.faite{ color:var(--olive); }
   .etape-etat.faite .icon{ background:var(--olive); color:var(--accent-ink); }
@@ -613,42 +692,56 @@
   .etape-etat.ouverte .icon{ background:var(--accent); color:var(--accent-ink); }
   .etape-etat.fermee{ color:var(--ink-faint); }
   .etape-etat.fermee .icon{ background:var(--surface-2); color:var(--ink-faint); }
-  .etape-maitrise{ margin:4px 0 0; font-size:.82rem; color:var(--ink-dim); }
-  .rosettes{ display:flex; gap:7px; margin-top:6px; }
-  .rosettes svg{ width:22px; height:22px; display:block; }
+
+  /* La jauge de maîtrise : une barre, pas cinq rosettes. */
+  .etape-jauge{
+    display:block; margin-top:8px; height:9px; border-radius:999px;
+    background:var(--jauge-fond); overflow:hidden;
+    max-width:260px;
+  }
+  :root{ --jauge-fond:rgba(90,62,38,.22); }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --jauge-fond:rgba(255,236,206,.14); }
+  }
+  :root[data-theme="dark"]{ --jauge-fond:rgba(255,236,206,.14); }
+  .etape-jauge-fill{
+    display:block; height:100%; border-radius:999px;
+    background:var(--accent); transition:width .35s ease;
+  }
+  .etape-jauge.faite .etape-jauge-fill{ background:var(--olive); }
+  .etape-jauge.fermee .etape-jauge-fill{ background:var(--border-strong); }
 
   /* Le nœud lui-même : cadre à seize côtés, cercle, plage de codes. */
   .noeud{
-    position:relative; display:block; width:84px; height:84px;
+    position:relative; display:block; width:70px; height:70px;
     background:none; border:none; padding:0; cursor:pointer;
   }
   .noeud svg{ display:block; width:100%; height:100%; overflow:visible; }
   .noeud:active{ transform:scale(.96); }
   .noeud[disabled]{ cursor:default; }
   .noeud-txt{
-    font-family:var(--font-body); font-size:15px; font-weight:700;
+    font-family:var(--font-body); font-size:16px; font-weight:700;
     fill:var(--ink); }
   /* La pastille « c'est ici » accrochée au bas du nœud courant. */
   .noeud-go{
-    position:absolute; inset-inline-start:50%; bottom:-3px;
+    position:absolute; inset-inline-start:50%; bottom:-6px;
     transform:translateX(-50%); pointer-events:none;
-    width:28px; height:28px; border-radius:50%;
+    width:26px; height:26px; border-radius:50%;
     background:var(--accent); color:var(--accent-ink);
-    border:2.5px solid var(--bg);
+    border:2.5px solid var(--chemin-ciel-bas);
     display:flex; align-items:center; justify-content:center;
   }
-  .noeud-go .icon{ width:14px; height:14px; }
+  .noeud-go .icon{ width:13px; height:13px; }
   [dir="rtl"] .noeud-go{ transform:translateX(50%); }
   [dir="rtl"] .noeud-go .icon{ transform:scaleX(-1); }
   .noeud[disabled] .noeud-txt{ fill:var(--ink-faint); }
 
-  /* La liaison courbe d'un nœud au suivant, reprise du kit. */
-  /* La courbe descend jusque dans la pointe du nœud : quelques pixels
-     de recouvrement valent mieux qu'un interstice, qui se verrait. */
-  .liaison{ display:block; width:84px; height:56px; overflow:visible; margin-bottom:-6px; }
-  .liaison path{ fill:none; stroke-width:3; stroke-linecap:round; }
-  .etape:first-of-type .etape-corps{ padding-top:16px; }
-
+  /* La liaison d'un nœud au suivant : un trait vertical, court. */
+  .liaison{
+    display:block; width:2.5px; height:18px; border-radius:2px;
+    background:var(--border-strong);
+  }
+  .liaison.acquise{ background:var(--gold); }
 
   /* ---- Mot de passe : le champ et son œil ----
      Propriétés logiques (inline-end) plutôt que `right` : l'œil passe
@@ -1292,29 +1385,22 @@
   .result-stat .n{ font-size:1.5rem; font-weight:900; }
   .result-stat .l{ font-weight:800; }
 
-  /* ---- Onglets : trois arches, d'après le kit ----
-     L'onglet courant est une arche pleine, les autres des arches
-     creuses. La forme fait le travail que faisait la couleur seule :
-     même en niveaux de gris, on voit où l'on est. */
-  .tabbar{ border-top:2px solid var(--border-strong); background:var(--surface); }
-  .tabbar-inner{ gap:8px; align-items:flex-end; }
+  /* ---- Onglets ----
+     L'onglet courant est un bloc arrondi, posé sur la barre. Ce n'est
+     pas qu'une couleur : même sans distinguer l'orange, on voit la
+     forme pleine et on sait où l'on est. */
+  .tabbar{ border-top:1.5px solid var(--border-strong); background:var(--surface); }
+  .tabbar-inner{ gap:6px; align-items:stretch; }
   .tab-btn{
-    position:relative; justify-content:flex-end;
-    min-height:66px; padding:9px 4px 7px; gap:2px;
+    position:relative; min-height:58px; padding:8px 6px; gap:3px;
+    border-radius:16px; border:1.5px solid transparent;
+    transition:background-color .14s ease, border-color .14s ease;
   }
-  .tab-arche{
-    position:absolute; inset:0; width:100%; height:100%;
-    display:block; z-index:0; pointer-events:none;
+  .tab-btn.active{
+    background:var(--surface-2); border-color:var(--border-strong);
+    color:var(--onglet-actif-ink);
   }
-  .tab-arche path{
-    fill:var(--surface-2); stroke:var(--border-strong);
-    stroke-width:1.2; vector-effect:non-scaling-stroke;
-    transition:fill .14s ease, stroke .14s ease;
-  }
-  .tab-btn.active .tab-arche path{ fill:var(--accent); stroke:var(--accent); }
-  .tab-btn .icon, .tab-btn span{ position:relative; z-index:1; }
   .tab-btn span{ font-weight:800; }
-  .tab-btn.active{ color:var(--accent-ink); }
   .tab-btn.active .icon{ transform:scale(1.08); }
   .tab-btn .icon{ transition:transform .15s cubic-bezier(.34,1.56,.64,1); }
 

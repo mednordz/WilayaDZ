@@ -217,25 +217,16 @@
          redemandent du travail.
      ============================================================ */
 
-  /* La rosette à seize côtés du kit : rayons alternés, un cran sur deux
-     plus court. Générée plutôt qu'embarquée six fois. */
-  function rosetteSvg(pleine){
-    var pts = [], R = 9.4, r = 8.0;
-    for(var i=0;i<16;i++){
-      var a = (-90 + i*22.5) * Math.PI/180, rr = (i%2 ? r : R);
-      pts.push((11 + rr*Math.cos(a)).toFixed(2) + "," + (11 + rr*Math.sin(a)).toFixed(2));
-    }
-    return "<svg viewBox='0 0 22 22' aria-hidden='true' focusable='false'>" +
-      "<polygon points='" + pts.join(" ") + "' " +
-      "fill='" + (pleine ? "var(--accent)" : "var(--surface-2)") + "' " +
-      "stroke='" + (pleine ? "var(--gold)" : "var(--border-strong)") + "' " +
-      "stroke-width='1.2' stroke-linejoin='round'/></svg>";
-  }
-
-  function rosettesHtml(n){
-    var out = "";
-    for(var i=0;i<5;i++) out += rosetteSvg(i < n);
-    return "<span class='rosettes' aria-hidden='true'>" + out + "</span>";
+  /* Une jauge plutôt que cinq rosettes.
+     Les rosettes comptaient les couronnes — cinq crans, donc cinq
+     paliers. La jauge montre la MAÎTRISE réelle (la somme des boîtes
+     de Leitner de l'unité), qui bouge à chaque bonne réponse et pas
+     seulement une fois par leçon terminée. C'est la même information
+     que le reste de l'écran, mais continue. */
+  function jaugeHtml(pct, classe){
+    return "<span class='etape-jauge " + classe + "' aria-hidden='true'>" +
+      "<span class='etape-jauge-fill' style='width:" + Math.max(0, Math.min(100, pct)) + "%'></span>" +
+    "</span>";
   }
 
   /* Le cadre à seize côtés du kit, repris tel quel. */
@@ -245,7 +236,11 @@
   function noeudSvg(texte, etat){
     var trait = etat === "fermee" ? "var(--border-strong)"
               : etat === "faite"  ? "var(--gold)" : "var(--accent)";
-    var fond  = etat === "fermee" ? "var(--surface)" : "var(--surface-2)";
+    /* Le même fond pour tous les états : en thème clair, `--surface`
+       est presque blanc — un nœud verrouillé y devenait le disque le
+       plus lumineux de l'écran, donc le plus attirant. C'est le trait
+       qui dit l'état, pas le remplissage. */
+    var fond  = "var(--surface-2)";
     return "<svg viewBox='0 0 80 80' aria-hidden='true' focusable='false'>" +
       "<path d='" + NOEUD_CADRE + "' fill='" + fond + "' stroke='" + trait + "' stroke-width='1.3'/>" +
       "<circle cx='40' cy='39' r='31' fill='" + fond + "' stroke='" + trait + "' stroke-width='2.6'/>" +
@@ -257,13 +252,11 @@
       "</svg>";
   }
 
-  /* La liaison serpentine entre deux nœuds, reprise du kit : pleine
-     quand l'étape est acquise, pointillée quand elle reste à faire. */
+  /* La liaison d'un nœud au suivant : un simple trait vertical. La
+     serpentine du kit étalait le chemin sur deux fois la hauteur, et
+     on ne voyait plus que trois unités sur huit à l'écran. */
   function liaisonHtml(acquise){
-    return "<svg class='liaison' viewBox='0 0 80 100' preserveAspectRatio='none' " +
-      "aria-hidden='true' focusable='false'><path d='M40 0 C-5 35 85 55 40 100' " +
-      "stroke='" + (acquise ? "var(--gold)" : "var(--border-strong)") + "'" +
-      (acquise ? "" : " stroke-dasharray='5 7'") + "/></svg>";
+    return "<span class='liaison" + (acquise ? " acquise" : "") + "' aria-hidden='true'></span>";
   }
 
   function etapeHtml(u, i, unlocked, suivante){
@@ -285,7 +278,7 @@
       ligne = T(num(due) + " à revoir", num(due) + " للمراجعة");
     }else if(crown >= 5){
       classe = "faite"; icone = CHECK_ICON;
-      ligne = T("Maîtrise " + num("5/5"), "إتقان " + num("5/5"));
+      ligne = T("Maîtrisée","متقَنة");
     }else if(crown > 0){
       classe = "ouverte"; icone = PLAY_ICON;
       ligne = T("À continuer","تابع");
@@ -294,14 +287,17 @@
       ligne = T("À commencer","ابدأ");
     }
 
-    var sousLigne = !unlocked
-      ? T("Termine l'étape précédente","أنهِ المرحلة السابقة")
-      : (crown === 0 ? T("Non commencée","لم تبدأ")
-                     : T("Maîtrise " + num(crown + "/5"), "إتقان " + num(crown + "/5")));
+    /* La jauge dit déjà « où j'en suis » ; la répéter en toutes lettres
+       sous elle n'ajoutait rien et allongeait chaque ligne d'un tiers.
+       Le détail chiffré reste, à un tap, dans la feuille de l'unité. */
+    var pct = unlocked ? unitStrength(u) : 0;
 
     return "<div class='etape' data-unite='" + u.id + "'>" +
       "<div class='etape-noeud'>" +
-        (i > 0 ? liaisonHtml(unlocked) : "") +
+        /* Même la première étape porte sa liaison : elle la relie au
+           badge de La Clé, juste au-dessus. Sans elle, le chemin
+           commencerait dans le vide. */
+        liaisonHtml(i > 0 ? unlocked : state.keyDone) +
         "<button class='noeud' type='button' data-i='" + i + "'" + (unlocked ? "" : " disabled") + ">" +
           noeudSvg(u.label, classe) +
         "</button>" +
@@ -314,8 +310,7 @@
       "<div class='etape-corps'>" +
         "<h3>" + T("Unité " + (i+1), "الوحدة " + (i+1)) + "</h3>" +
         "<p class='etape-etat " + classe + "'>" + icone + "<span>" + ligne + "</span></p>" +
-        "<p class='etape-maitrise'>" + sousLigne + "</p>" +
-        rosettesHtml(crown) +
+        jaugeHtml(pct, classe) +
       "</div>" +
     "</div>";
   }
