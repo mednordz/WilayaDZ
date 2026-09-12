@@ -467,6 +467,7 @@
 
   /* ---------------- Onglets ---------------- */
   function switchTab(name){
+    document.querySelector(".app-shell").dataset.view=name;
     Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function(b){
       var active = b.getAttribute("data-tab") === name;
       b.classList.toggle("active", active);
@@ -532,7 +533,7 @@
     var btn=document.getElementById("sound-btn");
     if(!btn)return;
     var on=musiqueVoulue(), available=musiqueDisponible();
-    btn.innerHTML=MUSIC_ICON+(on?'':'<span class="music-off-mark" aria-hidden="true"></span>');
+    btn.innerHTML='<span class="patio-icon icon-musique" aria-hidden="true"></span><span class="patio-label">'+T("Musique","موسيقى")+'</span>'+(on?'':'<span class="music-off-mark" aria-hidden="true"></span>');
     btn.setAttribute("aria-pressed",String(on));
     btn.disabled=!available;
     var label=available?TL(on?"Musique de fond activée, désactiver":"Musique de fond désactivée, activer",on?"موسيقى الخلفية مفعّلة، أوقفها":"موسيقى الخلفية متوقفة، فعّلها"):TL("Musique indisponible dans cette version hors ligne","الموسيقى غير متاحة في هذه النسخة دون اتصال");

@@ -20,6 +20,7 @@
     r.setAttribute("dir", LANG === "ar" ? "rtl" : "ltr");
     r.setAttribute("lang", LANG === "ar" ? "ar" : "fr");
     if(typeof renderSoundBtn === "function")renderSoundBtn();
+    if(typeof renderLanguageButton === "function")renderLanguageButton();
   }
 
   /* Isole une plage de codes du sens de lecture ambiant. */

@@ -1,0 +1,86 @@
+/* Approved Algerian patio: artwork anchors the geometry, HTML owns all interaction. */
+body:has(.app-shell[data-view="path"]){background:#f5efe3;}
+#view-path,.app-shell[data-view="path"] .tabbar{--bg:#f5efe3;--surface:#fffaf0;--surface-2:#eae3d3;--ink:#073c43;--ink-dim:#395853;--ink-faint:#53665c;--accent:#a34c1c;--accent-bright:#cd692c;--accent-ink:#fffaf0;--accent-soft:#f0dcc4;--accent-deep:#853d15;--gold:#956b29;--gold-ink:#705019;--teal:#236d69;--teal-deep:#194b49;--teal-soft:#e0ece4;--border:#d1c0a0;--border-strong:#ae956d;--line:#daceb6;--font-display:Georgia,'Times New Roman',serif;--font-body:Georgia,'Times New Roman',serif;background:#f5efe3 url('PATIO_ENDUIT') repeat;color:#073c43;}
+.app-shell{--header-height:0px;}
+.topbar.patio{--ink:#073c43;--bg:#f5efe3;--surface:#fffaf0;--surface-2:#eee5d4;--accent:#a44e1c;--gold:#936921;--font-display:Georgia,'Times New Roman',serif;container-type:inline-size;position:relative;display:block;width:100%;height:auto;aspect-ratio:1;padding:0;isolation:isolate;background:url('PATIO_ARCHITECTURE') top center/100% 100% no-repeat;pointer-events:auto;z-index:2;overflow:visible;color:#073c43;font-family:Georgia,'Times New Roman',serif;}
+.topbar.patio::before,.topbar.patio::after{content:none;}
+.topbar.patio .brand{position:absolute;left:33%;top:1.3%;width:34%;height:17%;display:block;min-height:44px;margin:0;padding:0;background:transparent;border:0;border-radius:30%;cursor:pointer;}
+.patio-rail{position:absolute;left:8%;width:84%;top:84.4%;height:12.7%;display:grid;grid-template-columns:19% 20% 23% 13% 12% 13%;direction:ltr;align-items:stretch;}
+.topbar.patio .patio-rail>button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-width:0;width:100%;height:100%;min-height:44px;border:0;border-radius:8px;padding:0;background:none;box-shadow:none;margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;color:#073c43;cursor:pointer;line-height:1.05;}
+.topbar.patio .patio-rail>button b{font-size:clamp(1rem,4.1cqw,1.5rem);line-height:1.05;font-weight:700;}
+.patio-label,#language-current{font-size:clamp(.65rem,2.8cqw,1rem);line-height:1.1;max-width:100%;}
+.patio-label>.ba{display:none;}
+[data-lang="ar"] .patio-label>.ba{display:inline;}
+[data-lang="ar"] .patio-label>.bf{display:none;}
+.patio-icon{display:block;height:42%;width:64%;flex:none;background-position:center;background-size:contain;background-repeat:no-repeat;mix-blend-mode:multiply;}
+.icon-flamme{background-image:url('PATIO_FLAMME');}.icon-diamant{background-image:url('PATIO_DIAMANT');}.icon-musique{background-image:url('PATIO_MUSIQUE');}.icon-reglages{background-image:url('PATIO_REGLAGES');}
+.topbar.patio #sound-btn .patio-icon,.topbar.patio #settings-btn .patio-icon{height:56%;margin-bottom:5%;}
+.topbar.patio #settings-btn{font-size:inherit;}
+.music-off-mark{position:absolute;width:44%;height:2px;background:#073c43;transform:rotate(-45deg);top:36%;border:1px solid #fff9ef;border-radius:2px;box-sizing:content-box;}
+.topbar.patio #sound-btn[aria-pressed="true"]::after{content:'';position:absolute;width:5px;height:5px;right:14%;top:16%;border-radius:50%;background:#236d69;}
+.language-symbol{font-size:clamp(1rem,4cqw,1.45rem);white-space:nowrap;}.language-cycle{font-family:Georgia,serif;font-size:clamp(.7rem,2.6cqw,1rem);line-height:1.3;}
+.topbar.patio .profil-bloc{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:flex-end;gap:0;min-width:0;width:100%;height:100%;}
+.topbar.patio .profil-bloc .profile-btn{position:absolute;top:-24%;left:18%;width:64%;height:auto;aspect-ratio:1;min-width:0;min-height:0;padding:0;margin:0;border:0;border-radius:50%;outline:0;box-shadow:none;overflow:hidden;font-size:clamp(1rem,4cqw,1.6rem);}
+.topbar.patio .profile-caption{position:absolute;bottom:2%;left:0;width:100%;max-width:100%;padding:0 1px;border-radius:0;background:none;color:#073c43;text-align:center;font-size:clamp(.7rem,3.4cqw,1.2rem);font-family:Georgia,'Times New Roman',serif;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar.patio button:hover{background-color:#1f65640a;}.topbar.patio button:active{transform:translateY(1px);}.topbar.patio button:focus-visible{outline:2px solid #17666b;outline-offset:2px;}.topbar.patio button:disabled{opacity:.55;cursor:default;}
+/* In other sections the same crest and rail stay accessible, without repeating the panorama. */
+.app-shell:not([data-view="path"]) .topbar.patio{aspect-ratio:auto;height:190px;background:#f5efe3 url('PATIO_ENDUIT') repeat;}
+.app-shell:not([data-view="path"]) .topbar.patio .brand{width:150px;height:86px;left:calc(50% - 75px);top:0;background:url('PATIO_LOGO') center/contain no-repeat;}
+.app-shell:not([data-view="path"]) .patio-rail{top:115px;height:62px;}
+.app-shell:not([data-view="path"]) .patio-rail::before{content:'';position:absolute;inset:-13px -2% -10px;z-index:-1;background:url('PATIO_FRISE') center/100% 100% no-repeat;}
+.app-shell:not([data-view="path"]) .profil-bloc::before{content:'';position:absolute;width:91%;aspect-ratio:182/187;left:4%;bottom:14%;background:url('PATIO_MEDAILLON') center/contain no-repeat;z-index:-1;}
+#view-path{padding:0 5% 20px;}
+#view-path .banner{display:none;}
+#view-path .statstrip{display:flex;gap:12px;align-items:center;width:100%;padding:15px 3%;margin:0 0 12px;border:0;border-radius:0;background:none;box-shadow:none;color:#073c43;font-family:Georgia,'Times New Roman',serif;text-align:start;}
+.patio-map-icon{width:28px;height:32px;flex:none;background:url('PATIO_CARTE_ICONE') center/contain no-repeat;mix-blend-mode:multiply;}
+.patio-progress-copy{flex:1;min-width:0;font-size:clamp(.85rem,3.1vw,1.03rem);font-weight:700;line-height:1.4;}
+.patio-progress-track{display:block;margin-top:7px;height:6px;border-radius:9px;background:#d8cdb6;overflow:hidden;}.patio-progress-track>span{display:block;height:100%;background:#287b76;border-radius:9px;}
+#view-path .patio-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;position:relative;min-height:clamp(108px,23vw,146px);width:100%;margin:0 0 20px;padding:18px 5% 18px 25%;background:#faf5ea url('PATIO_CARTE') center/100% 100% no-repeat;border:0;border-radius:14px;box-shadow:0 3px 8px #92774b1a;text-align:start;overflow:hidden;color:#073c43;font-family:Georgia,'Times New Roman',serif;}
+#view-path .patio-card::before,#view-path .patio-card::after{content:none;}
+#view-path .patio-card .hero-haut,#view-path .patio-card .hero-bete,#view-path .patio-card .reperes,#view-path .patio-card .hero-meta{display:none;}
+#view-path .patio-card .hero-corps{padding:0;margin:0;width:auto;min-height:0;min-width:0;}
+#view-path .patio-card .hero-title{color:#073c43;font-family:Georgia,'Times New Roman',serif;font-size:clamp(.9rem,3.2vw,1.13rem);line-height:1.2;margin:0 0 5px;font-weight:700;}
+#view-path .patio-card .hero-sub{font-size:clamp(.75rem,2.7vw,.9rem);line-height:1.25;color:#073c43;margin:0;max-width:none;}
+#view-path .patio-card .hero-go{position:static;display:flex;width:auto;min-height:44px;gap:6px;align-items:center;justify-content:center;border:1px solid #2c7975;background:#246d6d;box-shadow:none;color:#fffaf0;border-radius:22px;padding:8px 12px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(.8rem,2.8vw,1rem);font-weight:400;}
+#view-path .patio-card .hero-go .icon{display:none;}
+#view-path .patio-card .hero-go::after{content:'→';font-size:1.2em;}
+[dir="rtl"] #view-path .patio-card{direction:rtl;}[dir="rtl"] #view-path .patio-card .hero-go::after{content:'←';}
+.app-shell[data-view="path"] .tabbar{background:#f6efe2;border-top:1px solid #c1ad86;box-shadow:0 -3px 14px #7c674a12;}
+.app-shell[data-view="path"] .tabbar::before{opacity:.25;}
+.app-shell[data-view="path"] .tab-btn{color:#365c59;}.app-shell[data-view="path"] .tab-btn.active{color:#125d62;background:#e6ebe1;}
+.app-shell[data-view="path"] .chemin-head{color:#073c43;}.app-shell[data-view="path"] .chemin-paysage{opacity:.14;}
+.app-shell[data-view="path"] .chemin{background:transparent;}
+@media(max-width:380px){
+ #view-path .patio-card{gap:7px;padding-inline-end:4%;padding-inline-start:23%;}
+ #view-path .patio-card .hero-go{padding:7px 8px;}
+ .topbar.patio .patio-rail{top:83.8%;height:14%;}
+ .topbar.patio .patio-label{font-size:.64rem;}
+ .topbar.patio .profile-caption{font-size:.78rem;}
+ .topbar.patio .patio-rail>button{border-radius:4px;}
+}
+@media(forced-colors:active){.patio-icon{forced-color-adjust:none;}.patio-rail button{border:1px solid ButtonText!important;}.topbar.patio .brand .sr-only{position:static;clip:auto;width:auto;height:auto;}}
+/* Optical corrections against the approved reference. */
+.topbar.patio .patio-rail{top:83.8%;height:14.4%;}
+.topbar.patio .patio-icon{height:48%;}
+.topbar.patio #settings-btn{color:#073c43;}
+#view-path .statstrip::before,#view-path .statstrip::after{content:none;}
+#view-path .patio-card .hero-corps{grid-column:1;grid-row:1;}
+#view-path .patio-card .hero-go{grid-column:2;grid-row:1;margin:0;}
+.patio-icon,.patio-map-icon{mix-blend-mode:normal;}
+
+.app-shell:not([data-view="path"]){background:var(--bg);color:var(--ink);}
+.app-shell:not([data-view="path"]) .topbar.patio .patio-rail{top:115px;height:62px;}
+.app-shell:not([data-view="path"]) .profil-bloc::before{border-radius:48% 48% 42% 42%;}
+#view-path .patio-card .hero-title{font-size:clamp(.82rem,3.2vw,1.13rem);}
+#view-path .patio-card .hero-sub{font-weight:400;font-size:clamp(.72rem,2.8vw,.95rem);}
+/* Decorative rail scales with its artwork, independently of reading-size preferences. */
+.topbar.patio .patio-label,#language-current{font-size:clamp(10px,2.8cqw,16px);white-space:nowrap;}
+.topbar.patio .patio-rail>button b{font-size:clamp(13px,4.1cqw,24px);}
+.topbar.patio .language-symbol{font-size:clamp(12px,4cqw,23px);}
+.topbar.patio .language-cycle{font-size:clamp(10px,2.6cqw,16px);}
+.topbar.patio .profile-caption{font-size:clamp(11px,3.4cqw,19px);}
+.app-shell:not([data-view="path"]) .topbar.patio .profil-bloc .profile-btn{top:0;}
+[dir="rtl"] #view-path .patio-card{direction:ltr;}
+[dir="rtl"] #view-path .patio-card .hero-corps,[dir="rtl"] #view-path .patio-card .hero-go{direction:rtl;text-align:right;}
+/* Connection details remain in Profile; the portrait keeps the approved clean rim. */
+.topbar.patio .profile-btn::after{content:none;}
