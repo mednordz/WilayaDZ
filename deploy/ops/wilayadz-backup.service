@@ -1,0 +1,13 @@
+[Unit]
+Description=WilayaDZ : sauvegarde chiffrée et restauration vérifiée sur Google Drive
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/wilayadz-ops/drive_backup.py
+TimeoutStartSec=10min
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true

@@ -1,0 +1,10 @@
+[Unit]
+Description=Sauvegarde quotidienne WilayaDZ
+
+[Timer]
+OnCalendar=*-*-* 03:45:00
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

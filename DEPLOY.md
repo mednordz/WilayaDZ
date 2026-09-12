@@ -21,16 +21,11 @@ par `wilaya-web`. C'est ce qui rend acceptable d'y faire tourner
 `http.server` — il ne voit jamais l'internet en direct, seulement des
 requêtes déjà filtrées par nginx, lui-même derrière le tunnel.
 
-> ⚠️ **Sauvegardes.** Le volume `wilaya-data` (base SQLite des comptes)
-> est la **seule** donnée de tout ce déploiement qui ne se régénère pas
-> depuis le dépôt. Images, conteneurs et HTML se reconstruisent d'un
-> `docker compose build` ; les comptes des gens, non. À inclure dans les
-> sauvegardes de `bigpc`.
->
-> ```bash
-> docker run --rm -v wilaya-data:/d -v "$PWD":/out alpine \
->   tar czf /out/wilaya-data.tgz -C /d .
-> ```
+Les opérations de production sont décrites dans **[PRODUCTION.md](PRODUCTION.md)** :
+archives SQLite chiffrées sur Google Drive, contrôle de restauration, surveillance,
+prévalidation isolée et retour aux images précédentes. Le volume réel vérifié
+sur bigpc est `deploy_wilaya-data`, monté à `/data` dans l'API.
+Ne pas copier directement une base SQLite active ni supposer le nom du volume.
 
 Les étapes 0 et 2 ne se font qu'**une seule fois**, à la main sur `bigpc` :
 elles touchent l'auth GitHub et la configuration du tunnel, partagée avec
@@ -67,21 +62,14 @@ plus large. Révocable à tout moment depuis cette même page GitHub.
 
 ## 1. Construire et lancer le conteneur (automatisé une fois le runner en place)
 
-Le workflow `.github/workflows/deploy.yml` fait tourner, sur ce runner,
-exactement :
+Le workflow exécute les contrôles complets sur un runner GitHub hébergé, puis
+`python3 deploy/release.py "$GITHUB_SHA"` sur bigpc. Il construit les images,
+les vérifie sur un réseau isolé avec une base jetable, attend une sauvegarde
+vérifiée, puis publie et vérifie la version exacte. En cas d'échec, il revient
+à la configuration précédente sans restaurer automatiquement la base.
 
-```bash
-docker compose -f deploy/docker-compose.yml up -d --build
-```
-
-à chaque push sur `main` touchant `app/` ou `deploy/`, et sur demande
-manuelle. En secours (runner en panne, ou avant qu'il existe), la même
-commande marche lancée à la main sur `bigpc` :
-
-```bash
-docker compose -f deploy/docker-compose.yml up -d --build
-curl -s http://127.0.0.1:8099/ | head -c 200   # doit renvoyer le HTML, en UTF-8 lisible
-```
+Seule la branche `main` peut publier, y compris en lancement manuel. La procédure
+initiale et le retour manuel sont documentés dans [PRODUCTION.md](PRODUCTION.md).
 
 Si le port `8099` est déjà pris par autre chose sur `bigpc`, changer le
 mappage dans `deploy/docker-compose.yml` (`"127.0.0.1:<PORT>:8080"`) et

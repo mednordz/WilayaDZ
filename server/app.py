@@ -59,6 +59,8 @@ SESSION_TTL = 180 * 86400
 # rapide pour ne pas faire attendre quelqu'un qui se connecte.
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 1 << 14, 8, 1
 SCRYPT_MAXMEM = 64 * 1024 * 1024
+# Deux dérivations simultanées : borne mémoire sous le plafond de 128 Mio.
+PASSWORD_SLOTS = threading.BoundedSemaphore(2)
 
 # Volontairement plus stricte que la norme : les caracteres qui ne
 # servent qu'a fabriquer du HTML (< > " ') n'ont rien a faire dans une
@@ -254,9 +256,10 @@ class Store:
 # --------------------------------------------------------------------
 
 def hash_password(password, salt):
-    return hashlib.scrypt(password.encode("utf-8"), salt=salt,
-                          n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
-                          dklen=32, maxmem=SCRYPT_MAXMEM)
+    with PASSWORD_SLOTS:
+        return hashlib.scrypt(password.encode("utf-8"), salt=salt,
+                              n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
+                              dklen=32, maxmem=SCRYPT_MAXMEM)
 
 
 def verify_password(password, salt, expected):
@@ -465,6 +468,8 @@ limiter = RateLimiter()
 
 
 class Handler(BaseHTTPRequestHandler):
+    # Une connexion inactive ne garde pas un thread indéfiniment.
+    timeout = 15
     protocol_version = "HTTP/1.1"
     server_version = "wilayadz"
     sys_version = ""
@@ -649,6 +654,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = self._route()
         if path == "/health":
+            store.one("SELECT id FROM accounts LIMIT 1")
             return self._send(200, {"ok": True})
         if path == "/config":
             # Ce que l'application a besoin de savoir avant d'afficher
@@ -1167,11 +1173,44 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, {"version": version, "updated": now})
 
 
+class BoundedHTTPServer(ThreadingHTTPServer):
+    """Réponse 503 explicite en surcharge, sans créer de threads illimités."""
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.slots = threading.BoundedSemaphore(16)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            try:
+                request.settimeout(1)
+                request.sendall(b'HTTP/1.1 503 Service Unavailable\r\n'
+                                b'Connection: close\r\nRetry-After: 5\r\n'
+                                b'Cache-Control: no-store\r\nContent-Length: 0\r\n\r\n')
+            except OSError:
+                pass
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
+
 def main():
     store.prune_sessions()
     store.prune_resets()
     store.prune_unverified()
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server = BoundedHTTPServer(("0.0.0.0", PORT), Handler)
     server.daemon_threads = True
     print("wilayadz-api : ecoute sur le port %d, base %s" % (PORT, DB_PATH),
           flush=True)

@@ -4,6 +4,8 @@ root=pathlib.Path(__file__).resolve().parents[1]
 paths=subprocess.check_output(['git','ls-files','-z'],cwd=root).decode().split('\0')
 bad=[]
 for name in filter(None,paths):
+    if name.startswith('.local-ops/') or name.endswith('/backup.key'):
+        bad.append(name);continue
     p=root/name
     if not p.is_file(): continue
     if p.suffix.lower() in {'.jks','.keystore','.p12','.pfx'}:

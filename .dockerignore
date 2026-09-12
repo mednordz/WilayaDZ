@@ -10,4 +10,11 @@ app/_check.js
 **/*.jks
 **/*.keystore
 .env*
+.local-ops
 v6_*.png
+# Sources graphiques originales : leurs versions intégrées sont déjà dans
+# p4i_mascots.js/p4o_kit.js. Le build lit seulement carte, panorama WebP et Rive.
+mascots
+app/assets/kit
+app/assets/mascottes
+app/assets/illustrations/*.png
