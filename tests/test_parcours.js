@@ -15,7 +15,7 @@ const {signedInProfile}=require('./seed_profile');
   assert.equal(await page.locator('.etape-current').getAttribute('data-unite'),'u3');
   assert.equal(await page.locator('.noeud').count(),8);
   for(let i=0;i<8;i++){const box=await page.locator('.noeud').nth(i).boundingBox();assert(box.width>=88&&box.height>=88);}
-  assert((await page.locator('.noeud').nth(0).innerText()).includes('5/5'));
+  assert((await page.locator('.noeud').nth(0).innerText()).includes('0/5'));
   assert.equal(await page.locator('.noeud').nth(1).locator('.niveau-rose.on').count(),1);
   assert.deepEqual(await page.evaluate(()=>window.auditReview(1)),[11]);
   await page.locator('.noeud').nth(2).scrollIntoViewIfNeeded();

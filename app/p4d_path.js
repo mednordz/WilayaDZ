@@ -93,6 +93,7 @@
     return Math.round((sum / (u.pool.length*5)) * 100);
   }
   function unitDue(u){
+    if(u.id === "u1")return pilotDue();
     return u.pool.filter(function(w){ return state.progress[w.c] && isDue(w.c); }).length;
   }
   function unitNeedsReview(u){
@@ -151,7 +152,7 @@
   }
 
   function renderHero(){
-    var due = dueCodes(poolForTier(state.tier)).length;
+    var due = reviewWilayaCount();
 
     if(!state.keyDone){
       heroCarte({
@@ -222,8 +223,10 @@
   }
   function etapeHtml(u,i,unlocked,suivante){
     var n=Math.max(0,Math.min(5,state.crowns[u.id]||0)),due=unlocked?unitDue(u):0;
+    if(u.id === "u1")n=pilotLevel();
     var current=!!(unlocked&&suivante&&u.id===suivante.id);
     var label=!unlocked?T("À débloquer","للفتح"):n===5?T("Niveaux acquis","المستويات مكتسبة"):n?T("À consolider","للتعزيز"):T("À découvrir","للاكتشاف");
+    if(u.id === "u1")label=T("Atelier de mémoire","ورشة الذاكرة");
     return "<div class='etape"+(current?" etape-current":"")+"' data-unite='"+u.id+"'>"+
       (i<UNITS.length-1?"<svg class='step-link' viewBox='0 0 100 100' preserveAspectRatio='none' aria-hidden='true'><path d='"+(i%2?"M78 0 C78 50 22 50 22 100":"M22 0 C22 50 78 50 78 100")+"'/></svg>":"")+
       "<div class='etape-noeud'>"+(current?"<span class='step-recommendation'>"+T("Prochaine étape","الخطوة التالية")+"</span>":"")+
@@ -280,7 +283,7 @@
       var i = parseInt(b.getAttribute("data-i"), 10);
       var u = UNITS[i];
       var unlocked = unitUnlocked(u, i);
-      var crown = state.crowns[u.id] || 0;
+      var crown = u.id === "u1" ? pilotLevel() : (state.crowns[u.id] || 0);
       var due = unlocked ? unitDue(u) : 0;
       b.setAttribute("aria-label", TL(
         "Unité "+(i+1)+", codes "+u.label+", "+(!unlocked?"verrouillée. Consulter la condition de déblocage.":"niveau acquis "+crown+" sur 5"+(due?", "+due+" à revoir":"")+". Consulter l’unité."),
@@ -301,7 +304,7 @@
     if(!bande) return;
     var pool = poolForTier(state.tier);
     var solides = pool.filter(function(w){ return getBox(w.c) >= 5; }).length;
-    var dus = dueCodes(pool).length;
+    var dus = reviewWilayaCount();
     bande.innerHTML = '<span class="patio-map-icon" aria-hidden="true"></span><span class="patio-progress-copy">'+T(solides+" wilayas solides · "+dus+" à revoir",solides+" ولايات راسخة · "+dus+" للمراجعة")+'<span class="patio-progress-track" aria-hidden="true"><span style="width:'+Math.round(solides/Math.max(pool.length,1)*100)+'%"></span></span></span><span class="chev" aria-hidden="true">'+CHEVRON_ICON+'</span>';
     bande.setAttribute("aria-label", TL(
       solides + " wilayas solides, " + dus + " à revoir. Ouvrir l'entraînement.",
@@ -323,13 +326,15 @@
     trigger=trigger||document.querySelector('.noeud[data-i="'+i+'"]');
     var n=Math.max(0,Math.min(5,state.crowns[u.id]||0)),due=unlocked?unitDue(u):0;
     var action=due?T("Réviser cette unité","راجع هذه الوحدة"):!n?T("Commencer la leçon","ابدأ الدرس"):n<5?T("Continuer l’entraînement","واصل التدريب"):T("S’entraîner à nouveau","تدرّب مجددا");
+    if(u.id === "u1")action=T("Ouvrir mon atelier","افتح ورشتي");
     openSheet("<button class='sheet-dismiss' id='sheet-close' aria-label='"+TL("Fermer","إغلاق")+"'>×</button>"+
       "<h2 id='sheet-title'>"+T("Unité "+(i+1),"الوحدة "+(i+1))+" · "+num(u.label)+"</h2>"+
       "<p class='sub'>"+T(u.title,UNIT_AR[u.id]||"")+"</p>"+
-      (unlocked?"<p class='earned-level'>"+T("Niveau acquis "+num(n+"/5"),"المستوى المكتسب "+num(n+"/5"))+"</p>"+
+      (u.id === "u1" ? "<button class='btn' id='sheet-start'>"+action+"</button>"+pilotSummary() : "")+
+      (unlocked?"<p class='earned-level'>"+T((u.id === "u1" ? "Leçons déjà accomplies : " : "Niveau acquis ")+num(n+"/5"),(u.id === "u1" ? "الدروس المنجزة سابقا : " : "المستوى المكتسب ")+num(n+"/5"))+"</p>"+
         "<p class='sub'>"+T("Les niveaux récompensent les leçons réussies. Les révisions entretiennent la mémoire.","تكافئ المستويات الدروس الناجحة. وتحافظ المراجعات على الذاكرة.")+"</p>"+
         (due?"<p class='step-review'>"+T(due+" à revoir dans cette unité",due+" للمراجعة في هذه الوحدة")+"</p>":"")+
-        "<button class='btn' id='sheet-start'>"+action+"</button>"+
+        (u.id !== "u1" ? "<button class='btn' id='sheet-start'>"+action+"</button>" : "")+
         (due?"<button class='btn ghost' id='sheet-train'>"+T("Faire une leçon","ابدأ درسا")+"</button>":""):
         "<p class='sub'>"+T("Obtiens le premier niveau de l’unité "+i+" pour ouvrir celle-ci.","احصل على المستوى الأول من الوحدة "+i+" لفتح هذه الوحدة.")+"</p><button class='btn' id='sheet-previous'>"+T("Voir l’unité "+i,"اعرض الوحدة "+i)+"</button>"));
     document.getElementById('sheet-box').classList.add('parcours-sheet');

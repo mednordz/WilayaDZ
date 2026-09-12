@@ -21,7 +21,7 @@ const fs=require('fs');
   const rows=page.locator('.etape');assert.equal(await rows.count(),8);
   for(let i=0;i<3;i++)assert.equal(await rows.nth(i).locator('.niveau-rose').count(),5);
   for(let i=3;i<8;i++)assert.equal(await rows.nth(i).locator('.node-lock').count(),1);
-  assert.equal(await rows.nth(0).locator('.niveau-rose.on').count(),5);
+  assert.equal(await rows.nth(0).locator('.niveau-rose.on').count(),0);
   assert.equal(await rows.nth(1).locator('.niveau-rose.on').count(),3);
   assert.equal(await rows.nth(2).locator('.niveau-rose.on').count(),0);
   assert.equal(await page.locator('.topbar-orn').count(),0,'One arch only, embedded in the banner');

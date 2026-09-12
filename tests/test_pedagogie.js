@@ -29,7 +29,7 @@ console.log('Ordonnanceur : espacement, lenteur, reprise, QCM et identifiants va
  try{
  const injection=`
  window.pedagogy={
-   begin:function(){startLesson(UNITS[0]);},
+   begin:function(){startSession({kind:"lesson",unit:UNITS[0],queue:buildLessonQueue(UNITS[0])});},
    inspect:function(){return {kind:session.current.kind,code:session.current.code,relearning:!!session.current.relearning,index:session.index,total:session.queue.length,unresolved:Object.keys(session.unresolved),crowns:state.crowns,progress:state.progress,done:session.done};},
    queue:function(i){return buildLessonQueue(UNITS[i]).filter(function(e){return e.kind === "adaptive";}).map(function(e){return e.code;});},
    blitz:function(){startBlitz();},

@@ -18,7 +18,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
   async function capture(name){
    await page.addScriptTag({content:axe});
-   const issues=await page.evaluate(async()=>(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})));
+   const issues=await page.evaluate(async()=>(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})));
    if(issues.length) console.log(name,lang,theme,JSON.stringify(issues));
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' overflow');
    await page.screenshot({path:path.join(out,`${name}-${lang}-${theme}.png`),fullPage:false});
