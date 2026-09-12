@@ -173,6 +173,24 @@ async function ouvrirProfil(page) {
   verif('le réglage suit',
         await page.evaluate(() => localStorage.getItem('wilaya-musique-v1')) === '0');
 
+  console.log('\nLes types MIME, comme en production');
+  /* nginx ne connait nativement ni .opus ni .m4a : il servait le premier
+     en application/octet-stream, que Safari refuse de lire. */
+  const types = await page.evaluate(async (base) => {
+    const out = {};
+    for (const f of ['musique.opus', 'musique.m4a']) {
+      const r = await fetch(base + 'media/' + f, { method: 'HEAD' });
+      out[f] = r.headers.get('content-type') || '';
+    }
+    return out;
+  }, BASE);
+  verif('musique.opus est servie en audio/ogg',
+        /^audio\/ogg/.test(types['musique.opus']), types['musique.opus']);
+  verif('musique.m4a est servie en audio/mp4',
+        /^audio\/mp4/.test(types['musique.m4a']), types['musique.m4a']);
+  const conf = require('fs').readFileSync(__dirname + '/../deploy/nginx.conf', 'utf8');
+  verif('et nginx déclare bien ces deux types', /types\s*\{[^}]*audio\/ogg\s+opus;[^}]*audio\/mp4\s+m4a;/.test(conf));
+
   console.log('\nLe service worker n y touche pas');
   const swSrc = await page.evaluate(async (base) => (await (await fetch(base + 'sw.js')).text()), BASE);
   verif('/media/ est dans la liste des chemins laissés passer', /NO_CACHE_PREFIX\s*=\s*\[[^\]]*\/media\//.test(swSrc));

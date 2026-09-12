@@ -32,6 +32,9 @@ SW = os.path.join(os.path.dirname(PAGE), "sw.js")
 # avancer dans une piste de quarante minutes sans la telecharger en
 # entier — et c'est precisement ce qu'on veut eprouver.
 MEDIA = os.path.join(ROOT, "deploy", "media")
+# Les MEMES types que ceux declares dans deploy/nginx.conf. nginx ne
+# connait nativement ni .opus ni .m4a : un essai qui servirait un type
+# different de la production ne prouverait rien sur la production.
 MEDIA_TYPES = {".opus": "audio/ogg", ".m4a": "audio/mp4", ".mp3": "audio/mpeg"}
 
 
