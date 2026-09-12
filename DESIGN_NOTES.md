@@ -24,3 +24,11 @@ Le symbole de la marque réutilise les 69 tracés de https://github.com/chemsall
 `node tests/test_visual_parcours.js` vérifie six dispositions (320, 360, 415 et 768 px ; français, arabe et bilingue ; clair/sombre), les cinq niveaux, l'absence de débordement horizontal, la bannière, le bouton XP, le retour de focus, les onglets et les contrastes via axe. Les profils sont fictifs et les appels API sont bloqués.
 
 Les audits existants tactile, accessibilité, bilingue, leçons, XSS et animations restent applicables. Le rendu varie avec la progression réelle : la carte La Clé et la carte Révision ne sont pas remplacées par une fausse étape 19–25.
+
+## Finitions du patio algérien
+
+Une illustration originale associe architecture blanche, Méditerranée et Hoggar derrière la mascotte. Elle reste décorative, est masquée du côté du texte et se retourne en arabe. Le thème clair atténue cette image. Le nouveau fichier source et son prompt sont dans `app/assets/kit/`. Le kit embarqué gagne environ 48 Ko de WebP.
+
+Les cartes portent un double filet de cuivre, les repères alphabétiques des motifs géométriques discrets. Les médaillons ont une gravure intérieure et quatre petits losanges. Une bordure signale l’unité à poursuivre ; les cinq niveaux acquis et les révisions restent séparés. Les onglets utilisent une surface brune et une icône orange pour la sélection.
+
+Vérification : six formats/langues/thèmes, audit de dix écrans et contrôle des cibles tactiles. Aucun changement de logique pédagogique ou de stockage.

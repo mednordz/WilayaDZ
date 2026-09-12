@@ -36,6 +36,7 @@ SORTIE = os.path.join(ICI, "p4o_kit.js")
 # les ecrans a forte densite, et pas davantage — au-dela, le poids monte
 # sans que l'œil y gagne quoi que ce soit.
 PIECES = [
+    ("patio", "01-illustrations/patio-algerien.svg", 830, 84),
     # (cle JS, fichier du kit, largeur cible en pixels, qualite)
     ("banniere", "01-illustrations/banniere-algerie-sans-texte.svg", 830, 88),
     ("chemin", "01-illustrations/decor-parcours.svg", 768, 83),

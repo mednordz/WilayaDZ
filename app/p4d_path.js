@@ -134,6 +134,7 @@
        contenu, et réécrire className l'effacerait sinon. */
     hero.className = "hero ui1" + (o.classe ? " " + o.classe : "");
     hero.innerHTML =
+      (typeof KIT !== "undefined" && KIT.patio ? "<img class='hero-patio' src='" + KIT.patio.src + "' alt='' aria-hidden='true'/>" : "") +
       "<div class='hero-haut'>" +
         "<p class='hero-kicker'>" + o.kicker + "</p>" +
         (o.badge ? "<span class='hero-unite'>" + o.badge + "</span>" : "") +
@@ -245,7 +246,9 @@
     var fond  = "var(--surface-2)";
     return "<svg viewBox='0 0 80 80' aria-hidden='true' focusable='false'>" +
       "<path d='" + NOEUD_CADRE + "' fill='" + fond + "' stroke='" + trait + "' stroke-width='1.3'/>" +
-      "<circle cx='40' cy='39' r='31' fill='" + fond + "' stroke='" + trait + "' stroke-width='2.6'/>" +
+      "<circle cx='40' cy='39' r='31' fill='" + fond + "' stroke='" + trait + "' stroke-width='1.5'/>" +
+      "<circle cx='40' cy='39' r='27.5' fill='none' stroke='" + trait + "' stroke-width='.55' opacity='.65'/>" +
+      "<path d='M40 5l2 3-2 3-2-3ZM74 39l-3 2-3-2 3-2ZM40 73l-2-3 2-3 2 3ZM6 39l3-2 3 2-3 2Z' fill='" + trait + "'/>" +
       /* `direction` en ATTRIBUT, et non le <bdi> de num() : <bdi> est un
          élément HTML, invisible à l'intérieur d'un SVG — le texte y
          disparaissait purement et simplement. */
@@ -289,7 +292,7 @@
       ligne = T("À commencer","ابدأ");
     }
 
-    return "<div class='etape' data-unite='" + u.id + "'>" +
+    return "<div class='etape" + (unlocked && suivante && u.id === suivante.id ? " etape-current" : "") + "' data-unite='" + u.id + "'>" +
       "<div class='etape-noeud'>" +
         /* Même la première étape porte sa liaison : elle la relie au
            badge de La Clé, juste au-dessus. Sans elle, le chemin
