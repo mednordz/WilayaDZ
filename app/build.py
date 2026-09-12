@@ -18,7 +18,7 @@ if sorted(p['code'] for p in map_shapes) != list(range(1, 70)):
 map_bundle = 'var WILAYA_SHAPES=' + json.dumps(map_shapes, separators=(',', ':')) + ';\n'
 map_bundle += "var WILAYA_PANORAMA='data:image/webp;base64," + B('assets/illustrations/panorama-algerien.webp') + "';\n"
 map_bundle += "var WILAYA_REVISION=" + json.dumps(os.environ.get("APP_REVISION", "development")) + ";\n"
-out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), "\n</style>\n\n",
+out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), R('header.css').replace('WOOD_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/boiserie-casbah.webp')), "\n</style>\n\n",
   R('p3_body.html'), "\n\n<script>\n(function(){\n  \"use strict\";\n",
   rive_bundle, R('part_data.js'), R('p4i_mascots.js'), R('qr_lib.js'), R('preferences.js'), R('p4a_core.js'), R('p4f_i18n.js'), R('p4g_account.js'),
   R('p4b_exercises.js'), R('p4c_session.js'), R('p4d_path.js'), R('p4h_profileui.js'),

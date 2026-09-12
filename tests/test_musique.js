@@ -7,7 +7,7 @@
  *   · ce qui l'est arrive en FLUX (requêtes Range, réponses 206), et non
  *     en un seul bloc de quinze mégaoctets ;
  *   · le service worker n'y touche pas ;
- *   · couper le son coupe aussi la musique ;
+ *   · le bouton musical active et désactive la musique ;
  *   · le réglage reste sur l'appareil et se retrouve au rechargement.
  *
  *   python3 tests/serve_test.py 8390 &
@@ -129,16 +129,19 @@ async function ouvrirProfil(page) {
         recu.bufferisee < recu.duree * 0.5,
         recu.bufferisee + ' s sur ' + recu.duree);
 
-  console.log('\nLe bouton son coupe tout');
+  console.log('\nLe bouton du bandeau commande la musique');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
+  const effectsBefore=await page.evaluate(()=>localStorage.getItem('wilaya-sound-v1'));
   await page.locator('#sound-btn').click();
+  verif('la préférence musicale est désactivée',await page.evaluate(()=>localStorage.getItem('wilaya-musique-v1'))==='0');
+  verif('les effets sonores sont inchangés',await page.evaluate(()=>localStorage.getItem('wilaya-sound-v1'))===effectsBefore);
   await page.waitForTimeout(400);
-  verif('son coupé → musique en pause',
+  verif('musique désactivée → pause',
         await page.evaluate(() => document.getElementById('musique').paused));
   await page.locator('#sound-btn').click();
   await page.waitForTimeout(600);
-  verif('son rendu → la musique repart',
+  verif('musique activée → lecture',
         !(await page.evaluate(() => document.getElementById('musique').paused)));
 
   console.log('\nLe réglage reste sur l appareil');

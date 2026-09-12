@@ -529,24 +529,20 @@
   document.getElementById("topstat-xp").addEventListener("click", openXpSheet);
 
   function renderSoundBtn(){
-    var btn = document.getElementById("sound-btn");
-    if(!btn) return;
-    var on = soundEnabled();
-    btn.innerHTML = on ? SND_ON_ICON : SND_OFF_ICON;
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
-    btn.setAttribute("aria-label", TL(on ? "Son activé, couper le son" : "Son coupé, activer le son",
-                                      on ? "الصوت مفعّل، أوقفه" : "الصوت متوقف، فعّله"));
+    var btn=document.getElementById("sound-btn");
+    if(!btn)return;
+    var on=musiqueVoulue(), available=musiqueDisponible();
+    btn.innerHTML=MUSIC_ICON+(on?'':'<span class="music-off-mark" aria-hidden="true"></span>');
+    btn.setAttribute("aria-pressed",String(on));
+    btn.disabled=!available;
+    var label=available?TL(on?"Musique de fond activée, désactiver":"Musique de fond désactivée, activer",on?"موسيقى الخلفية مفعّلة، أوقفها":"موسيقى الخلفية متوقفة، فعّلها"):TL("Musique indisponible dans cette version hors ligne","الموسيقى غير متاحة في هذه النسخة دون اتصال");
+    btn.setAttribute("aria-label",label);btn.title=label;
+    var toggle=document.querySelector('[data-switch="music"]');
+    if(toggle){toggle.setAttribute('aria-checked',String(on));document.getElementById('setting-state-music').textContent=TL(on?'Activé':'Désactivé',on?'مفعّل':'معطّل');}
+    var volume=document.getElementById('setting-volume');if(volume)volume.disabled=!on;
   }
-  var soundBtnEl = document.getElementById("sound-btn");
-  if(soundBtnEl){
-    soundBtnEl.addEventListener("click", function(){
-      var next = !soundEnabled();
-      setSoundEnabled(next);
-      renderSoundBtn();
-      /* Couper le son coupe TOUT, musique comprise ; le rallumer
-         redonne la musique à qui l'avait demandée. */
-      if(typeof musiqueAppliquer === "function") musiqueAppliquer();
-      if(next) trySound(function(){ tone(660,0,.08,"sine",.09); });
-    });
-  }
-  renderSoundBtn();
+  var soundBtnEl=document.getElementById("sound-btn");
+  if(soundBtnEl)soundBtnEl.addEventListener("click",function(){musiqueBascule();});
+  document.getElementById("brand-home").addEventListener("click",function(){
+    closeSheet();switchTab("path");window.scrollTo({top:0,behavior:"auto"});
+  });
