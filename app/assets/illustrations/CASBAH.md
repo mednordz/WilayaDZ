@@ -9,3 +9,5 @@ Direction validée par l'utilisateur : patio chaleureux, fond de faïence doux,
 panneaux ivoire lisibles, interrupteurs verts/rouges avec état textuel.
 Les images sont converties en WebP et intégrées par `build.py` pour fonctionner
 hors ligne. La décoration est limitée à l'écran Réglages.
+
+Bandeau : `boiserie-casbah.webp`, création IA du 12 septembre 2026. Inspiration boiserie sombre et faïence florale de la Casbah d’Alger ; texture décorative, pas une photographie documentaire. Générée individuellement, intégrée au HTML pour rester visible hors ligne.

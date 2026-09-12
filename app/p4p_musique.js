@@ -84,7 +84,7 @@
       document.removeEventListener("pointerdown", relancer, true);
       document.removeEventListener("keydown", relancer, true);
       musiqueGesteArme = false;
-      if(musiqueVoulue() && soundEnabled()) musiqueJouer();
+      if(musiqueVoulue()) musiqueJouer();
     };
     document.addEventListener("pointerdown", relancer, true);
     document.addEventListener("keydown", relancer, true);
@@ -102,24 +102,16 @@
     musiqueEl.pause();
   }
 
-  /* Le seul point d'entrée : applique le réglage tel qu'il est.
-     « Son coupé » coupe TOUT, musique comprise — un bouton de sourdine
-     qui laisse quelque chose sonner n'est pas un bouton de sourdine. */
+  /* La musique et les effets possèdent des réglages indépendants. */
   function musiqueAppliquer(){
-    if(musiqueVoulue() && soundEnabled() && musiqueDisponible()) musiqueJouer();
+    if(musiqueVoulue() && musiqueDisponible()) musiqueJouer();
     else musiqueArreter();
+    renderSoundBtn();
   }
 
   function musiqueBascule(){
     var suivant = !musiqueVoulue();
     setMusiqueVoulue(suivant);
-    /* Allumer la musique alors que le son est coupé n'aurait aucun
-       effet audible : on rallume le son avec, plutôt que de laisser
-       quelqu'un appuyer sur un bouton qui ne fait rien. */
-    if(suivant && !soundEnabled()){
-      setSoundEnabled(true);
-      if(typeof renderSoundBtn === "function") renderSoundBtn();
-    }
     musiqueAppliquer();
     return suivant;
   }

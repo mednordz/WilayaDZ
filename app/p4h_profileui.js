@@ -55,6 +55,8 @@
     if(bloc) bloc.style.display = "flex";
     btn.style.display = "flex";
     applyAvatar(btn, p);
+    var caption=document.getElementById("profile-caption");
+    if(caption){caption.textContent=p.name;caption.title=p.name;}
     btn.setAttribute("aria-label", TL("Profil de " + p.name + ", changer de profil",
                                       "ملف " + p.name + "، تغيير الملف"));
     renderCloudBadge();
