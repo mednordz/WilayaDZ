@@ -79,7 +79,8 @@
     state.locked = true;
     state.sessionTotal++;
     if(correct) state.sessionCorrect++;
-    recordAnswer(spec.code, correct, null, correct ? null : chosenCode, spec.fastLimit);
+    if((state.learning||{})[spec.code] && !spec.noRecord)pilotRecord({code:spec.code,pilotSkill:'r'},correct);
+    else recordAnswer(spec.code, correct, null, correct ? null : chosenCode, spec.fastLimit,spec);
     persist();
 
     var choiceArea = document.getElementById("choice-area");
@@ -107,7 +108,8 @@
     state.sessionTotal++;
     var correct = val === state.currentAnswer;
     if(correct) state.sessionCorrect++;
-    recordAnswer(state.currentAnswer, correct, null, correct ? null : val, FAST_TYPE);
+    if((state.learning||{})[state.currentAnswer])pilotRecord({code:state.currentAnswer,pilotSkill:'n'},correct);
+    else recordAnswer(state.currentAnswer, correct, null, correct ? null : val, FAST_TYPE,{kind:'type'});
     persist();
     inp.disabled = true;
     document.getElementById("typein-submit").disabled = true;
@@ -163,11 +165,11 @@
 
   /* ---------------- Cartes d'action + prévision ---------------- */
   function refreshPracticeCards(){
-    var due = dueCodes(poolForTier(state.tier)).length;
+    var due = reviewWilayaCount();
     var rev = document.getElementById("act-review");
     document.getElementById("act-review-sub").innerHTML =
-      due ? TS(due + " wilaya" + (due>1?"s":"") + " au bord de l'oubli.", due + " ولاية على حافة النسيان.")
-          : TS("Rien d'urgent. Ta mémoire tient.","لا شيء عاجل. ذاكرتك صامدة.");
+      due ? TS(due + " wilaya" + (due>1?"s":"") + " à réviser.", due + " ولاية للمراجعة.")
+          : TS("Aucun rappel prévu pour le moment.","لا توجد مراجعة مقررة الآن.");
     rev.setAttribute("aria-disabled", due ? "false" : "true");
 
     var pairs = confusionPairs();

@@ -1,7 +1,7 @@
 # WilayaDZ — évolution de la pédagogie
 
 Date : 12 septembre 2026. Audit de la branche `codex/parcours-niveaux`, base `12f5f0b`.
-Statut : diagnostic et cible pédagogique. Premier lot implémenté sur `codex/pedagogie-adaptive`, non publié. Le tableau d'audit ci-dessous décrit la base avant corrections.
+Statut : diagnostic et cible pédagogique. Premier lot implémenté sur `codex/pedagogie-adaptive`, puis unité 1 pilote sur `codex/unite-pilote`, non publiés. Le tableau d'audit ci-dessous décrit la base avant corrections.
 
 ## Objectif et limites
 
@@ -111,6 +111,28 @@ Ces résultats motivent le rappel, la correction et les séances espacées. Ils 
 - Bouton « Je ne sais pas » donnant la correction ; saisie des chiffres arabes et persans prise en charge, chaînes partiellement numériques rejetées.
 - Contrat de sauvegarde inchangé : aucune migration serveur nécessaire pour ce lot. Les anciens clients appliquent encore leurs anciennes règles ; déployer les nouvelles sources avant d'évaluer les effets du moteur.
 
-La mesure persistante par direction, le journal fusionnable des observations, la découverte par petits groupes et la nouvelle signification des cinq étapes restent à implémenter ensemble. La protection par échéance de ce lot ne prétend pas reconstruire les preuves historiques manquantes. La localisation sur carte ne change pas.
+Le premier lot n’incluait pas encore la mesure persistante par direction, la découverte par petits groupes ni la nouvelle signification des cinq étapes. Le pilote décrit ci-dessous les ajoute pour les dix premières wilayas avec un état compact fusionnable. La généralisation reste à venir. Aucun de ces lots ne reconstruit les preuves historiques manquantes. La localisation sur carte ne change pas.
 
 Validation dédiée : `tests/test_pedagogie.js` teste les fonctions réelles avec une horloge fictive et les séances complètes dans un navigateur mobile FR/AR/bilingue, clair/sombre. `tests/test_sync.js` couvre aussi les anciennes confusions invalides. Ces tests vérifient le logiciel, pas l'efficacité mesurée chez les apprenants.
+
+## Unité 1 pilote réalisée
+
+Branche `codex/unite-pilote`, construite sur le premier lot pédagogique. Les unités 2–8 gardent leur parcours existant.
+
+- Quatre groupes successifs (3, 3, 3, 1 wilayas) : fiche nom/code, reconnaissance, saisie du code puis saisie du nom. Les réponses de nom acceptent les écritures française et arabe présentes dans les données, sans imposer accents, espaces, tirets ou apostrophes. Il n'y a pas de correspondance approximative qui pourrait accepter une autre wilaya.
+- Le médaillon de l'unité 1 et sa fiche suivent cinq étapes couvrant les dix wilayas : découverte, reconnaissance, premier rappel du code, premier rappel du nom, puis rappel différé confirmé dans les deux sens. Les leçons historiques sont affichées séparément et conservées.
+- Les rappels des deux directions possèdent des échéances indépendantes. Première réussite : J+1 ; confirmation différée : J+3 ; entretiens suivants : J+7. Une confirmation exige au moins 24 heures depuis la preuve précédente. Une reprise après correction ou un entraînement anticipé n'avance pas l'étape ni son échéance.
+- Une erreur programme une reprise à dix minutes sans retirer une étape déjà acquise. Une reprise guidée immédiate ne devient pas une preuve différée. Les rappels arrivés à échéance rejoignent aussi les révisions quotidiennes, avec la limite de quinze questions initiales.
+- La suite du parcours est accessible après reconnaissance des dix associations ; il n'est pas nécessaire d'attendre les confirmations différées. Le mode d'entraînement anticipé est explicite lorsqu'aucun rappel n'est dû.
+
+### Contrat de sauvegarde et déploiement
+
+Le format de transfert reste `WLY1`, avec schéma de contenu `sv:3`. Le champ `lr` est limité aux dix codes de l'unité pilote. Chaque entrée contient `d` et `r` (dates de découverte et de reconnaissance) ainsi que deux tableaux `n` et `c` : `[étape atteinte, dernière preuve, prochaine échéance, dernière observation, résultat 0/1]`. Aucun nom saisi n'est conservé. Il s'agit d'un état compact, pas d'un journal illimité ni d'une probabilité scientifique de rétention.
+
+Les étapes atteintes et la date de preuve fusionnent par maximum ; l'échéance et le résultat suivent l'observation la plus récente, avec un arbitrage conservateur en cas d'égalité. Les directions fusionnent séparément. La génération de remise à zéro reste prioritaire. Les données envoyées sont copiées pour qu'une réponse pendant une synchronisation ne modifie pas rétrospectivement la copie déjà partie.
+
+La validation JavaScript et Python partage le même corpus. Les anciens contenus `sv:2` et sans `sv` restent importables. Le serveur refuse une écriture d'un schéma inférieur à celui déjà stocké : un ancien client ne peut pas retirer les preuves du pilote. Il devra être actualisé pour synchroniser un compte passé en `sv:3`.
+
+Le client et le serveur compatibles doivent être publiés ensemble. Le stockage SQLite conserve sa colonne JSON ; aucune table ni compte n'est supprimé. Un retour à un ancien client/serveur ne doit pas convertir ou effacer les contenus `sv:3` : privilégier une correction compatible ou désactiver l'atelier tout en conservant les lecteurs/validateurs `sv:3`. Les sauvegardes de grande taille peuvent dépasser la capacité d'un QR ; le transfert par fichier conserve le contenu complet et le message de repli existant reste disponible.
+
+Validation : `tests/test_pilot.js` parcourt les quatre groupes, simule le lendemain, vérifie les deux directions, le rechargement et l'import, ainsi que mobile FR/AR/bilingue et contrastes clair/sombre. `tests/test_sync.js` vérifie la fusion et les remises à zéro ; `tests/test_api.py` vérifie le passage au schéma 3 et le refus des écritures anciennes. Les tests utilisent exclusivement des profils fictifs. L'efficacité chez de vrais apprenants reste à mesurer avant généralisation.
