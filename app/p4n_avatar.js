@@ -68,6 +68,9 @@
     p.avatarAt = Date.now();
     saveAccount();
     renderAvatar();
+    /* L'invitation n'a plus d'objet : elle s'efface sans attendre le
+       prochain rendu du parcours. */
+    if(typeof renderInvitePhoto === "function") renderInvitePhoto();
     /* Tout de suite, pas dans dix secondes : c'est un geste délibéré et
        unique, pas une réponse de quiz. Quelqu'un qui choisit son avatar
        puis ouvre l'application sur sa tablette doit l'y retrouver. */
@@ -172,6 +175,58 @@
         setAvatar(p, {k:"p", v:r.data});
         if(onChange) onChange();
       });
+    });
+  }
+
+  /* ---------------- L'invitation ----------------
+
+     Le choix de la photo existe depuis l'inscription et dans la feuille
+     Profil, mais qui n'ouvre jamais cette feuille ne le découvre jamais.
+     D'où cette ligne, sur l'écran d'accueil.
+
+     Trois conditions, et les trois comptent :
+       · il n'y a pas encore de photo — sinon l'invitation n'a pas
+         d'objet ;
+       · elle n'a pas été écartée (`state.photoNon`, synchronisé : refusée
+         sur le téléphone, elle ne revient pas sur la tablette) ;
+       · la personne a commencé quelque chose. Proposer une photo à
+         quelqu'un qui vient d'ouvrir l'application pour la première
+         fois, c'est lui demander de s'occuper de sa vitrine avant
+         d'avoir vu la boutique. */
+  function invitePhotoVisible(){
+    var p = activeProfile();
+    if(!p || p.avatar) return false;
+    if(state.photoNon) return false;
+    return !!state.keyDone || (state.xp || 0) > 0;
+  }
+
+  function renderInvitePhoto(){
+    var el = document.getElementById("invite-photo");
+    if(!el) return;
+    if(!invitePhotoVisible()){ el.hidden = true; el.innerHTML = ""; return; }
+    var p = activeProfile();
+    el.hidden = false;
+    el.innerHTML =
+      "<button class='invite-photo-corps' type='button' id='invite-photo-ouvrir' " +
+        "aria-label=\"" + esc(TL("Ajouter une photo de profil","أضف صورة للملف")) + "\">" +
+        avatarHtml(p, "invite-photo-av") +
+        "<span class='invite-photo-txt'>" +
+          "<b>" + T("Mets un visage sur ton pseudo","ضع وجها على اسمك المستعار") + "</b>" +
+          "<span>" + T("Une mascotte ou ta photo — elle te suit partout.",
+                       "شخصية أو صورتك — تتبعك في كل مكان.") + "</span>" +
+        "</span>" +
+      "</button>" +
+      "<button class='invite-photo-non' type='button' id='invite-photo-fermer' " +
+        "aria-label=\"" + esc(TL("Pas maintenant","ليس الآن")) + "\">" + CROSS_ICON + "</button>";
+
+    document.getElementById("invite-photo-ouvrir")
+      .addEventListener("click", function(){ openAvatarSheet(); });
+    document.getElementById("invite-photo-fermer").addEventListener("click", function(){
+      state.photoNon = true;
+      persist();
+      renderInvitePhoto();
+      toast(TL("Tu pourras toujours l'ajouter depuis ton profil.",
+               "يمكنك إضافتها لاحقا من ملفك."));
     });
   }
 

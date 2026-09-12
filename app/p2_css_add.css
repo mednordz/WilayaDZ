@@ -567,6 +567,54 @@
     font-variant-numeric:tabular-nums;
   }
 
+  /* ---- Invitation à mettre une photo ----
+     Une ligne, pas une carte : elle ne doit pas peser autant que la
+     prochaine étape, qui est ce pour quoi on ouvre l'application. Et
+     elle porte sa propre sortie — une invitation qu'on ne peut pas
+     refuser n'est pas une invitation. */
+  /* `display:flex` posé sur une classe l'emporte sur le `[hidden]` de la
+     feuille de style du navigateur : sans cette ligne, l'invitation
+     restait à l'écran après avoir été écartée. */
+  .invite-photo[hidden]{ display:none; }
+  .invite-photo{
+    display:flex; align-items:center; gap:6px;
+    margin:0 0 18px; padding-block:8px; padding-inline:10px 8px;
+    border:1.5px dashed var(--border-strong); border-radius:16px;
+    background:var(--surface);
+  }
+  .invite-photo-corps{
+    flex:1; min-width:0; display:flex; align-items:center; gap:11px;
+    background:none; border:none; padding:6px 2px; cursor:pointer;
+    font-family:var(--font-body); color:var(--ink); text-align:start;
+  }
+  .invite-photo-corps:active{ transform:scale(.99); }
+  .invite-photo-av{
+    width:40px; height:40px; min-width:40px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:1rem;
+    /* Le « + » dit que ce rond est à remplir, et non qu'il l'est déjà. */
+    position:relative;
+  }
+  .invite-photo-av::after{
+    content:"+"; position:absolute; inset-inline-end:-3px; bottom:-3px;
+    width:17px; height:17px; border-radius:50%;
+    background:var(--accent); color:var(--accent-ink);
+    border:2px solid var(--surface);
+    font-size:.72rem; font-weight:900; line-height:13px; text-align:center;
+  }
+  .invite-photo-txt{ min-width:0; }
+  .invite-photo-txt b{ display:block; font-size:.92rem; font-weight:800; }
+  .invite-photo-txt > span{
+    display:block; font-size:.78rem; color:var(--ink-dim); margin-top:1px;
+  }
+  .invite-photo-non{
+    width:40px; height:40px; flex:none; border-radius:50%;
+    background:none; border:none; cursor:pointer; color:var(--ink-faint);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .invite-photo-non .icon{ width:16px; height:16px; }
+  .invite-photo-non:active{ background:var(--surface-2); }
+
   /* ---- Le chemin et son décor ----
      Le paysage du kit n'est plus une vignette dans un coin : c'est le
      sol sur lequel le chemin est posé. Un dégradé chaud tient le haut,

@@ -5,8 +5,19 @@ const URL = 'file:///tmp/wilayas/wilaya-v6.html';
 const axeSrc = fs.readFileSync('/tmp/wilayas/node_modules/axe-core/axe.min.js', 'utf8');
 const T = 8000;
 
+/* Un profil DEJA EN ROUTE, et non un profil vierge : sur un profil
+   vierge la moitie de l'ecran d'accueil n'existe pas (jauges, etats des
+   unites, invitation a mettre une photo) et l'audit passait a cote. */
+const EN_ROUTE = (() => {
+  const d = { keyDone: true, xp: 298, streak: { count: 1, last: null },
+              crowns: { u1: 5, u2: 3 }, progress: {}, confusions: {} };
+  for (let c = 1; c <= 10; c++) d.progress[c] = { box: 5, due: 0, seen: 9, ok: 9, best: 1 };
+  for (let c = 11; c <= 18; c++) d.progress[c] = { box: 3, due: 0, seen: 6, ok: 5, best: 1 };
+  return d;
+})();
+
 async function setupProfile(page, name, lang) {
-  await seedSignedIn(page, URL, { name: name, lang: lang, settle: 400 });
+  await seedSignedIn(page, URL, { name: name, lang: lang, settle: 400, data: EN_ROUTE });
 }
 
 async function runAxe(page, label, results) {

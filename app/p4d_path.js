@@ -381,6 +381,7 @@
     renderStatStrip();
     renderCheminCompte();
     renderHero();
+    renderInvitePhoto();
     refreshTopStats();
   }
 

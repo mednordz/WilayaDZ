@@ -23,7 +23,11 @@
   }
   function blankData(){
     return { progress:{}, confusions:{}, crowns:{}, xp:0,
-             streak:{count:0,last:null}, keyDone:false, bestBlitz:0 };
+             streak:{count:0,last:null}, keyDone:false, bestBlitz:0,
+             /* L'invitation à mettre une photo a été écartée. Rangé
+                avec la progression, donc synchronisé : refusée sur le
+                téléphone, elle ne revient pas sur la tablette. */
+             photoNon:false };
   }
 
   /* Code d'accès local. Ce n'est pas de la cryptographie :
@@ -107,6 +111,7 @@
     state.streak     = d.streak || {count:0,last:null};
     state.keyDone    = !!d.keyDone;
     state.bestBlitz  = d.bestBlitz || 0;
+    state.photoNon   = !!d.photoNon;
   }
   /* Réécrit l'état dans le profil actif, à chaque réponse. */
   function persist(){
@@ -119,7 +124,8 @@
     if(p.id !== loadedProfileId) return;
     p.data = {
       progress:state.progress, confusions:state.confusions, crowns:state.crowns,
-      xp:state.xp, streak:state.streak, keyDone:state.keyDone, bestBlitz:state.bestBlitz
+      xp:state.xp, streak:state.streak, keyDone:state.keyDone, bestBlitz:state.bestBlitz,
+      photoNon:state.photoNon
     };
     p.lastSeen = Date.now();
     saveAccount();
@@ -170,7 +176,7 @@
       v:1, n:p.name, x:d.xp||0,
       sc:(d.streak&&d.streak.count)||0, sl:(d.streak&&d.streak.last)||null,
       k:d.keyDone?1:0, bb:d.bestBlitz||0,
-      cr:d.crowns||{}, p:packed, cf:d.confusions||{},
+      cr:d.crowns||{}, p:packed, cf:d.confusions||{}, pn:d.photoNon?1:0,
       /* L'avatar n'est pas cumulable comme une progression : c'est le
          plus récent qui gagne, d'où l'horodatage qui l'accompagne. */
       av:p.avatar||null, avt:p.avatarAt||0
@@ -219,6 +225,10 @@
     d.xp = Math.max(d.xp||0, obj.x||0);
     d.bestBlitz = Math.max(d.bestBlitz||0, obj.bb||0);
     d.keyDone = !!d.keyDone || !!obj.k;
+    /* Comme keyDone : une fois écartée, écartée partout. Un OU, jamais
+       un remplacement — sinon un appareil qui n'a pas encore reçu le
+       refus le ferait réapparaître au retour. */
+    d.photoNon = !!d.photoNon || !!obj.pn;
     Object.keys(obj.cr||{}).forEach(function(u){
       d.crowns[u] = Math.max(d.crowns[u]||0, obj.cr[u]||0);
     });

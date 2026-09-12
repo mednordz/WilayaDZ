@@ -341,6 +341,33 @@ Porteurs de `ui1` aujourd'hui : `.topbar`, `.tabbar`, `.banner-text`,
 `.statstrip`, `#hero-card` (reposée à chaque rendu par `heroCarte`, qui
 réécrit `className`), `.chemin-head`, `.chemin`.
 
+## Inviter à mettre une photo
+
+Le choix de la photo existe depuis l'inscription et dans la feuille
+Profil ; personne ne le trouvait. Une ligne sur l'écran d'accueil
+(`#invite-photo`, rendue par `renderInvitePhoto()` dans `p4n_avatar.js`)
+le propose, sous trois conditions et pas une de moins :
+
+  · le profil n'a pas encore de photo ;
+  · l'invitation n'a pas été écartée (`state.photoNon`) ;
+  · la personne a commencé quelque chose (`keyDone` ou `xp > 0`) —
+    proposer une photo à quelqu'un qui ouvre l'application pour la
+    première fois, c'est lui demander de s'occuper de sa vitrine avant
+    d'avoir vu la boutique.
+
+`photoNon` est **synchronisé** : il traverse `blankData()`, `loadState()`,
+`persist()`, `packProfile()` (`pn`) et `mergeInto()` — fusionné par un OU,
+comme `keyDone`. Refusée sur le téléphone, l'invitation ne revient pas
+sur la tablette. Attention : `persist()` RECONSTRUIT `p.data` depuis
+`state` ; un champ ajouté à `data` sans l'être à `state` est effacé à la
+réponse suivante.
+
+Piège rencontré : `.invite-photo{ display:flex }` l'emporte sur le
+`[hidden]{display:none}` de la feuille du navigateur (spécificité de
+classe contre spécificité d'attribut du UA). Sans
+`.invite-photo[hidden]{ display:none }`, l'invitation restait à l'écran
+après avoir été écartée.
+
 ## Le chemin : ce que montre chaque ligne
 
 Une étape = un nœud + un titre + une ligne d'état + une **jauge**.

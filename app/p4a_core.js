@@ -73,7 +73,7 @@
     progress: {},      /* code -> {box, due, seen, ok, best} */
     confusions: {},    /* code -> {wrongCode: n} */
     crowns: {}, xp: 0, streak: {count:0, last:null},
-    keyDone: false, bestBlitz: 0,
+    keyDone: false, bestBlitz: 0, photoNon: false,
     tier: 1, mode: "code2name", pool: [], current: null, currentAnswer: null,
     sessionCorrect: 0, sessionTotal: 0, locked: false
   };
