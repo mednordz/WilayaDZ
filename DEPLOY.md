@@ -233,18 +233,35 @@ propre au projet, et c'est son nom que Google montre aux gens — voir
 | Client OAuth | `WilayaDZ Web`, type Application Web |
 | Origines JavaScript | `https://wilayadz.smnc.win` et `https://69.smnc.win` |
 | URI de redirection | les mêmes **avec la barre oblique finale** |
-| État de publication | **Test** — voir la limite ci-dessous |
+| État de publication | **En production** (2026-09-12) |
 
 ⚠️ **L'ancien domaine est enregistré lui aussi** : `69.smnc.win` répond
 toujours, et sans ses deux URL quelqu'un qui ouvre l'app par ce lien
 verrait le bouton Google échouer.
 
-⚠️ **Tant que l'application est en état « Test », seuls les comptes
-listés dans Audience → Utilisateurs tests peuvent se connecter par
-Google** (100 maximum). Publier exige de fournir une **page de
-confidentialité** et des **conditions d'utilisation** publiques, que le
-site n'a pas encore. L'inscription par e-mail, elle, reste ouverte à
-tout le monde — rien n'est bloqué pour qui n'utilise pas Google.
+**Aucune validation par Google n'a été nécessaire**, et il ne faut pas
+que cela change : la revue de Google — celle qui prend des semaines —
+ne s'applique qu'aux applications demandant des accès *sensibles*
+(lire les courriels, Drive, l'agenda) ou déclarant plus de 10 domaines
+ou un logo. WilayaDZ ne demande que `openid`, `email` et `profile`,
+classés non sensibles.
+
+⚠️ **Ne pas importer de logo dans Branding** et ne pas élargir les
+portées : l'un comme l'autre déclenchent la validation, et l'application
+retomberait en accès restreint le temps de l'examen.
+
+Publier a exigé deux pages publiques, désormais servies par le même
+nginx (`deploy/pages/`) :
+
+| | |
+|---|---|
+| `https://wilayadz.smnc.win/confidentialite` | ce qui est gardé, où, combien de temps |
+| `https://wilayadz.smnc.win/conditions` | les règles d'usage |
+
+Elles sont bilingues, lisibles sans compte, liées depuis la porte
+d'inscription, et écrites à partir des faits vérifiés du déploiement —
+pas d'un modèle recopié. **Si le fonctionnement change (durées de
+conservation, hébergeur, tiers), ces pages doivent changer avec.**
 
 Le code secret du client n'est **ni utilisé ni stocké** : la redirection
 rapporte directement un jeton d'identité, il n'y a pas de code à
