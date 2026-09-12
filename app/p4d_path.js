@@ -319,6 +319,7 @@
      démarrage, plutôt qu'à chaque rendu du chemin. */
   function poserImagesKit(){
     if(typeof KIT === "undefined") return;
+    if(KIT.patio) document.documentElement.style.setProperty("--patio-image", "url(" + KIT.patio.src + ")");
     var paires = [["banner-img","banniere"], ["decor-chemin","chemin"]];
     paires.forEach(function(pr){
       var el = document.getElementById(pr[0]);

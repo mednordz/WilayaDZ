@@ -32,3 +32,11 @@ Une illustration originale associe architecture blanche, Méditerranée et Hogga
 Les cartes portent un double filet de cuivre, les repères alphabétiques des motifs géométriques discrets. Les médaillons ont une gravure intérieure et quatre petits losanges. Une bordure signale l’unité à poursuivre ; les cinq niveaux acquis et les révisions restent séparés. Les onglets utilisent une surface brune et une icône orange pour la sélection.
 
 Vérification : six formats/langues/thèmes, audit de dix écrans et contrôle des cibles tactiles. Aucun changement de logique pédagogique ou de stockage.
+
+## Habillage global et quatre mascottes
+
+La famille de cadres cuivrés, de surfaces sahariennes et de touches de céramique couvre Entraînement, Infos, le registre, les cartes de mémoire, les quiz, les leçons, les résultats, les feuilles de détail, le profil, les avatars et les écrans de compte. Le patio est réutilisé dans les introductions. Les petits contrôles reçoivent des finitions adaptées à leur fonction. Les états correct/incorrect, sélection et focus restent distincts et les appuis respectent la réduction des animations.
+
+Les quatre mascottes ont été redessinées avec des textiles brodés. Sources et prompts : `app/assets/mascottes/README.md`. Leurs portraits sont cadrés séparément pour remplir les médaillons des avatars. Aucun identifiant ni champ de compte ne change.
+
+Validation : 18 écrans et quatre mascottes via `test_design_pages.js`, six dispositions du Parcours, dix vues et 22 écrans de compte audités, cibles tactiles, animations, six leçons complètes (69 questions).

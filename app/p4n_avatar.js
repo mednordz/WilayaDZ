@@ -40,7 +40,7 @@
     el.style.background = PROFILE_COLORS[(p && p.color) || 0];
     if(a && a.k === "m" && typeof MASCOTS !== "undefined" && MASCOTS[a.v]){
       el.classList.add("av-mascotte");
-      el.innerHTML = "<img alt='' src='" + MASCOTS[a.v].head + "' />";
+      el.innerHTML = "<img alt='' src='" + (MASCOTS[a.v].portrait || MASCOTS[a.v].head) + "' />";
       return;
     }
     el.textContent = profileInitial(p);
@@ -55,7 +55,7 @@
     }
     var fond = "style='background:" + PROFILE_COLORS[(p && p.color) || 0] + "'";
     if(a && a.k === "m" && typeof MASCOTS !== "undefined" && MASCOTS[a.v]){
-      return "<span " + base + " " + fond + "><img alt='' src='" + MASCOTS[a.v].head + "' /></span>";
+      return "<span " + base + " " + fond + "><img alt='' src='" + (MASCOTS[a.v].portrait || MASCOTS[a.v].head) + "' /></span>";
     }
     return "<span " + base + " " + fond + ">" + profileInitial(p) + "</span>";
   }
@@ -140,7 +140,7 @@
         "aria-pressed='" + (a && a.k === "m" && a.v === nom ? "true" : "false") + "' " +
         "aria-label=\"" + TL("Mascotte " + nom, "شخصية " + nom) + "\">" +
         "<span class='av av-mascotte' style='background:" + PROFILE_COLORS[(p && p.color) || 0] + "'>" +
-          "<img alt='' src='" + MASCOTS[nom].head + "' /></span>" +
+          "<img alt='' src='" + (MASCOTS[nom].portrait || MASCOTS[nom].head) + "' /></span>" +
       "</button>";
     }).join("");
 
