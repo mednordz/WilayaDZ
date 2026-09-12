@@ -29,12 +29,11 @@ def check():
         errors.append('API inaccessible à travers nginx')
     try:
         status = json.loads((STATE / 'backup-status.json').read_text())
-        if not status.get('restore_verified') or time.time() - status['completed_at'] > 30 * 3600:
+        if (not status.get('restore_verified') or status.get('destination') != 'google-drive'
+                or time.time() - status['completed_at'] > 30 * 3600):
             errors.append('Sauvegarde vérifiée trop ancienne')
     except Exception:
         errors.append('Aucune sauvegarde vérifiée')
-    if not os.path.ismount('/mnt/qnap'):
-        errors.append('NAS non monté')
     disk = shutil.disk_usage(STATE)
     if disk.free < 2 * 1024**3 or disk.free / disk.total < .1:
         errors.append('Espace disque insuffisant')

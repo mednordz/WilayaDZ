@@ -1,13 +1,13 @@
 [Unit]
-Description=WilayaDZ : sauvegarde chiffrée et restauration vérifiée sur NAS
-After=qnap-mount.service
-Wants=qnap-mount.service
+Description=WilayaDZ : sauvegarde chiffrée et restauration vérifiée sur Google Drive
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=oneshot
 UMask=0077
-ExecStart=/usr/bin/python3 /opt/wilayadz-ops/backup.py --source /var/lib/docker/volumes/deploy_wilaya-data/_data/wilayadz.sqlite3
-TimeoutStartSec=5min
+ExecStart=/usr/bin/python3 /opt/wilayadz-ops/drive_backup.py
+TimeoutStartSec=10min
 Nice=10
 NoNewPrivileges=true
 PrivateTmp=true

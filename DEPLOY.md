@@ -22,7 +22,7 @@ par `wilaya-web`. C'est ce qui rend acceptable d'y faire tourner
 requêtes déjà filtrées par nginx, lui-même derrière le tunnel.
 
 Les opérations de production sont décrites dans **[PRODUCTION.md](PRODUCTION.md)** :
-archives SQLite chiffrées sur NAS, contrôle de restauration, surveillance,
+archives SQLite chiffrées sur Google Drive, contrôle de restauration, surveillance,
 prévalidation isolée et retour aux images précédentes. Le volume réel vérifié
 sur bigpc est `deploy_wilaya-data`, monté à `/data` dans l'API.
 Ne pas copier directement une base SQLite active ni supposer le nom du volume.

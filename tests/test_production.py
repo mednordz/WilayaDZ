@@ -17,6 +17,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'server'))
+sys.path.insert(0, str(ROOT / 'deploy/ops'))
 SCRATCH = tempfile.TemporaryDirectory(prefix='wilaya-prod-test-')
 os.environ['WILAYA_DB'] = SCRATCH.name + '/api.sqlite3'
 import app as api
@@ -31,9 +32,45 @@ def module(name, path):
 
 backup = module('backup', 'deploy/ops/backup.py')
 release = module('release', 'deploy/release.py')
+drive = module('drive_backup', 'deploy/ops/drive_backup.py')
 
 
 class ProductionTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('gpg'), 'GPG absent sur ce poste ; exécuté sur Linux/CI')
+    def test_drive_roundtrip_and_corruption_detection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / 'live.sqlite3'; store = api.Store(str(src))
+            key = root / 'key'; key.write_text('test-only-key-not-for-production-' * 2); key.chmod(0o600)
+            creds = root / 'rclone.conf'; creds.write_text('[test]\ntype=drive\n'); creds.chmod(0o600)
+            config = root / 'drive.json'; config.write_text(json.dumps({'remote':'test', 'folder_id':'test-folder', 'rclone_config':str(creds)}))
+            cloud = root / 'cloud'; cloud.mkdir()
+            state = root / 'state'
+            corrupt = False
+            def transport(config, action, *args):
+                if action == 'copyto':
+                    source, dest = str(args[0]), str(args[1])
+                    if source.startswith('test:'):
+                        shutil.copyfile(cloud / source.split(':', 1)[1], dest)
+                        if corrupt: Path(dest).write_bytes(b'corrupted')
+                    else:
+                        shutil.copyfile(source, cloud / dest.split(':', 1)[1])
+                elif action == 'lsjson':
+                    return json.dumps([{'Name':p.name} for p in cloud.iterdir()])
+                else: raise AssertionError(action)
+                return ''
+            with mock.patch.object(drive, 'rclone', transport):
+                result = drive.perform(src, state, key, config)
+                self.assertTrue(result['remote_verified'])
+                self.assertEqual(result['destination'], 'google-drive')
+                previous = (state / 'backup-status.json').read_bytes()
+                corrupt = True
+                with self.assertRaisesRegex(RuntimeError, 'différente'):
+                    drive.perform(src, state, key, config)
+                self.assertEqual((state / 'backup-status.json').read_bytes(), previous)
+            self.assertFalse(list(state.glob('drive-restore-*')))
+            store._db.close()
+
     def test_live_wal_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / 'live.sqlite3'

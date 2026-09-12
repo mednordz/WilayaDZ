@@ -100,7 +100,7 @@ def main():
         print('Images éprouvées sans modifier la production : ' + args.revision)
         return
     # systemctl attend la fin du oneshot et renvoie son échec : sans sauvegarde
-    # vérifiée sur NAS, la version actuelle reste en place.
+    # vérifiée sur Google Drive, la version actuelle reste en place.
     run('sudo', '-n', 'systemctl', 'start', 'wilayadz-backup.service')
     activate(target, current, args.revision)
     previous = STATE / 'previous.json'

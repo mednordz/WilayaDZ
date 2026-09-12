@@ -11,16 +11,30 @@
 | Base vue par le service API | `/data/wilayadz.sqlite3` |
 | Point d'entrée local | `http://127.0.0.1:8099` |
 
-Le NAS est déjà monté sur `/mnt/qnap` via le partage QNAP existant.
+La destination choisie est Google Drive, dans un dossier privé « WilayaDZ — Sauvegardes ».
+Aucune sauvegarde NAS n’est activée par ce dispositif.
 Le tunnel Cloudflare et Postfix sont partagés avec d'autres applications.
 La présente optimisation ne change ni leur configuration ni le sous-réseau
 de l'API (`172.28.0.10`, autorisé par Postfix).
 
 ## Installation du dispositif de sauvegarde et surveillance
 
-État initial de ce lot : scripts testés, activation des données réelles soumise
-à l'accord explicite demandé dans la conversation. Ne pas confondre tests
-avec activation effective ; vérifier les unités et rapports ci-dessous.
+Une première archive chiffrée réelle a été déposée sur Google Drive le 12 septembre
+2026 via le connecteur Codex, avec restauration locale préalable, vérification de
+présence, taille et accès privé sur Drive. Le reçu et la copie chiffrée sont dans
+`.local-ops/` sur le Mac. La clé privée est copiée sur ce Mac et sur bigpc.
+
+**Les sauvegardes automatiques restent inactives** : la connexion rclone
+`smncdrive` de bigpc renvoie `invalid_grant` et doit être reconnectée à Google.
+Le connecteur Drive de Codex fonctionne mais n'est pas une connexion permanente
+utilisable par un service sur bigpc. Aucune unité système n'est encore activée.
+
+Avant activation, reconnecter Google, vérifier l'accès au dossier choisi puis
+préparer `/etc/wilayadz/drive.json` contenant `remote`, `folder_id` et
+`rclone_config` (chemin d'une configuration OAuth dédiée, privée, en 0600).
+Ne pas placer les jetons OAuth dans Git. Les appels rclone sont limités au dossier
+identifié par `--drive-root-folder-id`, sans synchronisation destructive du Drive.
+L'installateur refuse l'activation tant que la configuration privée manque.
 
 Sur bigpc, depuis le checkout validé :
 
@@ -40,22 +54,23 @@ la clé dans la conversation, les logs, GitHub ou les captures.
 
 Le dispositif utilise l'[API de sauvegarde SQLite](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.backup)
 pour capturer aussi les écritures WAL, sans arrêter l'application. Il vérifie
-l'intégrité et les relations, chiffre avec GPG/AES256, puis écrit atomiquement :
+l'intégrité et les relations, chiffre avec GPG/AES256, puis conserve :
 
 - 7 dernières archives sur bigpc : `/var/lib/wilayadz-ops/archives` ;
-- 30 dernières archives sur NAS : `/mnt/qnap/Backups/WilayaDZ`.
+- 30 dernières archives dans le dossier Google Drive dédié ; les plus anciennes
+  sont placées dans la corbeille de Drive après réussite d’une nouvelle copie.
 
-Il relit l'archive du NAS, la déchiffre dans un répertoire temporaire LOCAL,
+Il relit l'archive depuis Google Drive, la déchiffre dans un répertoire temporaire LOCAL,
 vérifie l'intégrité et l'identité exacte avec le snapshot, puis efface les fichiers
 temporaires. Seules les archives chiffrées quittent bigpc. Le rapport ne contient
-ni compte ni progression. Le NAS absent provoque un échec, jamais une fausse
-copie dans le point de montage local. Les anciennes archives ne sont élaguées
+ni compte ni progression. Une connexion Drive expirée, un envoi échoué ou une
+archive relue différente provoque un échec et ne valide pas une nouvelle sauvegarde. Les anciennes archives ne sont élaguées
 qu'après réussite de toute l'opération.
 
 Sauvegarde quotidienne vers 03 h 45 (heure de bigpc), rattrapée après redémarrage,
 et avant chaque publication. Il s'agit de 30 **copies**, pas de 30 jours garantis.
 La perte maximale entre copies quotidiennes peut approcher 24 heures.
-Le NAS est un autre appareil local, pas une copie hors site ou immuable.
+Google Drive apporte une copie hors de bigpc, mais elle n’est pas immuable.
 La clé conservée seulement sur bigpc ne permettrait pas de récupérer les archives
 après perte de cette machine : la copie de récupération est indispensable.
 
@@ -70,7 +85,7 @@ après perte de cette machine : la copie de récupération est indispensable.
 5. Lancement des mêmes images dans `wilayadz-candidate`, sans volume réel,
    sans SMTP ni connexion Google, uniquement sur un port local temporaire.
 6. Vérification API, compression, budget de transfert et `/release.json`.
-7. Sauvegarde NAS vérifiée obligatoire avant remplacement des services.
+7. Sauvegarde Google Drive vérifiée obligatoire avant remplacement des services.
 8. Démarrage avec attente des contrôles de santé, puis vérification HTTP.
 9. En cas d'échec, retour automatique aux images/configuration précédentes.
 
@@ -112,7 +127,7 @@ automatique : elle supprimerait les écritures reçues depuis la sauvegarde.
 ## Surveillance et limites
 
 Toutes les cinq minutes : santé Docker, API via nginx, dernier backup restaurable
-(moins de 30 heures), montage NAS et espace disque. Le rapport local est
+(moins de 30 heures) et espace disque. Le rapport local est
 `/var/lib/wilayadz-ops/health-status.json`. Les pannes rendent l'unité systemd
 rouge et sont consignées dans le journal. Aucun message externe n'est envoyé.
 
@@ -123,8 +138,8 @@ curl -fsS http://127.0.0.1:8099/release.json
 ```
 
 Ce contrôle local ne détecte pas une panne totale de bigpc depuis l'extérieur.
-Un contrôle externe avec notifications et une copie hors site restent des
-extensions possibles ; ils ne sont pas prétendus actifs.
+Un contrôle externe avec notifications reste une extension possible ; il n’est
+pas prétendu actif.
 
 L'API limite ses connexions simultanées à 16 et les calculs de mots de passe à 2.
 En surcharge, elle répond 503 et peut reprendre après libération des connexions.
@@ -134,7 +149,8 @@ liens de réinitialisation. Aucun changement d'interface n'est nécessaire.
 ## Validation
 
 `npm test` inclut `tests/test_production.py` : snapshot WAL, source manquante,
-chiffrement/restauration, NAS absent, clé incorrecte, retour après échec,
+chiffrement/restauration, transfert Drive simulé et corruption au retour,
+NAS absent pour l’ancien utilitaire optionnel, clé incorrecte, retour après échec,
 limitation des calculs et saturation HTTP/récupération. GPG est testé sur Linux ;
 son absence sur le Mac est signalée comme test sauté.
 Les images sont en outre éprouvées dans Docker avant la bascule réelle.
