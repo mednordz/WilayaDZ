@@ -70,9 +70,26 @@ class GoogleLinkTests(unittest.TestCase):
    old=self.info[field];self.info[field]=value
    self.assertEqual(self.link(challenge)[0],400,field);self.info[field]=old
   self.assertEqual(self.req('/auth/google',{'credential':'fake'})[0],400)
+ def test_password_metadata(self):
+  self.assertIsNone(api.store.one('SELECT password_configured FROM accounts WHERE id=?',(self.a,))['password_configured'])
+  code,data=self.req('/auth/login',{'email':'first@example.com','password':self.password})
+  self.assertEqual(code,200);self.assertIs(data['account']['password_configured'],True)
+  code,data=self.req('/auth/google',{'credential':'fake','nonce':self.nonce})
+  self.assertEqual(code,200);self.assertIs(data['account']['password_configured'],False)
+  row=api.store.one('SELECT * FROM accounts WHERE email=?',('different@gmail.com',))
+  raw,digest=api.new_token()
+  api.store.write('INSERT INTO resets (token_hash,account_id,created,expires) VALUES (?,?,?,?)',(digest,row['id'],int(time.time()),int(time.time())+600))
+  code,data=self.req('/auth/reset',{'token':raw,'password':self.password})
+  self.assertEqual(code,200);self.assertIs(data['account']['password_configured'],True)
+  code,data=self.req('/auth/password',{'current':self.password,'next':'Changed-test-password-92'},self.token)
+  self.assertEqual(code,204)
+  self.assertEqual(api.store.one('SELECT password_configured FROM accounts WHERE id=?',(self.a,))['password_configured'],1)
+  self.assertEqual(self.req('/auth/register',{'email':'new-email@example.com','name':'Fictif','password':self.password})[0],202)
+  self.assertEqual(api.store.one('SELECT password_configured FROM accounts WHERE email=?',('new-email@example.com',))['password_configured'],1)
+
  def test_migration_preserves_existing_data(self):
   with api.store._lock,api.store._db:
-   api.store._db.execute('DROP TABLE google_links');api.store._db.execute('DROP TABLE google_identities');api.store._db.execute('PRAGMA user_version=3')
+   api.store._db.execute('DROP TABLE google_links');api.store._db.execute('DROP TABLE google_identities');api.store._db.execute('ALTER TABLE accounts DROP COLUMN password_configured');api.store._db.execute('PRAGMA user_version=3')
    api.store._migrate()
   self.assertEqual(api.store.one('SELECT data FROM accounts WHERE id=?',(self.a,))['data'],'{"xp":900}')
   self.assertEqual(self.link(self.prepare())[0],200)

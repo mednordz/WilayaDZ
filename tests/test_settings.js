@@ -15,8 +15,16 @@ const assert=require('assert'),path=require('path'),fs=require('fs');
    await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' overflow '+width);
    const issues=await page.evaluate(async()=> (await axe.run('#view-settings',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})));
-   assert.deepEqual(issues,[],name+' '+lang);await page.screenshot({path:`${out}/${name}-${lang}.png`,fullPage:true});
+   assert.deepEqual(issues,[],name+' '+lang);await page.screenshot({path:`${out}/${name}-${lang}.png`,fullPage:false});
   }
+  // Full-document screenshots place fixed navigation mid-image. Verify the
+  // actual viewport while scrolling and capture only what the user sees.
+  for(const position of [0,.5,1]){
+   await page.evaluate(p=>scrollTo(0,(document.documentElement.scrollHeight-innerHeight)*p),position);
+   const gap=await page.locator('.tabbar').evaluate(el=>innerHeight-el.getBoundingClientRect().bottom);
+   assert(Math.abs(gap)<2,'Navigation detached from viewport: '+lang+' '+width+' '+gap);
+  }
+  await page.evaluate(()=>scrollTo(0,0));
   await check('home');
   for(const category of ['language','account','about']){await page.locator('[data-settings="'+category+'"]').click();await check(category);await page.locator('[data-settings="home"]').click();}
   await page.locator('[data-settings="audio"]').click();

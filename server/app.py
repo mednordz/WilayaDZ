@@ -121,7 +121,7 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_TOKENINFO = "https://oauth2.googleapis.com/tokeninfo?id_token="
 GOOGLE_TIMEOUT = 10
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 # --------------------------------------------------------------------
@@ -239,6 +239,16 @@ class Store:
                 PRAGMA user_version=4;
             """)
             self._db.commit()
+
+        if version < 5:
+            # NULL preserves uncertainty for historical Google/email accounts.
+            self._db.executescript("""
+                BEGIN IMMEDIATE;
+                ALTER TABLE accounts ADD COLUMN password_configured INTEGER DEFAULT NULL
+                    CHECK(password_configured IN (0,1));
+                PRAGMA user_version=5;
+                COMMIT;
+            """)
 
     def query(self, sql, args=()):
         with self._lock:
@@ -740,7 +750,8 @@ class Handler(BaseHTTPRequestHandler):
         return {"email": row["email"], "name": row["name"],
                 "created": row["created"], "version": row["version"],
                 "updated": row["updated"], "verified": bool(row["verified"]),
-                "google_email": identity["email"] if identity else None}
+                "google_email": identity["email"] if identity else None,
+                "password_configured": None if row["password_configured"] is None else bool(row["password_configured"])}
 
     def _issue_confirm(self, account_id, email, name):
         raw, digest = new_token()
@@ -870,7 +881,7 @@ class Handler(BaseHTTPRequestHandler):
                     if previous and previous["subject"] != subject:
                         return self._fail(409, "google_conflict")
                 else:
-                    cur = db.execute("INSERT INTO accounts (email,name,pw_salt,pw_hash,created,verified) VALUES (?,?,?,?,?,1)",
+                    cur = db.execute("INSERT INTO accounts (email,name,pw_salt,pw_hash,created,verified,password_configured) VALUES (?,?,?,?,?,1,0)",
                                      (email, name, secrets.token_bytes(16), secrets.token_bytes(32), int(time.time())))
                     row = db.execute("SELECT * FROM accounts WHERE id = ?", (cur.lastrowid,)).fetchone()
                 db.execute("INSERT INTO google_identities (subject,account_id,email) VALUES (?,?,?) ON CONFLICT(subject) DO UPDATE SET email=excluded.email",
@@ -987,7 +998,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if existant:
             store.write(
-                "UPDATE accounts SET name = ?, pw_salt = ?, pw_hash = ?, created = ?"
+                "UPDATE accounts SET name = ?, pw_salt = ?, pw_hash = ?, created = ?, password_configured = 1"
                 " WHERE id = ?",
                 (name, salt, hash_password(password, salt), now, existant["id"]))
             account_id = existant["id"]
@@ -995,8 +1006,8 @@ class Handler(BaseHTTPRequestHandler):
         else:
             try:
                 cur = store.write(
-                    "INSERT INTO accounts (email, name, pw_salt, pw_hash, created)"
-                    " VALUES (?,?,?,?,?)",
+                    "INSERT INTO accounts (email, name, pw_salt, pw_hash, created, password_configured)"
+                    " VALUES (?,?,?,?,?,1)",
                     (email, name, salt, hash_password(password, salt), now))
                 account_id = cur.lastrowid
             except sqlite3.IntegrityError:
@@ -1046,6 +1057,9 @@ class Handler(BaseHTTPRequestHandler):
         if not row["verified"]:
             return self._fail(403, "not_verified")
 
+        if row["password_configured"] != 1:
+            store.write("UPDATE accounts SET password_configured = 1 WHERE id = ?", (row["id"],))
+            row = store.one("SELECT * FROM accounts WHERE id = ?", (row["id"],))
         token = self._open_session(row["id"])
         self._send(200, {"token": token, "account": self._public(row)})
 
@@ -1097,7 +1111,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._fail(400, "weak_password")
 
         salt = secrets.token_bytes(16)
-        store.write("UPDATE accounts SET pw_salt = ?, pw_hash = ? WHERE id = ?",
+        store.write("UPDATE accounts SET pw_salt = ?, pw_hash = ?, password_configured = 1 WHERE id = ?",
                     (salt, hash_password(nxt, salt), row["id"]))
         # Changer de mot de passe doit fermer les autres appareils :
         # c'est le geste qu'on fait justement quand on en a perdu un.
@@ -1168,7 +1182,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._fail(400, "bad_token")
 
         salt = secrets.token_bytes(16)
-        store.write("UPDATE accounts SET pw_salt = ?, pw_hash = ? WHERE id = ?",
+        store.write("UPDATE accounts SET pw_salt = ?, pw_hash = ?, password_configured = 1 WHERE id = ?",
                     (salt, hash_password(password, salt), row["account_id"]))
         store.write("UPDATE resets SET used = 1 WHERE token_hash = ?",
                     (row["token_hash"],))
