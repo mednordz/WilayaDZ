@@ -5,7 +5,7 @@ def R(p): return open(p, encoding='utf-8').read()
 def B(p): return base64.b64encode(open(p, 'rb').read()).decode('ascii')
 rive_bundle = "\n/*\n" + R('vendor/rive/LICENSE') + "\n*/\n(function(){\n" + R('vendor/rive/rive.js') + "\n}).call(window);\n"
 rive_bundle += "var RIVE_WASM='" + B('vendor/rive/rive.wasm') + "';\n"
-rive_bundle += "var RIVE_FENNEC='" + B('assets/rive/fennec.riv') + "';\n"
+rive_bundle += "var RIVE_MASCOTS={" + ','.join(name+":'"+B('assets/rive/'+name+'.riv')+"'" for name in ['fennec','cigogne']) + "};\n"
 face = R('font_face.css') if os.path.exists('font_face.css') else ''
 out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), "\n</style>\n\n",
   R('p3_body.html'), "\n\n<script>\n(function(){\n  \"use strict\";\n",

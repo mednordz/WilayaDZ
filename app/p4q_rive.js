@@ -1,4 +1,4 @@
-/* Rive Canvas Lite 2.42.1. Only the fennec uses Rive at this stage.
+/* Rive Canvas Lite 2.42.1. Fennec and cigogne share one offline runtime.
    Runtime, WASM and artwork are embedded by build.py for offline/APK use. */
 (function(){
   var active = new Map(), motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,7 +30,9 @@
     var canvas = document.createElement('canvas');
     canvas.className = 'mascot-rive-canvas'; canvas.setAttribute('aria-hidden','true');
     // Match the original image footprint; the artboard has 20 px of breathing room.
-    var m = MASCOTS.fennec;
+    var character = stage.getAttribute('data-mascot');
+    if(!RIVE_MASCOTS[character]) return;
+    var m = MASCOTS[character];
     canvas.style.width = (100*(m.w+40)/m.w)+'%';
     canvas.style.height = (100*(m.h+40)/m.h)+'%';
     canvas.style.left = (-2000/m.w)+'%'; canvas.style.top = (-2000/m.h)+'%';
@@ -54,7 +56,7 @@
     record.timeout = setTimeout(function(){failed=true;release(stage);}, 12000);
     try{
       record.player = new window.rive.Rive({
-        canvas:canvas, buffer:bytes(RIVE_FENNEC), stateMachine:'Companion', autoplay:true,
+        canvas:canvas, buffer:bytes(RIVE_MASCOTS[character]), stateMachine:'Companion', autoplay:true,
         enableRiveAssetCDN:false,
         onLoad:function(){
           if(!alive()) return;
@@ -86,7 +88,9 @@
   function reconcile(){
     queued=false;
     active.forEach(function(record,stage){if(!stage.isConnected || motion.matches) release(stage);});
-    if(!motion.matches && !failed) document.querySelectorAll('.mascot-stage[data-mascot="fennec"]').forEach(mount);
+    if(!motion.matches && !failed) document.querySelectorAll('.mascot-stage[data-mascot]').forEach(function(stage){
+      if(RIVE_MASCOTS[stage.getAttribute('data-mascot')]) mount(stage);
+    });
   }
   function schedule(){if(!queued){queued=true;requestAnimationFrame(reconcile);}}
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});

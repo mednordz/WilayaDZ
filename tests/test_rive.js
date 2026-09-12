@@ -3,6 +3,7 @@ const assert=require('assert'),path=require('path'),fs=require('fs');
 (async()=>{
  const browser=await chromium.launch();
  const url='file://'+path.resolve(__dirname,'../app/wilaya-v6.html');
+ for(const character of ['fennec','cigogne']){
  const page=await browser.newPage({viewport:{width:415,height:950}});
  const errors=[],remote=[];page.on('pageerror',e=>errors.push(e.message));
  page.on('request',r=>{if(/rive\.app|unpkg|jsdelivr|\.wasm/.test(r.url()))remote.push(r.url())});
@@ -21,8 +22,9 @@ const assert=require('assert'),path=require('path'),fs=require('fs');
    }; namespace=new Proxy(v,{get:(target,key)=>key==='Rive'?Wrapped:target[key]});
   }});
  });
- await seedSignedIn(page,url,{lang:'fr',data:{keyDone:true,crowns:{},photoNon:true}});
+ await seedSignedIn(page,url,{lang:'fr',data:{keyDone:true,crowns:character==='cigogne'?{u1:1}:{},photoNon:true}});
  const hero=page.locator('#hero-card .mascot-stage');
+ assert.equal(await hero.getAttribute('data-mascot'),character);
  await hero.locator('canvas').waitFor();await page.waitForFunction(()=>document.querySelector('#hero-card .rive-ready'));
  const canvas=hero.locator('canvas');
  async function pixels(){return canvas.evaluate(c=>Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data));}
@@ -47,10 +49,12 @@ const assert=require('assert'),path=require('path'),fs=require('fs');
  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>!document.querySelector('.mascot-rive-canvas'));
  assert(await hero.locator('.mascot-breathe').isVisible(),'reduced motion preserves artwork');
  await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>document.querySelector('#hero-card .rive-ready'));
+ await hero.screenshot({path:'/tmp/rive-'+character+'.png'});
  await page.locator('#tab-info').click();await page.waitForTimeout(150);
  assert(await page.evaluate(()=>riveTests.some(r=>r.stops>0)),'hidden rendering suspended');
  assert.deepEqual(remote,[]);assert.deepEqual(errors,[]);
  await page.close();
+ }
  // Deliberate engine failure must leave the accepted image visible, without a retry loop.
  const fallback=await browser.newPage();
  await fallback.addInitScript(()=>{let n;Object.defineProperty(window,'rive',{get:()=>n,set:v=>{n=new Proxy(v,{get:(t,k)=>k==='Rive'?function(){throw Error('test failure')}:t[k]})}})});
