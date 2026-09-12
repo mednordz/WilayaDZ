@@ -7,12 +7,12 @@ const { seedSignedIn } = require('./seed_profile');
   await seedSignedIn(p, 'file:///tmp/wilayas/wilaya-v6.html', { name: 'Amine', lang: 'ar', settle: 600 });
 
   console.log('marque:', (await p.locator('.brand').innerText()).trim());
-  console.log('nœud Clé:', (await p.locator('.node').nth(0).innerText()).replace(/\n/g,' '));
-  console.log('nœud unité:', (await p.locator('.node').nth(1).innerText()).trim());
-  console.log('étiquettes:', (await p.locator('.node-label').allInnerTexts()).slice(0,4).map(s=>s.trim()).join(' / '));
+  console.log('badge Clé:', (await p.locator('#cle-badge').innerText()).replace(/\n/g,' '));
+  console.log('nœud unité:', (await p.locator('.noeud').nth(0).innerText()).trim());
+  console.log('plages:', (await p.locator('.noeud').allInnerTexts()).slice(0,4).map(s=>String(s||'').trim()).join(' / '));
   console.log('hero:', (await p.locator('.hero-title').innerText()).replace(/\n/g,' '));
 
-  await p.locator('.node-info').nth(0).click(); await p.waitForTimeout(350);
+  await p.locator('.etape-corps').nth(0).click(); await p.waitForTimeout(350);
   console.log('feuille titre:', (await p.locator('#sheet-title').innerText()).trim());
   await p.keyboard.press('Escape'); await p.waitForTimeout(250);
 

@@ -47,7 +47,7 @@ async function runAxe(page, label, results) {
     await runAxe(page, `Parcours (${lang})`, results);
 
     try {
-      await page.locator('.node-info').first().click({ force: true, timeout: T });
+      await page.locator('.etape-corps').first().click({ force: true, timeout: T });
       await page.waitForTimeout(300);
       await runAxe(page, `Feuille info noeud (${lang})`, results);
       await page.keyboard.press('Escape');
@@ -69,7 +69,7 @@ async function runAxe(page, label, results) {
     try {
       await page.locator('.tab-btn').first().click({ force: true, timeout: T });
       await page.waitForTimeout(200);
-      await page.locator('.node').nth(1).click({ force: true, timeout: T });
+      await page.locator('.noeud').nth(1).click({ force: true, timeout: T });
       await page.waitForTimeout(400);
       await runAxe(page, `Lecon MCQ (${lang})`, results);
     } catch (e) { console.log('lesson step failed:', e.message); }

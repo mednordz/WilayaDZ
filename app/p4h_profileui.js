@@ -47,8 +47,12 @@
 
   function renderAvatar(){
     var btn = document.getElementById("profile-btn");
+    /* C'est le bloc entier qui apparaît ou disparaît : le bouton seul
+       laisserait son étiquette « Mon profil » flotter sans rien. */
+    var bloc = document.getElementById("profil-bloc");
     var p = activeProfile();
-    if(!p){ btn.style.display = "none"; return; }
+    if(!p){ if(bloc) bloc.style.display = "none"; btn.style.display = "none"; return; }
+    if(bloc) bloc.style.display = "flex";
     btn.style.display = "flex";
     applyAvatar(btn, p);
     btn.setAttribute("aria-label", TL("Profil de " + p.name + ", changer de profil",

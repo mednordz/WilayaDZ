@@ -34,8 +34,23 @@ puis un bloc `<style>` (le CSS de `p1_css.css` + `p2_css_add.css`, précédé de
 `font_face.css` si présent), puis `p3_body.html`, puis un `<script>` qui
 enchaîne `part_data.js`, `p4i_mascots.js`, `qr_lib.js`, `p4a_core.js`,
 `p4f_i18n.js`, `p4g_account.js`, `p4b_exercises.js`, `p4c_session.js`,
-`p4d_path.js`, `p4h_profileui.js`, `p4e_practice.js`, `p4j_pwa.js`. Le
-script copie aussi `sw.js` à côté du fichier produit.
+`p4d_path.js`, `p4h_profileui.js`, `p4o_kit.js`, `p4k_cloud.js`,
+`p4m_google.js`, `p4n_avatar.js`, `p4l_cloudui.js`, `p4e_practice.js`,
+`p4j_pwa.js`. Le script copie aussi `sw.js` à côté du fichier produit.
+
+`p4o_kit.js` n'est **pas écrit à la main** : il est produit par
+`app/kit_assets.py`, qui prend les illustrations du kit graphique
+(`WilayaDZ-kit-developpeur`), les rend à la taille réellement affichée et
+les convertit en WebP (1775 Ko de PNG déguisés en SVG → 61 Ko). On le
+relance seulement quand le kit change :
+
+```bash
+python3 app/kit_assets.py            # écrit app/p4o_kit.js
+```
+
+Il a besoin de `rsvg-convert`, `cwebp` et `magick` (Homebrew : `librsvg`,
+`webp`, `imagemagick`). Ce n'est pas une dépendance de l'application — le
+résultat est du base64 figé dans le fichier.
 
 ```bash
 cd app
@@ -285,6 +300,36 @@ adapter le chemin selon où le fichier généré se trouve localement.
     page, il pousse la page — et un élément `position:fixed; inset:0`
     garde alors la taille de l'écran entier alors qu'on n'en voit qu'un
     tiers. Ne pas l'enlever.
+
+## Habillage : une seule langue, contenu : deux
+
+Le bilingue simultané est la colonne vertébrale de l'app : français ancré
+à gauche, arabe à droite, séparés par un filet. Cela vaut pour la
+**matière** (noms de wilayas, questions, explications de La Clé).
+
+Cela ne vaut **pas** pour l'habillage. Un onglet, un badge, un compteur ou
+un bouton doublé en deux langues ne tient plus dans sa pastille : il se
+casse en deux lignes et cesse d'être centré. Les éléments d'interface
+portent donc la classe `ui1`, et le CSS y masque la moitié arabe **quand
+le profil est en mode « les deux »** :
+
+```css
+:root[data-lang="bi"] .ui1 .bi > .ba { display:none; }
+```
+
+Qui veut l'arabe le choisit dans son profil (`data-lang="ar"`) et tout
+bascule, habillage compris. Les deux langues restent dans le DOM, et les
+`aria-label` portent toujours les deux : personne ne perd d'information.
+
+Porteurs de `ui1` aujourd'hui : `.topbar`, `.tabbar`, `.banner-text`,
+`.statstrip`, `#hero-card` (reposée à chaque rendu par `heroCarte`, qui
+réécrit `className`), `.chemin-head`, `.chemin`.
+
+**Corollaire à ne pas oublier :** `TL()` est la version *texte pur*, faite
+pour les `aria-label` — elle colle les deux langues avec un tiret. Utilisée
+pour afficher, elle produit « Maîtrise 5/5 — إتقان 5/5 » en plein milieu
+de la page, et `ui1` ne peut rien y faire puisqu'il n'y a pas de `.ba` à
+masquer. Pour afficher, c'est `T()` (en ligne) ou `TS()` (empilé).
 
 ## Où on en était à l'export
 

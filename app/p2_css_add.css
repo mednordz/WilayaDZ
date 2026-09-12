@@ -323,6 +323,333 @@
   }
   .gate-pin{ text-align:center; letter-spacing:.5em; font-family:var(--font-mono); font-size:1.3rem; }
 
+  /* ============================================================
+     ÉCRAN « PARCOURS » — d'après le kit graphique
+     Les couleurs passent par les jetons existants : le thème clair
+     continue donc de fonctionner, avec le même dessin.
+     ============================================================ */
+
+  /* ---- Bannière illustrée ----
+     Le titre est en HTML PAR-DESSUS l'image, jamais cuit dedans :
+     c'est ce qui permet de le garder bilingue. */
+  .banner{
+    position:relative; overflow:hidden;
+    /* Exactement l'opposé du padding de .view, pas une valeur devinée :
+       la bannière doit toucher les deux bords, au pixel près, quelle
+       que soit la largeur de l'écran. */
+    margin-inline:calc(-1 * clamp(14px,4vw,22px));
+    margin-block:0 16px;
+  }
+  .banner-img{ display:block; width:100%; height:auto; }
+  .banner-text{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    padding:10px 18px;
+    /* Un voile au centre : l'illustration est claire par endroits, et
+       un titre doit rester lisible partout, pas seulement en moyenne. */
+    background:radial-gradient(ellipse at center,
+      rgba(20,14,9,.66) 0%, rgba(20,14,9,.40) 55%, rgba(20,14,9,0) 86%);
+  }
+  .banner-text h1{
+    margin:0; font-family:var(--font-display); font-size:1.66rem;
+    line-height:1.12; color:#FFF4DF; text-shadow:0 2px 10px rgba(0,0,0,.6);
+  }
+  .banner-text p{
+    margin:5px 0 0; font-size:.8rem; color:#EBDCC2;
+    text-shadow:0 1px 6px rgba(0,0,0,.65);
+  }
+
+  /* ---- Bandeau « solides / à revoir » ----
+     Deux nombres qui ne disent PAS la même chose : ce qui est acquis,
+     et ce qui redemande du travail. Le kit insiste pour les garder
+     distincts, et c'est juste. */
+  .statstrip{
+    display:flex; align-items:center; gap:8px; width:100%;
+    padding:11px 14px; margin:0 0 16px; min-height:58px;
+    background:var(--surface); border:1.5px solid var(--border-strong);
+    border-radius:16px; cursor:pointer; font-family:var(--font-body);
+    color:var(--ink); text-align:left;
+  }
+  .statstrip:active{ transform:scale(.99); }
+  .statstrip .sep{ width:1px; align-self:stretch; background:var(--line); margin:3px 5px; }
+  .statstrip .chev{ margin-inline-start:auto; color:var(--ink-faint); flex:none; display:flex; }
+  .statstrip .chev .icon{ width:20px; height:20px; }
+  [dir="rtl"] .statstrip .chev{ transform:scaleX(-1); }
+  .stat-part{ display:flex; align-items:center; gap:9px; min-width:0; flex:1 1 0; }
+  /* Pas de `nowrap` : en bilingue les deux libellés sont côte à côte et
+     déborderaient du bandeau, emportant le chevron hors de l'écran. */
+  .stat-part b{ font-size:.98rem; font-weight:700; min-width:0; }
+  .stat-pill{
+    width:30px; height:30px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stat-pill .icon{ width:17px; height:17px; color:var(--accent-ink); }
+  .stat-pill.ok{ background:var(--olive); }
+  .stat-pill.due{ background:var(--accent); }
+
+  /* ---- « Ton chemin » ---- */
+  .chemin-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    flex-wrap:wrap; gap:2px 12px; margin:24px 0 2px;
+  }
+  .chemin-head h2{ font-family:var(--font-display); font-size:1.38rem; margin:0; flex:1 1 auto; }
+  .chemin-head .compte{
+    font-size:.86rem; color:var(--ink-dim); flex:0 1 auto; margin-inline-start:auto;
+  }
+  .chemin-head .compte .bi{ width:auto; gap:8px; }
+  .chemin-head .compte .bf, .chemin-head .compte .ba{ flex:none; white-space:nowrap; }
+
+  .cle-badge{
+    display:inline-flex; align-items:center; gap:8px; margin:4px 0 2px;
+    min-height:44px; box-sizing:border-box;
+    padding:7px 16px; border-radius:999px;
+    border:1.5px solid var(--line); background:var(--surface);
+    font-size:.86rem; color:var(--ink-dim); cursor:pointer;
+    font-family:var(--font-body);
+  }
+  .cle-badge .icon{ width:17px; height:17px; flex:none; }
+  .cle-badge.acquise{ border-color:var(--olive); color:var(--ink); }
+  .cle-badge.acquise .icon{ color:var(--olive); }
+  .cle-badge.todo{ border-color:var(--accent); color:var(--ink); }
+  .cle-badge.todo .icon{ color:var(--accent); }
+
+  /* ---- Habillage : UNE seule langue ----
+     Le contenu d'apprentissage reste bilingue — c'est la matière même
+     de l'application. Mais un libellé d'interface (un onglet, un badge,
+     un compteur, un bouton) doublé en deux langues ne tient plus dans
+     sa pastille : il se casse en deux lignes et cesse d'être centré.
+     Sur ces éléments-là, le mode « les deux » montre le français ; qui
+     veut l'arabe le choisit dans son profil, et tout bascule.
+     Les deux langues restent dans le DOM ailleurs, et les aria-label
+     portent toujours les deux : personne ne perd d'information. */
+  :root[data-lang="bi"] .ui1 .bi > .ba,
+  :root[data-lang="bi"] .ui1 .bi > .bs,
+  :root[data-lang="bi"] .ui1 .bis > .ba2,
+  :root[data-lang="bi"] .ui1 .tab-ar{ display:none; }
+  /* Rendue à sa largeur naturelle, l'étiquette se laisse centrer par
+     ce qui la contient (bouton, onglet) au lieu de coller à gauche. */
+  :root[data-lang="bi"] .ui1 .bi{ width:auto; }
+  :root[data-lang="bi"] .ui1 .bi > .bf{ flex:0 1 auto; }
+
+  /* ---- Barre du haut, d'après le kit ----
+     L'identité et les compteurs forment un bloc à gauche ; le profil
+     tient le coin droit et se nomme. Un avatar muet n'apprend rien à
+     qui ouvre l'application pour la première fois. */
+  .topbar-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; width:100%; min-width:0;
+  }
+  .topbar-gauche{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .topbar-droite{ display:flex; align-items:center; gap:8px; flex:none; }
+  .topstats{ gap:8px; flex-wrap:wrap; }
+
+  /* Les compteurs deviennent des pastilles cerclées : ils cessent
+     d'être du texte flottant et deviennent deux objets qu'on peut
+     viser. */
+  .topstat{
+    /* 44 px de haut : c'est la taille du compteur dans le kit, et le
+       plancher en dessous duquel une cible tactile se rate. */
+    min-height:44px; box-sizing:border-box;
+    padding:5px 13px; border-radius:999px;
+    border:1.5px solid var(--border-strong); background:var(--surface);
+    gap:7px; font-family:var(--font-body); font-variant-numeric:tabular-nums;
+    /* Le chiffre est de l'encre ordinaire ; seule l'icône porte la
+       couleur. Un nombre coloré se lit moins bien, et deux couleurs
+       côte à côte se disputeraient l'attention. */
+    color:var(--ink);
+  }
+  button.topstat{ padding:5px 13px; background:var(--surface); }
+  .topstat .icon{ width:17px; height:17px; }
+  .topstat.streak .icon{ color:var(--accent); }
+  .topstat.xp .icon{ color:var(--gold); }
+
+  .topbar{ position:sticky; overflow:hidden;
+          padding:10px clamp(14px,4vw,22px) 15px; }
+  .topbar-orn{
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:0; pointer-events:none;
+  }
+  .topbar-orn path{
+    fill:none; stroke:var(--border-strong); stroke-width:1.6;
+    stroke-linecap:round; stroke-linejoin:round;
+    /* Sans cela, l'étirement horizontal épaissirait le trait d'un côté
+       et l'amincirait de l'autre. */
+    vector-effect:non-scaling-stroke;
+  }
+  .topbar-inner{ position:relative; z-index:1; }
+
+  .profil-bloc{
+    display:flex; flex-direction:column; align-items:center; gap:1px;
+    flex:none;
+  }
+  .profil-medaillon{
+    position:relative; width:62px; height:62px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .profil-anneau{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .profil-bloc .profile-btn{
+    width:44px; height:44px; min-width:44px; margin:0; position:relative;
+  }
+  [dir="rtl"] .profil-bloc .profile-btn{ margin:0; }
+  .profil-label{
+    font-size:.58rem; font-weight:700; color:var(--ink-dim);
+    line-height:1.15; text-align:center;
+  }
+  /* Empilé, pas côte à côte : sous un rond de 42 px, deux langues en
+     vis-à-vis ne tiennent pas et se coupent en morceaux. */
+  .profil-label .bi{ flex-direction:column; align-items:center; gap:0; }
+  .profil-label .bf, .profil-label .ba{ flex:none; text-align:center; white-space:nowrap; }
+  .profil-label .bs{ display:none; }
+
+  /* ---- La carte « prochaine étape », d'après le kit ----
+     Anatomie fixe : accroche et badge sur une ligne, le texte à
+     gauche, la mascotte à droite, le bouton en bas sur toute la
+     largeur. En bilingue le texte double de hauteur ; c'est la colonne
+     de gauche qui grandit, la mascotte reste posée au sol. */
+  .hero{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    column-gap:10px;
+    align-items:end;
+    text-align:start;
+  }
+  .hero-haut{
+    grid-column:1 / -1;
+    display:flex; align-items:center; justify-content:space-between;
+    /* En bilingue l'accroche ET le badge portent deux langues : la
+       ligne devient trop large pour un téléphone. On la laisse passer
+       à la ligne plutôt que de rogner l'une ou l'autre. */
+    flex-wrap:wrap; gap:4px 10px; margin-bottom:4px;
+  }
+  .hero-haut .hero-unite{ margin-inline-start:auto; }
+  /* L'accroche garde sa largeur naturelle : si la ligne est trop
+     courte, c'est le badge qui descend, pas l'accroche qui se casse en
+     deux morceaux (« COMMENCE / ICI »). */
+  .hero-haut .hero-kicker{ margin:0; flex:0 1 auto; }
+  .hero-haut .hero-kicker .bi{ width:auto; gap:8px; }
+  .hero-haut .hero-kicker .bf,
+  .hero-haut .hero-kicker .ba{ flex:none; white-space:nowrap; }
+  .hero-corps{ grid-column:1; grid-row:2; min-width:0; }
+  .hero-bete{ grid-column:2; grid-row:2; align-self:end; margin-inline-end:-6px; }
+  .hero-go{ grid-column:1 / -1; grid-row:3; }
+  .hero-unite{
+    flex:none; padding:5px 13px; border-radius:999px;
+    border:1px solid var(--border-strong); background:var(--surface-2);
+    font-size:.74rem; font-weight:700; color:var(--ink-dim);
+    letter-spacing:.02em; white-space:nowrap;
+  }
+  .hero-meta{ margin:10px 0 0; font-size:.82rem; color:var(--ink-dim); }
+  /* Un triangle « lecture » pointe vers l'avant. En arabe l'avant est
+     à gauche : sans miroir il désignerait la marge. */
+  [dir="rtl"] .hero-go .icon{ transform:scaleX(-1); }
+
+  /* Les repères : une lettre arabe, la tranche de codes qu'elle tient. */
+  .reperes{ display:flex; gap:9px; margin-top:12px; flex-wrap:wrap; }
+  .repere{
+    flex:1 1 0; min-width:62px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:9px 6px 8px; border-radius:14px;
+    background:var(--surface); border:1px solid var(--border-strong);
+  }
+  /* Interligne large : les lettres arabes descendent sous la ligne de
+     base, et une hauteur serrée les fait mordre sur la plage de codes. */
+  .repere-ar{
+    font-family:var(--font-ar); font-size:1.45rem; line-height:1.5;
+    color:var(--ink); font-weight:700;
+  }
+  .repere-n{
+    font-size:.78rem; color:var(--ink-dim); font-weight:600;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---- Le chemin et son décor ----
+     Les silhouettes du kit sont posées en fond, très en retrait : elles
+     donnent le lieu sans jamais disputer la lisibilité aux nœuds. */
+  .chemin{
+    position:relative; overflow:hidden;
+    margin-inline:calc(-1 * clamp(14px,4vw,22px));
+    margin-block:2px 0;
+    padding:4px clamp(14px,4vw,22px) 20px;
+  }
+  .chemin-decor{
+    position:absolute; bottom:0; pointer-events:none; user-select:none;
+    opacity:.5;
+  }
+  .chemin-decor.gauche{ left:-10px; width:86px; }
+  .chemin-decor.droite{ right:-6px; width:74px; }
+  .chemin-decor img{ display:block; width:100%; height:auto; }
+  :root[data-theme="light"] .chemin-decor,
+  .chemin-decor{ mix-blend-mode:normal; }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]) .chemin-decor{ opacity:.22; }
+  }
+  :root[data-theme="light"] .chemin-decor{ opacity:.22; }
+
+  /* ---- Une étape du chemin ----
+     La piste centre ses enfants (héritage du chemin vertical d'avant).
+     Sur des lignes entières, cela les faisait flotter chacune à sa
+     largeur : les nœuds ne s'alignaient plus d'une étape à l'autre. */
+  /* Le chemin est retiré du bord : la couronne à seize pointes déborde
+     de son carré, et collée à la marge elle se faisait rogner. */
+  .path-track{ padding:10px 0 8px; padding-inline-start:40px; }
+  .path-track > .etape{ align-self:stretch; }
+  .etape{
+    position:relative; display:flex; align-items:flex-start; gap:16px;
+    padding:0 0 4px;
+  }
+  .etape + .etape{ margin-top:2px; }
+  .etape-noeud{ position:relative; width:84px; flex:none; }
+  .etape-corps{ flex:1; min-width:0; padding-top:14px; }
+  .etape-corps h3{
+    margin:0 0 4px; font-family:var(--font-display); font-size:1.06rem; color:var(--ink);
+  }
+  .etape-etat{ display:flex; align-items:center; gap:8px; font-size:.92rem; font-weight:700; }
+  .etape-etat .icon{ width:22px; height:22px; flex:none; border-radius:50%; padding:3px; }
+  .etape-etat.faite{ color:var(--olive); }
+  .etape-etat.faite .icon{ background:var(--olive); color:var(--accent-ink); }
+  .etape-etat.revoir{ color:var(--accent); }
+  .etape-etat.revoir .icon{ background:var(--accent); color:var(--accent-ink); }
+  .etape-etat.ouverte{ color:var(--accent); }
+  .etape-etat.ouverte .icon{ background:var(--accent); color:var(--accent-ink); }
+  .etape-etat.fermee{ color:var(--ink-faint); }
+  .etape-etat.fermee .icon{ background:var(--surface-2); color:var(--ink-faint); }
+  .etape-maitrise{ margin:4px 0 0; font-size:.82rem; color:var(--ink-dim); }
+  .rosettes{ display:flex; gap:7px; margin-top:6px; }
+  .rosettes svg{ width:22px; height:22px; display:block; }
+
+  /* Le nœud lui-même : cadre à seize côtés, cercle, plage de codes. */
+  .noeud{
+    position:relative; display:block; width:84px; height:84px;
+    background:none; border:none; padding:0; cursor:pointer;
+  }
+  .noeud svg{ display:block; width:100%; height:100%; overflow:visible; }
+  .noeud:active{ transform:scale(.96); }
+  .noeud[disabled]{ cursor:default; }
+  .noeud-txt{
+    font-family:var(--font-body); font-size:15px; font-weight:700;
+    fill:var(--ink); }
+  /* La pastille « c'est ici » accrochée au bas du nœud courant. */
+  .noeud-go{
+    position:absolute; inset-inline-start:50%; bottom:-3px;
+    transform:translateX(-50%); pointer-events:none;
+    width:28px; height:28px; border-radius:50%;
+    background:var(--accent); color:var(--accent-ink);
+    border:2.5px solid var(--bg);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .noeud-go .icon{ width:14px; height:14px; }
+  [dir="rtl"] .noeud-go{ transform:translateX(50%); }
+  [dir="rtl"] .noeud-go .icon{ transform:scaleX(-1); }
+  .noeud[disabled] .noeud-txt{ fill:var(--ink-faint); }
+
+  /* La liaison courbe d'un nœud au suivant, reprise du kit. */
+  /* La courbe descend jusque dans la pointe du nœud : quelques pixels
+     de recouvrement valent mieux qu'un interstice, qui se verrait. */
+  .liaison{ display:block; width:84px; height:56px; overflow:visible; margin-bottom:-6px; }
+  .liaison path{ fill:none; stroke-width:3; stroke-linecap:round; }
+  .etape:first-of-type .etape-corps{ padding-top:16px; }
+
+
   /* ---- Mot de passe : le champ et son œil ----
      Propriétés logiques (inline-end) plutôt que `right` : l'œil passe
      tout seul de l'autre côté en arabe, sans règle [dir] en double. */
@@ -561,7 +888,7 @@
 
   /* ---- Bouton son (barre du haut) ---- */
   .sound-btn{
-    width:36px; height:36px; min-width:36px; border-radius:50%; border:1px solid var(--line);
+    width:44px; height:44px; min-width:44px; border-radius:50%; border:1.5px solid var(--border-strong);
     background:var(--surface); color:var(--ink-dim); display:flex; align-items:center; justify-content:center;
     cursor:pointer; margin-left:6px; flex:none;
   }
@@ -932,7 +1259,24 @@
   .hero.review:active{ box-shadow:0 1px 0 0 var(--gold); }
   .hero-kicker{ font-weight:800; letter-spacing:.09em; }
   .hero-title{ font-size:1.55rem; }
-  .hero-go{ font-weight:800; border-radius:999px; padding:11px 20px; font-size:1rem; }
+  .hero-go{
+    font-weight:800; border-radius:999px; padding:12px 20px; font-size:1.02rem;
+    /* Pleine largeur, centré : c'est le seul geste attendu de la carte,
+       il n'a pas à être cherché dans un coin. */
+    justify-content:center; width:100%; margin-top:16px;
+  }
+
+  /* La carte de l'étape suivante porte le cadre orange du kit : c'est
+     elle qu'on doit voir en premier en ouvrant l'application. */
+  .hero.next{
+    background:var(--surface-2);
+    border-color:var(--accent);
+    box-shadow:0 5px 0 0 var(--accent-deep);
+  }
+  .hero.next:active{ box-shadow:0 1px 0 0 var(--accent-deep); }
+  .hero.next .hero-kicker{ color:var(--accent); }
+  .hero.next .hero-unite{ border-color:var(--accent); color:var(--accent); background:transparent; }
+  .hero.key .hero-unite{ border-color:var(--accent-ink); color:var(--accent-ink); background:transparent; }
 
   .action-card, .sheet, .result-stat, .forecast-panel, .unit-sheet,
   .gate-box, .confirm-box, .sync-panel{
@@ -948,10 +1292,30 @@
   .result-stat .n{ font-size:1.5rem; font-weight:900; }
   .result-stat .l{ font-weight:800; }
 
-  /* ---- Onglets ---- */
-  .tabbar{ border-top:2px solid var(--line); }
+  /* ---- Onglets : trois arches, d'après le kit ----
+     L'onglet courant est une arche pleine, les autres des arches
+     creuses. La forme fait le travail que faisait la couleur seule :
+     même en niveaux de gris, on voit où l'on est. */
+  .tabbar{ border-top:2px solid var(--border-strong); background:var(--surface); }
+  .tabbar-inner{ gap:8px; align-items:flex-end; }
+  .tab-btn{
+    position:relative; justify-content:flex-end;
+    min-height:66px; padding:9px 4px 7px; gap:2px;
+  }
+  .tab-arche{
+    position:absolute; inset:0; width:100%; height:100%;
+    display:block; z-index:0; pointer-events:none;
+  }
+  .tab-arche path{
+    fill:var(--surface-2); stroke:var(--border-strong);
+    stroke-width:1.2; vector-effect:non-scaling-stroke;
+    transition:fill .14s ease, stroke .14s ease;
+  }
+  .tab-btn.active .tab-arche path{ fill:var(--accent); stroke:var(--accent); }
+  .tab-btn .icon, .tab-btn span{ position:relative; z-index:1; }
   .tab-btn span{ font-weight:800; }
-  .tab-btn.active .icon{ transform:scale(1.12); }
+  .tab-btn.active{ color:var(--accent-ink); }
+  .tab-btn.active .icon{ transform:scale(1.08); }
   .tab-btn .icon{ transition:transform .15s cubic-bezier(.34,1.56,.64,1); }
 
   /* ---- Barre de progression et cœurs ---- */
@@ -962,8 +1326,6 @@
   }
   .lesson-hearts .icon{ width:21px; height:21px; }
   .topstat{ font-weight:900; font-size:.95rem; font-variant-numeric:tabular-nums; }
-  .topstat .icon{ width:19px; height:19px; }
-  .topstat.xp{ color:var(--gold-ink); }
   .brand{ font-weight:900; letter-spacing:-.02em; gap:0; }
 
   /* ---- Étapes du parcours ---- */

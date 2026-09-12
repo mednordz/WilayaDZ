@@ -60,7 +60,7 @@ const pad = n => String(n).padStart(2, '0');
     return { xp: pr.data.xp, couronnes: pr.data.crowns, boxes, suivies: Object.keys(pr.data.progress).length };
   });
   console.log('Profil:', JSON.stringify(st));
-  console.log('Nœuds:', await p.evaluate(() => [...document.querySelectorAll('.node')].map(n => n.classList.contains('locked') ? 'X' : 'O').join('')));
+  console.log('Nœuds:', await p.evaluate(() => [...document.querySelectorAll('.noeud')].map(n => n.disabled ? 'X' : 'O').join('')));
   console.log('ERREURS:', errs.length ? errs.join(' | ') : 'aucune');
   await b.close();
 })();

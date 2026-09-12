@@ -108,154 +108,315 @@
     return UNITS[0];
   }
 
-  function renderHero(){
-    var hero = document.getElementById("hero-card");
-    var due = dueCodes(poolForTier(state.tier)).length;
-    hero.className = "hero";
-
-    if(!state.keyDone){
-      hero.classList.add("key");
-      hero.innerHTML =
-        "<p class='hero-kicker'>" + T("Commence ici · 2 min","ابدأ هنا · دقيقتان") + "</p>" +
-        "<p class='hero-title'>" + T("La Clé","المفتاح") + "</p>" +
-        "<p class='hero-sub'>" + TS("Les codes 01–31 suivent une règle. Comprends-la d'abord, et il te restera trois fois moins à mémoriser.",
-                                    "الرموز 01–31 تتبع قاعدة. افهمها أولا، وسيبقى عليك حفظ ثلث ما كنت ستحفظه.") + "</p>" +
-        "<div class='hero-mascot'>" + mascotHtml("fennec", 84, "excited") +
-          "<span>" + T("Je te montre.","سأريك.") + "</span></div>" +
-        "<span class='hero-go'>" + PLAY_ICON + " " + T("Découvrir","اكتشف") + "</span>";
-      hero.setAttribute("aria-label", TL("La Clé, leçon de découverte de deux minutes","المفتاح، درس اكتشاف في دقيقتين"));
-      hero.onclick = function(){ startKey(hero); };
-      return;
-    }
-    var anyDone = UNITS.some(function(x){ return (state.crowns[x.id]||0) >= 1; });
-    if(due > 0 && anyDone){
-      hero.classList.add("review");
-      hero.innerHTML =
-        "<p class='hero-kicker'>" + T("Le bon moment","الوقت المناسب") + "</p>" +
-        "<p class='hero-title'>" + T(due + " wilaya" + (due>1?"s":"") + " à réviser", due + " ولاية للمراجعة") + "</p>" +
-        "<p class='hero-sub'>" + TS("Elles arrivent au bord de l'oubli. Les revoir maintenant coûte une minute et vaut dix répétitions plus tard.",
-                                    "إنها على حافة النسيان. مراجعتها الآن تكلّف دقيقة وتساوي عشر تكرارات لاحقا.") + "</p>" +
-        "<div class='hero-mascot'>" + mascotHtml("cigogne", 78, "happy") +
-          "<span>" + pickLine("streak") + "</span></div>" +
-        "<span class='hero-go'>" + PLAY_ICON + " " + T("Réviser","راجع") + "</span>";
-      hero.setAttribute("aria-label", TL(due + " wilayas à réviser", due + " ولاية للمراجعة"));
-      hero.onclick = function(){ startReview(hero); };
-      return;
-    }
-    var u = nextUnit();
-    var crown = state.crowns[u.id] || 0;
-    hero.innerHTML =
-      "<p class='hero-kicker'>" + T("Prochaine étape","المرحلة التالية") + "</p>" +
-      "<p class='hero-title'>" + T(num(u.label) + " · " + u.title, num(u.label) + " · " + (UNIT_AR[u.id]||"")) + "</p>" +
-      "<p class='hero-sub'>" + (crown === 0
-          ? TS("Nouvelle étape — 10 questions, cinq cœurs.","مرحلة جديدة — 10 أسئلة، خمسة قلوب.")
-          : TS("Niveau " + crown + "/5. Rejoue pour monter d'une couronne.","المستوى " + crown + "/5. أعِد لترتقي بتاج.")) + "</p>" +
-      "<div class='hero-mascot'>" + mascotHtml(UNIT_MASCOT[u.id], 78, "happy") +
-        "<span>" + pickLine("greet") + "</span></div>" +
-      "<span class='hero-go'>" + PLAY_ICON + " " + (crown === 0 ? T("Commencer","ابدأ") : T("Continuer","تابع")) + "</span>";
-    hero.setAttribute("aria-label", TL("Prochaine étape " + u.label + ", " + u.title, "المرحلة التالية " + u.label));
-    hero.onclick = function(){ startLesson(u, hero); };
+  /* Les repères du kit : la lettre arabe qui commande une tranche de
+     codes, et la tranche qu'elle couvre à l'intérieur de cette unité.
+     Au-delà de 31 le fil alphabétique s'arrête — il n'y a alors rien à
+     montrer, et mieux vaut ne rien montrer qu'inventer un repère. */
+  function reperesHtml(u){
+    var bs = BLOCKS.filter(function(b){ return b.lo <= u.hi && b.hi >= u.lo; });
+    if(!bs.length) return "";
+    return "<div class='reperes'>" + bs.map(function(b){
+      var lo = Math.max(b.lo, u.lo), hi = Math.min(b.hi, u.hi);
+      return "<span class='repere'>" +
+        "<span class='repere-ar' lang='ar' dir='rtl'>" + b.ar + "</span>" +
+        "<span class='repere-n' dir='ltr'>" + (lo === hi ? pad(lo) : pad(lo) + "–" + pad(hi)) + "</span>" +
+      "</span>";
+    }).join("") + "</div>";
   }
 
-  /* Une couleur par étape, comme les bandeaux d'unité de Duolingo :
-     ça casse la monotonie d'un parcours à une seule teinte. */
-  var UNIT_COLORS = ["var(--accent)","var(--teal)","var(--slate)","var(--rose)","var(--olive)","var(--gold)"];
+  /* Un seul gabarit pour les trois cartes possibles. Elles disent des
+     choses différentes mais ont la même anatomie — celle du kit : une
+     accroche et un badge sur la même ligne, un titre, une précision,
+     éventuellement des repères, puis un bouton pleine largeur. */
+  function heroCarte(o){
+    var hero = document.getElementById("hero-card");
+    /* `ui1` est reposé à chaque rendu : la carte est habillage, pas
+       contenu, et réécrire className l'effacerait sinon. */
+    hero.className = "hero ui1" + (o.classe ? " " + o.classe : "");
+    hero.innerHTML =
+      "<div class='hero-haut'>" +
+        "<p class='hero-kicker'>" + o.kicker + "</p>" +
+        (o.badge ? "<span class='hero-unite'>" + o.badge + "</span>" : "") +
+      "</div>" +
+      "<div class='hero-corps'>" +
+        "<p class='hero-title'>" + o.titre + "</p>" +
+        (o.sous ? "<p class='hero-sub'>" + o.sous + "</p>" : "") +
+        (o.reperes || "") +
+        (o.meta ? "<p class='hero-meta'>" + o.meta + "</p>" : "") +
+      "</div>" +
+      "<div class='hero-bete'>" + o.mascotte + "</div>" +
+      "<span class='hero-go'>" + PLAY_ICON + " " + o.cta + "</span>";
+    hero.setAttribute("aria-label", o.aria);
+    hero.onclick = o.action;
+  }
+
+  function renderHero(){
+    var due = dueCodes(poolForTier(state.tier)).length;
+
+    if(!state.keyDone){
+      heroCarte({
+        classe:"key",
+        kicker:T("Commence ici","ابدأ هنا"),
+        badge:T("2 min","دقيقتان"),
+        titre:T("La Clé","المفتاح"),
+        sous:TS("Les codes 01–31 suivent une règle. Comprends-la d'abord, et il te restera trois fois moins à mémoriser.",
+                "الرموز 01–31 تتبع قاعدة. افهمها أولا، وسيبقى عليك حفظ ثلث ما كنت ستحفظه."),
+        mascotte:mascotHtml("fennec", 96, "excited"),
+        cta:T("Découvrir","اكتشف"),
+        aria:TL("La Clé, leçon de découverte de deux minutes","المفتاح، درس اكتشاف في دقيقتين"),
+        action:function(){ startKey(document.getElementById("hero-card")); }
+      });
+      return;
+    }
+
+    var anyDone = UNITS.some(function(x){ return (state.crowns[x.id]||0) >= 1; });
+    if(due > 0 && anyDone){
+      heroCarte({
+        classe:"review",
+        kicker:T("Le bon moment","الوقت المناسب"),
+        titre:T(due + " wilaya" + (due>1?"s":"") + " à réviser", due + " ولاية للمراجعة"),
+        sous:TS("Elles arrivent au bord de l'oubli. Les revoir maintenant coûte une minute et vaut dix répétitions plus tard.",
+                "إنها على حافة النسيان. مراجعتها الآن تكلّف دقيقة وتساوي عشر تكرارات لاحقا."),
+        mascotte:mascotHtml("cigogne", 96, "happy"),
+        cta:T("Réviser","راجع"),
+        aria:TL(due + " wilayas à réviser", due + " ولاية للمراجعة"),
+        action:function(){ startReview(document.getElementById("hero-card")); }
+      });
+      return;
+    }
+
+    var u = nextUnit();
+    var i = UNITS.indexOf(u);
+    var crown = state.crowns[u.id] || 0;
+    heroCarte({
+      classe:"next",
+      kicker:T("Prochaine étape","المرحلة التالية"),
+      badge:T("Unité " + (i+1), "الوحدة " + (i+1)),
+      titre:T("Codes " + num(u.label), "الرموز " + num(u.label)),
+      sous:T(u.title, UNIT_AR[u.id] || u.title),
+      reperes:reperesHtml(u),
+      meta:crown === 0
+        ? T("10 questions · 5 cœurs", "10 أسئلة · 5 قلوب")
+        : T("Niveau " + crown + "/5 · une couronne à gagner", "المستوى " + crown + "/5 · تاج يُكسب"),
+      mascotte:mascotHtml(UNIT_MASCOT[u.id], 96, "happy"),
+      cta:crown === 0 ? T("Commencer","ابدأ") : T("Continuer","تابع"),
+      aria:TL("Prochaine étape, unité " + (i+1) + ", codes " + u.label + ", " + u.title,
+              "المرحلة التالية، الوحدة " + (i+1) + "، الرموز " + u.label),
+      action:function(){ startLesson(u, document.getElementById("hero-card")); }
+    });
+  }
+
+  /* ============================================================
+     LE CHEMIN — d'après le kit graphique
+
+     Chaque étape est une ligne : le nœud à gauche, ce qu'il faut savoir
+     à droite. Deux informations distinctes y sont montrées, et le kit
+     insiste pour qu'on ne les confonde jamais :
+       · la MAÎTRISE (les couronnes gagnées, de 0 à 5) ;
+       · les RÉVISIONS DUES, qui n'enlèvent aucune couronne mais
+         redemandent du travail.
+     ============================================================ */
+
+  /* La rosette à seize côtés du kit : rayons alternés, un cran sur deux
+     plus court. Générée plutôt qu'embarquée six fois. */
+  function rosetteSvg(pleine){
+    var pts = [], R = 9.4, r = 8.0;
+    for(var i=0;i<16;i++){
+      var a = (-90 + i*22.5) * Math.PI/180, rr = (i%2 ? r : R);
+      pts.push((11 + rr*Math.cos(a)).toFixed(2) + "," + (11 + rr*Math.sin(a)).toFixed(2));
+    }
+    return "<svg viewBox='0 0 22 22' aria-hidden='true' focusable='false'>" +
+      "<polygon points='" + pts.join(" ") + "' " +
+      "fill='" + (pleine ? "var(--accent)" : "var(--surface-2)") + "' " +
+      "stroke='" + (pleine ? "var(--gold)" : "var(--border-strong)") + "' " +
+      "stroke-width='1.2' stroke-linejoin='round'/></svg>";
+  }
+
+  function rosettesHtml(n){
+    var out = "";
+    for(var i=0;i<5;i++) out += rosetteSvg(i < n);
+    return "<span class='rosettes' aria-hidden='true'>" + out + "</span>";
+  }
+
+  /* Le cadre à seize côtés du kit, repris tel quel. */
+  var NOEUD_CADRE = "M40 1 L49 9 L62 10 L65 23 L77 39 L67 50 L62 65 L49 68 L40 77 " +
+                    "L29 69 L16 65 L12 51 L2 40 L13 27 L16 13 L30 9 Z";
+
+  function noeudSvg(texte, etat){
+    var trait = etat === "fermee" ? "var(--border-strong)"
+              : etat === "faite"  ? "var(--gold)" : "var(--accent)";
+    var fond  = etat === "fermee" ? "var(--surface)" : "var(--surface-2)";
+    return "<svg viewBox='0 0 80 80' aria-hidden='true' focusable='false'>" +
+      "<path d='" + NOEUD_CADRE + "' fill='" + fond + "' stroke='" + trait + "' stroke-width='1.3'/>" +
+      "<circle cx='40' cy='39' r='31' fill='" + fond + "' stroke='" + trait + "' stroke-width='2.6'/>" +
+      /* `direction` en ATTRIBUT, et non le <bdi> de num() : <bdi> est un
+         élément HTML, invisible à l'intérieur d'un SVG — le texte y
+         disparaissait purement et simplement. */
+      "<text class='noeud-txt' x='40' y='45' text-anchor='middle' " +
+        "direction='ltr' unicode-bidi='isolate'>" + texte + "</text>" +
+      "</svg>";
+  }
+
+  /* La liaison serpentine entre deux nœuds, reprise du kit : pleine
+     quand l'étape est acquise, pointillée quand elle reste à faire. */
+  function liaisonHtml(acquise){
+    return "<svg class='liaison' viewBox='0 0 80 100' preserveAspectRatio='none' " +
+      "aria-hidden='true' focusable='false'><path d='M40 0 C-5 35 85 55 40 100' " +
+      "stroke='" + (acquise ? "var(--gold)" : "var(--border-strong)") + "'" +
+      (acquise ? "" : " stroke-dasharray='5 7'") + "/></svg>";
+  }
+
+  function etapeHtml(u, i, unlocked, suivante){
+    var crown = state.crowns[u.id] || 0;
+    var due = unlocked ? unitDue(u) : 0;
+    var etat = !unlocked ? "fermee" : (crown >= 5 ? "faite" : (crown > 0 ? "ouverte" : "ouverte"));
+
+    /* L'état affiché répond à « qu'est-ce que je fais maintenant ? ».
+       Une révision due passe donc devant une couronne déjà gagnée. */
+    /* T() et non TL() : ce sont des libellés AFFICHÉS. TL() est la
+       version texte pur, réservée aux aria-label — utilisée ici, elle
+       collait les deux langues avec un tiret au milieu de la ligne. */
+    var ligne, classe, icone;
+    if(!unlocked){
+      classe = "fermee"; icone = LOCK_ICON;
+      ligne = T("Verrouillée","مقفلة");
+    }else if(due > 0){
+      classe = "revoir"; icone = REVISION_ICON;
+      ligne = T(num(due) + " à revoir", num(due) + " للمراجعة");
+    }else if(crown >= 5){
+      classe = "faite"; icone = CHECK_ICON;
+      ligne = T("Maîtrise " + num("5/5"), "إتقان " + num("5/5"));
+    }else if(crown > 0){
+      classe = "ouverte"; icone = PLAY_ICON;
+      ligne = T("À continuer","تابع");
+    }else{
+      classe = "ouverte"; icone = PLAY_ICON;
+      ligne = T("À commencer","ابدأ");
+    }
+
+    var sousLigne = !unlocked
+      ? T("Termine l'étape précédente","أنهِ المرحلة السابقة")
+      : (crown === 0 ? T("Non commencée","لم تبدأ")
+                     : T("Maîtrise " + num(crown + "/5"), "إتقان " + num(crown + "/5")));
+
+    return "<div class='etape' data-unite='" + u.id + "'>" +
+      "<div class='etape-noeud'>" +
+        (i > 0 ? liaisonHtml(unlocked) : "") +
+        "<button class='noeud' type='button' data-i='" + i + "'" + (unlocked ? "" : " disabled") + ">" +
+          noeudSvg(u.label, classe) +
+        "</button>" +
+        /* Une seule pastille « lecture » sur tout le chemin : celle de
+           l'étape où l'on en est. Deux repères de départ, ce serait
+           deux départs — et on ne saurait plus lequel est le sien. */
+        (unlocked && suivante && u.id === suivante.id
+          ? "<span class='noeud-go' aria-hidden='true'>" + PLAY_ICON + "</span>" : "") +
+      "</div>" +
+      "<div class='etape-corps'>" +
+        "<h3>" + T("Unité " + (i+1), "الوحدة " + (i+1)) + "</h3>" +
+        "<p class='etape-etat " + classe + "'>" + icone + "<span>" + ligne + "</span></p>" +
+        "<p class='etape-maitrise'>" + sousLigne + "</p>" +
+        rosettesHtml(crown) +
+      "</div>" +
+    "</div>";
+  }
+
+  /* Les illustrations ne changent jamais : on les pose une fois, au
+     démarrage, plutôt qu'à chaque rendu du chemin. */
+  function poserImagesKit(){
+    if(typeof KIT === "undefined") return;
+    var paires = [["banner-img","banniere"], ["decor-gauche","palmiers"], ["decor-droite","village"]];
+    paires.forEach(function(pr){
+      var el = document.getElementById(pr[0]);
+      if(el && KIT[pr[1]]) el.src = KIT[pr[1]].src;
+    });
+    var bande = document.getElementById("statstrip");
+    if(bande) bande.addEventListener("click", function(){
+      /* Ces deux nombres parlent de révision : le geste naturel est
+         d'aller s'entraîner, pas d'ouvrir une explication. */
+      switchTab("practice");
+    });
+  }
 
   function renderPath(){
     var track = document.getElementById("path-track");
-    track.innerHTML = "";
+    if(!track) return;
 
-    var keyRow = document.createElement("div");
-    keyRow.className = "node-row off-l";
-    var keyCol = document.createElement("div");
-    keyCol.className = "node-col";
-    var keyLine = document.createElement("div");
-    keyLine.className = "node-line";
-    var keyBtn = document.createElement("button");
-    keyBtn.className = "node " + (state.keyDone ? "complete" : "current");
-    keyBtn.innerHTML = state.keyDone ? CROWN_ICON
-      : "<span style='font-size:.78rem;line-height:1.2;'>" + T("CLÉ","مفتاح") + "</span>";
-    keyBtn.setAttribute("aria-label", TL("La Clé, leçon de la règle alphabétique. " +
-      (state.keyDone ? "Terminée, rejouer." : "À faire en premier."), "المفتاح، درس القاعدة الأبجدية"));
-    keyBtn.addEventListener("click", function(){ startKey(keyBtn); });
-    keyLine.appendChild(keyBtn);
-    var keyLabel = document.createElement("div");
-    keyLabel.className = "node-label";
-    keyLabel.innerHTML = T("La Clé","المفتاح");
-    keyLabel.setAttribute("aria-hidden", "true");
-    keyCol.appendChild(keyLine); keyCol.appendChild(keyLabel);
-    keyRow.appendChild(keyCol); track.appendChild(keyRow);
+    /* La Clé garde son rang à part : ce n'est pas une unité de codes,
+       c'est la règle qui rend toutes les autres moins lourdes. */
+    /* Une seule paire pour toute l'étiquette : deux T() collés bout à
+       bout entrelaceraient les langues (« La Clé / المفتاح / acquise »
+       sur trois lignes au lieu de deux). */
+    var cle = "<button class='cle-badge " + (state.keyDone ? "acquise" : "todo") + "' " +
+      "type='button' id='cle-badge'>" +
+      (state.keyDone ? CHECK_ICON : PLAY_ICON) +
+      "<span>" + T("La Clé · " + (state.keyDone ? "acquise" : "à découvrir"),
+                   "المفتاح · " + (state.keyDone ? "مكتسب" : "اكتشفه")) + "</span>" +
+      "</button>";
 
-    UNITS.forEach(function(u, i){
-      var uColor = UNIT_COLORS[i % UNIT_COLORS.length];
-      var conn = document.createElement("div");
-      conn.className = "connector";
-      conn.style.setProperty("--unit-color", uColor);
-      track.appendChild(conn);
+    var suivante = nextUnit();
+    var html = cle;
+    UNITS.forEach(function(u, i){ html += etapeHtml(u, i, unitUnlocked(u, i), suivante); });
+    track.innerHTML = html;
 
+    document.getElementById("cle-badge").addEventListener("click", function(){
+      startKey(this);
+    });
+    Array.prototype.forEach.call(track.querySelectorAll(".noeud"), function(b){
+      var i = parseInt(b.getAttribute("data-i"), 10);
+      var u = UNITS[i];
       var unlocked = unitUnlocked(u, i);
       var crown = state.crowns[u.id] || 0;
-      var needsReview = unlocked && unitNeedsReview(u);
-
-      var row = document.createElement("div");
-      row.className = "node-row " + (i % 2 === 0 ? "off-r" : "off-l");
-      var col = document.createElement("div");
-      col.className = "node-col";
-      var line = document.createElement("div");
-      line.className = "node-line";
-
-      var btn = document.createElement("button");
-      btn.className = "node " + (!unlocked ? "locked" : (crown>0 ? "complete" : "current"));
-      btn.style.setProperty("--unit-color", uColor);
-      btn.setAttribute("aria-disabled", (!unlocked).toString());
-      btn.innerHTML = !unlocked ? LOCK_ICON : (crown>0 ? CROWN_ICON : num(u.label));
-      var stateText = !unlocked
-        ? "verrouillée, termine l'étape précédente"
-        : (crown<=0 ? "à commencer, activer pour lancer la leçon"
-                    : ("niveau " + crown + " sur 5" + (needsReview?", révision conseillée":"") + ", activer pour lancer la leçon"));
-      btn.setAttribute("aria-label",
-        TL("Étape " + u.label + ", " + u.title + ", " + stateText,
-           "مرحلة " + u.label + " · " + (UNIT_AR[u.id]||"")));
-      if(needsReview){
-        var badge = document.createElement("span");
-        badge.className = "node-review";
-        badge.setAttribute("aria-hidden", "true");
-        btn.appendChild(badge);
-      }
-      btn.addEventListener("click", function(){
-        if(unlocked) startLesson(u, btn);
-        else toast(TL("Termine l'étape " + UNITS[i-1].label + " d'abord.",
-                      "أنهِ أولا المرحلة " + UNITS[i-1].label));
+      var due = unlocked ? unitDue(u) : 0;
+      b.setAttribute("aria-label", TL(
+        "Unité " + (i+1) + ", codes " + u.label + ", " + u.title + ", " +
+        (!unlocked ? "verrouillée, termine l'étape précédente"
+                   : (due ? due + " à réviser, " : "") + "maîtrise " + crown + " sur 5, " +
+                     "activer pour lancer la leçon"),
+        "الوحدة " + (i+1) + "، الرموز " + u.label));
+      if(unlocked) b.addEventListener("click", function(){ startLesson(u, b); });
+    });
+    /* Un appui long, ou le corps de la ligne, ouvre le détail : le nœud
+       lance, le reste explique. */
+    Array.prototype.forEach.call(track.querySelectorAll(".etape-corps"), function(c, i){
+      c.addEventListener("click", function(){
+        openUnitSheet(UNITS[i], unitUnlocked(UNITS[i], i), i);
       });
-      line.appendChild(btn);
-
-      var info = document.createElement("button");
-      info.className = "node-info";
-      info.innerHTML = INFO_ICON;
-      info.setAttribute("aria-label", TL("Détails de l'étape " + u.label, "تفاصيل المرحلة " + u.label));
-      info.addEventListener("click", function(){ openUnitSheet(u, unlocked, i); });
-      line.appendChild(info);
-
-      var label = document.createElement("div");
-      label.className = "node-label";
-      label.innerHTML = num(u.label);
-      label.setAttribute("aria-hidden", "true");
-
-      var pips = document.createElement("div");
-      pips.className = "crown-row";
-      pips.setAttribute("aria-hidden", "true");
-      for(var p=0;p<5;p++){
-        var pip = document.createElement("span");
-        pip.className = "crown-pip" + (p<crown ? " on" : "");
-        pips.appendChild(pip);
-      }
-
-      col.appendChild(line); col.appendChild(label); col.appendChild(pips);
-      row.appendChild(col); track.appendChild(row);
     });
 
+    renderStatStrip();
+    renderCheminCompte();
     renderHero();
     refreshTopStats();
+  }
+
+  /* Le bandeau du haut : ce qui tient, et ce qui glisse. */
+  function renderStatStrip(){
+    var bande = document.getElementById("statstrip");
+    if(!bande) return;
+    var pool = poolForTier(state.tier);
+    var solides = pool.filter(function(w){ return getBox(w.c) >= 5; }).length;
+    var dus = dueCodes(pool).length;
+    bande.innerHTML =
+      "<span class='stat-part'><span class='stat-pill ok'>" + CHECK_ICON + "</span>" +
+        "<b>" + T(solides + " solides", solides + " راسخة") + "</b></span>" +
+      "<span class='sep' aria-hidden='true'></span>" +
+      "<span class='stat-part'><span class='stat-pill due'>" + REVISION_ICON + "</span>" +
+        "<b>" + T(dus + " à revoir", dus + " للمراجعة") + "</b></span>" +
+      "<span class='chev' aria-hidden='true'>" + CHEVRON_ICON + "</span>";
+    bande.setAttribute("aria-label", TL(
+      solides + " wilayas solides, " + dus + " à revoir. Ouvrir l'entraînement.",
+      solides + " ولاية راسخة، " + dus + " للمراجعة."));
+  }
+
+  function renderCheminCompte(){
+    var el = document.getElementById("chemin-compte");
+    if(!el) return;
+    var faites = UNITS.filter(function(u){ return (state.crowns[u.id]||0) >= 1; }).length;
+    /* T() et non TL() : ici c'est du texte affiché, pas un aria-label.
+       TL() aurait collé les deux langues avec un tiret au milieu de la
+       page, au lieu de les ranger de part et d'autre du filet. */
+    el.innerHTML = T(num(faites + " / " + UNITS.length) + " unités",
+                     num(faites + " / " + UNITS.length) + " وحدة");
   }
 
   function openUnitSheet(u, unlocked, i){

@@ -62,15 +62,17 @@
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#1C1712;
-      --surface:#26201A;
-      --surface-2:#322A21;
-      --ink:#F2E4CE;
-      --ink-dim:#C9BFA8;
-      --ink-faint:#9C927A;
-      --line:#4A3F32;
-      --border-strong:#6E6048;
-      --accent:#E8935A;
+      /* Valeurs alignées sur tokens.json du kit graphique : la palette
+         du kit était déjà celle de ce thème, en plus assumé. */
+      --bg:#201A15;
+      --surface:#302318;
+      --surface-2:#3C2C1E;
+      --ink:#FFF4DF;
+      --ink-dim:#C3AE8D;
+      --ink-faint:#9C8A6E;
+      --line:#4A3625;
+      --border-strong:#725036;
+      --accent:#F4944C;
       --accent-bright:#F0A870;
       --accent-ink:#2A1607;
       --accent-soft:#4A2F14;
@@ -88,7 +90,7 @@
       --slate:#7FAEC2;
       --slate-ink:#7FAEC2;
       --slate-deep:#4A6B7A;
-      --olive:#A8B584;
+      --olive:#8DBB82;
       --rose:#DDA093;
       --grape:#B39BC4;
       --shadow: 0 2px 0 rgba(0,0,0,.35), 0 10px 28px -14px rgba(0,0,0,.6);

@@ -365,6 +365,7 @@
   buildAnchorHooks();
   buildMap();
   buildLedger();
+  poserImagesKit();
   initSyncPanel();
 
   /* Un lien de réinitialisation reçu par courriel passe avant tout le

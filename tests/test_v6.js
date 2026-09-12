@@ -27,7 +27,7 @@ async function mk(page, name, lang) {
     }));
     log('racine:', JSON.stringify(root));
 
-    log('titre page:', (await page.locator('.path-head h1').innerText()).replace(/\n/g, ' | '));
+    log('titre page:', (await page.locator('.banner-text h1').innerText()).replace(/\n/g, ' | '));
     log('hero:', (await page.locator('.hero-title').innerText()).replace(/\n/g, ' | '));
     log('onglets:', (await page.locator('.tabbar-inner').innerText()).replace(/\n/g, ' / '));
 
