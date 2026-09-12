@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>WilayaDZ — Confidentialité / الخصوصية</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="description" content="Ce que WilayaDZ garde, pourquoi, où, et comment tout effacer." />
+<meta name="theme-color" content="#9C5015" />
+<style>
+  :root{
+    --bg:#F7EEDF; --surface:#FFFAF2; --ink:#2A2118; --ink-dim:#5B4B36;
+    --ink-faint:#6A5A44; --line:#E3D5BE; --accent:#9C5015; --accent-soft:#F3E2CE;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#17120C; --surface:#211A12; --ink:#F2E4CE; --ink-dim:#C9B698;
+      --ink-faint:#A08E72; --line:#3A2E20; --accent:#D98A3D; --accent-soft:#2C2116;
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.65; font-size:16px;
+  }
+  .wrap{ max-width:760px; margin:0 auto; padding:28px 20px 80px; }
+  header{ border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:26px; }
+  .brand{ font-size:1.3rem; font-weight:800; letter-spacing:-.02em; }
+  .brand em{ color:var(--accent); font-style:italic; }
+  .maj{ color:var(--ink-faint); font-size:.82rem; margin-top:6px; }
+  nav a{
+    display:inline-block; margin-top:12px; color:var(--accent);
+    text-decoration:none; font-weight:600; font-size:.92rem;
+  }
+  nav a:hover{ text-decoration:underline; }
+  h1{ font-size:1.7rem; line-height:1.2; margin:0 0 6px; }
+  h2{ font-size:1.15rem; margin:34px 0 10px; }
+  p,li{ color:var(--ink-dim); }
+  strong{ color:var(--ink); }
+  ul{ padding-inline-start:22px; }
+  li{ margin:7px 0; }
+  table{ border-collapse:collapse; width:100%; margin:14px 0; font-size:.94rem; }
+  th,td{ border:1px solid var(--line); padding:9px 11px; text-align:start; vertical-align:top; }
+  th{ background:var(--accent-soft); color:var(--ink); font-weight:700; }
+  .encadre{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin:18px 0;
+  }
+  a{ color:var(--accent); }
+  hr{ border:none; border-top:1px solid var(--line); margin:48px 0 32px; }
+  section[lang="ar"]{ direction:rtl; text-align:right; }
+  section[lang="ar"] ul{ padding-inline-start:22px; }
+  footer{ margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
+          color:var(--ink-faint); font-size:.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">Wilaya<em>DZ</em></div>
+  <div class="maj">Dernière mise à jour : 12 septembre 2026 — آخر تحديث: 12 سبتمبر 2026</div>
+  <nav><a href="#ar">اقرأ بالعربية ↓</a> &nbsp;·&nbsp; <a href="/">← Retour à l'application</a></nav>
+</header>
+
+<section lang="fr">
+  <h1>Confidentialité</h1>
+  <p>
+    WilayaDZ sert à mémoriser les codes des 69 wilayas d'Algérie. Pour que ta
+    progression te suive d'un appareil à l'autre, l'application a besoin d'un
+    compte — et donc de garder quelques informations. Cette page dit
+    <strong>exactement lesquelles</strong>, pourquoi, où elles vivent, et
+    comment tout effacer.
+  </p>
+
+  <div class="encadre">
+    <p style="margin:0">
+      <strong>L'essentiel :</strong> aucune publicité, aucun traceur, aucune
+      statistique de fréquentation, aucune revente. Les données vivent sur un
+      serveur personnel <strong>en Algérie</strong>, pas chez un prestataire.
+      Tu peux supprimer ton compte depuis l'application, et la suppression est
+      immédiate et définitive.
+    </p>
+  </div>
+
+  <h2>Ce qui est gardé</h2>
+  <table>
+    <tr><th>Donnée</th><th>Pourquoi</th></tr>
+    <tr><td>Adresse e-mail</td><td>Identifier ton compte, confirmer que l'adresse est bien la tienne, et te permettre de choisir un nouveau mot de passe si tu l'oublies.</td></tr>
+    <tr><td>Pseudo</td><td>T'afficher dans l'application. Tu le choisis, il n'a pas à être ton vrai nom.</td></tr>
+    <tr><td>Photo de profil <em>(facultatif)</em></td><td>Une mascotte de l'application, ou une photo que tu envoies. Elle est réduite à 160 × 160 pixels par ton navigateur avant d'être enregistrée.</td></tr>
+    <tr><td>Mot de passe</td><td>Il n'est <strong>jamais</strong> gardé en clair : seule une empreinte (scrypt) l'est, dont on ne peut pas revenir au mot de passe.</td></tr>
+    <tr><td>Ta progression</td><td>Les wilayas que tu as travaillées, leur niveau de mémorisation, tes points, ta série, tes couronnes et les paires que tu confonds. C'est ce qui permet à l'application de te faire réviser au bon moment.</td></tr>
+    <tr><td>Dates</td><td>Création du compte et dernière synchronisation.</td></tr>
+  </table>
+
+  <h2>Ce qui n'est pas gardé</h2>
+  <ul>
+    <li><strong>Aucun cookie.</strong> L'application range ta progression dans la mémoire locale de ton navigateur, sur ton appareil.</li>
+    <li><strong>Aucun traceur, aucune publicité, aucun outil de mesure d'audience.</strong> Personne n'est suivi.</li>
+    <li><strong>Ton adresse IP n'est pas enregistrée.</strong> Elle sert uniquement, en mémoire vive et pour quelques minutes, à limiter les tentatives de connexion répétées. Elle n'est écrite ni dans la base, ni dans les journaux.</li>
+    <li>Aucune donnée n'est vendue, louée, échangée ou transmise à qui que ce soit à des fins commerciales.</li>
+  </ul>
+
+  <h2>Où vivent les données</h2>
+  <ul>
+    <li>Sur un <strong>serveur personnel situé en Algérie</strong>, administré par la personne responsable de l'application — pas chez un hébergeur commercial.</li>
+    <li>Le trafic entre ton appareil et ce serveur passe par <strong>Cloudflare</strong>, qui assure le chiffrement et l'acheminement.</li>
+    <li>Les courriels (confirmation d'adresse, mot de passe oublié) sont acheminés par <strong>Gmail</strong>. Google voit donc l'adresse du destinataire et le contenu de ces deux messages, comme pour n'importe quel courriel.</li>
+  </ul>
+
+  <h2>Si tu te connectes avec Google</h2>
+  <p>
+    C'est facultatif — l'inscription par adresse e-mail fonctionne aussi bien.
+    Si tu choisis Google, l'application reçoit de lui <strong>ton adresse
+    e-mail et ton prénom, rien d'autre</strong>. Elle ne peut pas lire tes
+    courriels, tes fichiers, ni ton agenda, et ne le demande pas.
+  </p>
+  <p>
+    L'application ne charge <strong>aucun script de Google</strong> : tant que
+    tu ne cliques pas sur le bouton, Google ne sait pas que tu ouvres WilayaDZ.
+  </p>
+
+  <h2>Combien de temps</h2>
+  <ul>
+    <li>Une inscription <strong>jamais confirmée</strong> est effacée automatiquement au bout de <strong>7 jours</strong>.</li>
+    <li>Un lien de confirmation vaut <strong>24 heures</strong> ; un lien de nouveau mot de passe, <strong>une heure</strong>. Les deux ne servent qu'une fois.</li>
+    <li>Une session d'appareil expire après <strong>180 jours</strong> sans usage.</li>
+    <li>Le reste est gardé <strong>tant que tu ne supprimes pas ton compte</strong>.</li>
+  </ul>
+
+  <h2>Ce que tu peux faire</h2>
+  <ul>
+    <li><strong>Voir tes données</strong> — ta progression est l'application elle-même ; elle est affichée, pas cachée.</li>
+    <li><strong>Les corriger</strong> — pseudo, photo et mot de passe se changent dans « Profil ».</li>
+    <li><strong>Les emporter</strong> — « Profil &amp; synchronisation » produit un code de transfert et un QR qui contiennent toute ta progression.</li>
+    <li><strong>Tout supprimer</strong> — « Profil → Compte en ligne → Supprimer le compte ». Le compte et sa progression sont effacés du serveur <strong>définitivement</strong>, tout de suite. Ce qui reste sur ton appareil t'appartient et reste chez toi.</li>
+  </ul>
+
+  <h2>Si tu as moins de 16 ans</h2>
+  <p>
+    WilayaDZ s'adresse aussi aux élèves. Si tu as moins de 16 ans, demande à un
+    parent ou à un adulte responsable avant de créer un compte — et montre-lui
+    cette page.
+  </p>
+
+  <h2>Nous écrire</h2>
+  <p>
+    Une question, une demande de suppression, une erreur sur cette page :
+    <a href="mailto:mednor@cherifi.org">mednor@cherifi.org</a>.
+  </p>
+</section>
+
+<hr />
+
+<section lang="ar" id="ar">
+  <h1>الخصوصية</h1>
+  <p>
+    يساعدك WilayaDZ على حفظ رموز ولايات الجزائر الـ69. ولكي يتبعك تقدّمك من
+    جهاز إلى آخر، يحتاج التطبيق إلى حساب — وبالتالي إلى حفظ بعض المعلومات.
+    توضّح هذه الصفحة <strong>أيّها بالضبط</strong>، ولماذا، وأين تُحفظ، وكيف
+    تمحوها كلّها.
+  </p>
+
+  <div class="encadre">
+    <p style="margin:0">
+      <strong>الخلاصة:</strong> لا إعلانات، ولا متتبّعات، ولا إحصاءات زيارة،
+      ولا بيع لأي بيانات. تُحفظ البيانات على خادم شخصي <strong>في
+      الجزائر</strong>، لا عند مزوّد تجاري. ويمكنك حذف حسابك من داخل التطبيق،
+      والحذف فوري ونهائي.
+    </p>
+  </div>
+
+  <h2>ما يُحفظ</h2>
+  <table>
+    <tr><th>البيانات</th><th>لماذا</th></tr>
+    <tr><td>البريد الإلكتروني</td><td>لتمييز حسابك، وللتأكّد أن البريد بريدك، ولتتمكّن من اختيار كلمة سر جديدة إن نسيتها.</td></tr>
+    <tr><td>الاسم المستعار</td><td>لعرضه في التطبيق. أنت من يختاره، وليس مطلوبا أن يكون اسمك الحقيقي.</td></tr>
+    <tr><td>صورة الملف <em>(اختياري)</em></td><td>إحدى شخصيات التطبيق، أو صورة ترسلها أنت. يصغّرها متصفّحك إلى 160 × 160 بكسل قبل حفظها.</td></tr>
+    <tr><td>كلمة السر</td><td><strong>لا</strong> تُحفظ أبدا كما هي: يُحفظ منها أثر (scrypt) لا يمكن الرجوع منه إلى كلمة السر.</td></tr>
+    <tr><td>تقدّمك</td><td>الولايات التي راجعتها، ومستوى حفظك لكل منها، ونقاطك وسلسلتك وتيجانك والأزواج التي تخلط بينها. هذا ما يتيح للتطبيق أن يذكّرك في الوقت المناسب.</td></tr>
+    <tr><td>التواريخ</td><td>تاريخ إنشاء الحساب وآخر مزامنة.</td></tr>
+  </table>
+
+  <h2>ما لا يُحفظ</h2>
+  <ul>
+    <li><strong>لا ملفات تعريف ارتباط (cookies).</strong> يحفظ التطبيق تقدّمك في الذاكرة المحلية لمتصفّحك، على جهازك.</li>
+    <li><strong>لا متتبّعات ولا إعلانات ولا أدوات قياس زيارات.</strong> لا أحد يُتتبَّع.</li>
+    <li><strong>عنوان IP الخاص بك لا يُسجَّل.</strong> يُستعمل فقط، في الذاكرة الحيّة ولدقائق معدودة، للحدّ من محاولات الدخول المتكرّرة. ولا يُكتب في قاعدة البيانات ولا في السجلّات.</li>
+    <li>لا تُباع أي بيانات ولا تُؤجَّر ولا تُبادَل ولا تُسلَّم لأي جهة لأغراض تجارية.</li>
+  </ul>
+
+  <h2>أين تُحفظ البيانات</h2>
+  <ul>
+    <li>على <strong>خادم شخصي في الجزائر</strong>، يديره المسؤول عن التطبيق — لا عند مستضيف تجاري.</li>
+    <li>يمرّ الاتصال بين جهازك وهذا الخادم عبر <strong>Cloudflare</strong>، الذي يتكفّل بالتشفير والتوجيه.</li>
+    <li>تُرسَل الرسائل (تأكيد البريد، نسيان كلمة السر) عبر <strong>Gmail</strong>. لذا ترى Google عنوان المرسَل إليه ومحتوى هاتين الرسالتين، كأي بريد إلكتروني.</li>
+  </ul>
+
+  <h2>إن دخلت عبر Google</h2>
+  <p>
+    هذا اختياري — التسجيل بالبريد الإلكتروني يعمل تماما بالقدر نفسه. وإن اخترت
+    Google، يتلقّى التطبيق منه <strong>بريدك واسمك فقط، لا شيء غير ذلك</strong>.
+    لا يستطيع قراءة بريدك ولا ملفاتك ولا مفكّرتك، وهو لا يطلب ذلك أصلا.
+  </p>
+  <p>
+    ولا يحمّل التطبيق <strong>أي سكربت من Google</strong>: فما لم تضغط الزر،
+    لا تعلم Google أنك تفتح WilayaDZ.
+  </p>
+
+  <h2>إلى متى</h2>
+  <ul>
+    <li>التسجيل الذي <strong>لم يُؤكَّد أبدا</strong> يُمحى تلقائيا بعد <strong>7 أيام</strong>.</li>
+    <li>رابط التأكيد صالح <strong>24 ساعة</strong>، ورابط كلمة السر الجديدة <strong>ساعة واحدة</strong>. وكلاهما يُستعمل مرة واحدة فقط.</li>
+    <li>تنتهي جلسة الجهاز بعد <strong>180 يوما</strong> دون استعمال.</li>
+    <li>ويبقى الباقي محفوظا <strong>ما لم تحذف حسابك</strong>.</li>
+  </ul>
+
+  <h2>ما يمكنك فعله</h2>
+  <ul>
+    <li><strong>الاطّلاع على بياناتك</strong> — تقدّمك هو التطبيق نفسه؛ معروض أمامك لا مخفيّ عنك.</li>
+    <li><strong>تصحيحها</strong> — الاسم المستعار والصورة وكلمة السر تُغيَّر من « الملف ».</li>
+    <li><strong>أخذها معك</strong> — « الملف والمزامنة » ينتج رمز نقل ورمز QR يحتويان كل تقدّمك.</li>
+    <li><strong>محو كل شيء</strong> — « الملف ← الحساب على الإنترنت ← احذف الحساب ». يُمحى الحساب وما فيه من تقدّم من الخادم <strong>نهائيا</strong> وفورا. أما ما يبقى على جهازك فهو لك ويبقى عندك.</li>
+  </ul>
+
+  <h2>إن كان عمرك أقل من 16 سنة</h2>
+  <p>
+    WilayaDZ موجَّه أيضا للتلاميذ. إن كان عمرك أقل من 16 سنة، فاستأذن أحد
+    والديك أو راشدا مسؤولا قبل إنشاء حساب — وأره هذه الصفحة.
+  </p>
+
+  <h2>للتواصل</h2>
+  <p>
+    لأي سؤال، أو طلب حذف، أو خطأ في هذه الصفحة:
+    <a href="mailto:mednor@cherifi.org">mednor@cherifi.org</a>.
+  </p>
+</section>
+
+<footer>
+  WilayaDZ · <a href="/">Application</a> · <a href="/conditions">Conditions d'utilisation — شروط الاستعمال</a>
+</footer>
+
+</div>
+</body>
+</html>

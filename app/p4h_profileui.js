@@ -455,6 +455,7 @@
           cloudRecoveryNote() +
           "<p class='gate-err' id='gate-err' role='alert'></p>" +
           "<button class='btn' id='gate-create'>" + T("Créer le compte","أنشئ الحساب") + "</button>" +
+          legalNoteHtml() +
           googleButtonHtml("gate") +
           "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" +
           (account.profiles.length ? "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" : "") +

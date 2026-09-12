@@ -1070,6 +1070,10 @@
   .pw-eye .icon{ width:21px; height:21px; }
   .pw-eye:active{ background:var(--surface-2); }
   .pw-eye[aria-pressed="true"]{ color:var(--accent); }
+  .field-note{
+    margin:-4px 0 10px; font-size:.78rem; color:var(--ink-faint); text-align:left;
+  }
+  [dir="rtl"] .field-note{ text-align:right; }
 
   /* ---- Continuer avec Google ---- */
   .google-btn{
@@ -6770,10 +6774,11 @@ var qrcode = function() {
           "<h2 id='gate-title'>" + T("Nouveau mot de passe","كلمة سر جديدة") + "</h2>" +
           "<p class='gate-sub'>" + TS("Choisis-en un nouveau : tu seras connecté dans la foulée.",
                                       "اختر كلمة سر جديدة: ستدخل مباشرة بعدها.") + "</p>" +
-          passwordFieldHtml("gres-pw", "Mot de passe (8 min.) · كلمة السر",
+          passwordFieldHtml("gres-pw", "Mot de passe · كلمة السر",
                             "new-password", TL("Nouveau mot de passe","كلمة السر الجديدة")) +
           passwordFieldHtml("gres-pw2", "Répéter le mot de passe · كرّر كلمة السر",
                             "new-password", TL("Répéter le mot de passe","كرّر كلمة السر")) +
+          passwordRuleHtml() +
           "<p class='gate-note'>" + TS("Tous les appareils déjà connectés à ce compte devront se reconnecter.",
                                        "ستحتاج كل الأجهزة المتصلة بهذا الحساب إلى إعادة الاتصال.") + "</p>" +
           "<p class='gate-err' id='gres-err' role='alert'></p>" +
@@ -6836,6 +6841,7 @@ var qrcode = function() {
           cloudRecoveryNote() +
           "<p class='gate-err' id='gate-err' role='alert'></p>" +
           "<button class='btn' id='gate-create'>" + T("Créer le compte","أنشئ الحساب") + "</button>" +
+          legalNoteHtml() +
           googleButtonHtml("gate") +
           "<button class='btn ghost' id='gate-login' style='margin-top:9px;'>" + T("J'ai déjà un compte","لدي حساب") + "</button>" +
           (account.profiles.length ? "<button class='btn ghost' id='gate-back' style='margin-top:9px;'>" + T("Retour","رجوع") + "</button>" : "") +
@@ -6850,7 +6856,7 @@ var qrcode = function() {
       function doCreate(){
         var f = cloudReadFields("gate");
         cloudErrInto("gate-err", "");
-        if(!f.name){ cloudErrInto("gate-err", TL("Écris un prénom.","اكتب اسما.")); nameInp.focus(); return; }
+        if(!f.name){ cloudErrInto("gate-err", TL("Choisis un pseudo.","اختر اسما مستعارا.")); nameInp.focus(); return; }
         if(!f.email){ cloudErrInto("gate-err", cloudErrorText("bad_email")); return; }
         var souci = passwordProblem(f.pw, f.pw2);
         if(souci){ cloudErrInto("gate-err", souci); return; }
@@ -7356,7 +7362,7 @@ var qrcode = function() {
   function cloudErrorText(code){
     switch(code){
       case "bad_email":       return TL("Cette adresse e-mail n'est pas valide.","هذا البريد الإلكتروني غير صالح.");
-      case "bad_name":        return TL("Écris un prénom (18 caractères au plus).","اكتب اسما (18 حرفا على الأكثر).");
+      case "bad_name":        return TL("Choisis un pseudo (24 caractères au plus).","اختر اسما مستعارا (24 حرفا على الأكثر).");
       case "weak_password":   return TL("Le mot de passe doit faire au moins 8 caractères.","كلمة السر 8 أحرف على الأقل.");
       case "email_taken":     return TL("Un compte existe déjà avec cette adresse.","يوجد حساب بهذا البريد الإلكتروني.");
       case "bad_credentials": return TL("Adresse ou mot de passe incorrect.","البريد أو كلمة السر غير صحيحة.");
@@ -7537,7 +7543,7 @@ var qrcode = function() {
   /* ---------------- Inscription en attente ---------------- */
 
   /* Entre l'inscription et la confirmation, il faut se souvenir de ce
-     qu'on attend : quelle adresse, sous quel prénom, et — si l'on
+     qu'on attend : quelle adresse, sous quel pseudo, et — si l'on
      rattachait un profil déjà garni — lequel. C'est rangé avec les
      profils, donc ça survit à la fermeture de l'application. */
   function setPending(email, name, lang, profileId){
@@ -8176,6 +8182,14 @@ var qrcode = function() {
   /* Un champ de mot de passe avec l'œil qui l'affiche. C'est ce qui
      évite le plus de fautes de frappe — davantage qu'un second champ à
      recopier, qu'on remplit souvent par copier-coller du premier. */
+  /* La contrainte est écrite SOUS le champ, jamais dedans : un texte
+     grisé disparaît dès la première lettre tapée, c'est-à-dire au
+     moment précis où l'on en a besoin. Et « 8 min. » se lisait
+     « 8 minutes ». */
+  function passwordRuleHtml(){
+    return "<p class='field-note'>" + TL("Au moins 8 caractères.","8 أحرف على الأقل.") + "</p>";
+  }
+
   function passwordFieldHtml(id, placeholder, autocomplete, label){
     return "<div class='pw-field'>" +
       "<label class='sr-only' for='" + id + "'>" + label + "</label>" +
@@ -8204,25 +8218,40 @@ var qrcode = function() {
     });
   }
 
+  /* Dire ce à quoi on s'engage, à l'endroit où l'on s'engage — et non
+     dans un recoin qu'il faudrait aller chercher. Les liens s'ouvrent à
+     part pour ne pas faire perdre ce qui est déjà saisi. */
+  function legalNoteHtml(){
+    if(!/^https?:$/.test(location.protocol)) return "";
+    return "<p class='field-note' style='text-align:center;margin-top:10px'>" +
+      TL("En créant un compte, tu acceptes les ", "بإنشاء حساب، فإنك تقبل ") +
+      "<a href='/conditions' target='_blank' rel='noopener'>" +
+        TL("conditions d'utilisation","شروط الاستعمال") + "</a>" +
+      TL(" et la ", " و") +
+      "<a href='/confidentialite' target='_blank' rel='noopener'>" +
+        TL("politique de confidentialité","سياسة الخصوصية") + "</a>." +
+    "</p>";
+  }
+
   function cloudFieldsHtml(prefix, opts){
     opts = opts || {};
     return (opts.name
-        ? "<label class='sr-only' for='" + prefix + "-name'>" + TL("Ton prénom","اسمك") + "</label>" +
-          "<input class='gate-input' id='" + prefix + "-name' maxlength='18' autocomplete='given-name' " +
-          "placeholder='Prénom · الاسم' aria-label=\"" + TL("Ton prénom","اسمك") + "\" />"
+        ? "<label class='sr-only' for='" + prefix + "-name'>" + TL("Ton pseudo","اسمك المستعار") + "</label>" +
+          "<input class='gate-input' id='" + prefix + "-name' maxlength='24' autocomplete='nickname' " +
+          "placeholder='Pseudo · الاسم المستعار' aria-label=\"" + TL("Ton pseudo","اسمك المستعار") + "\" />"
         : "") +
       "<label class='sr-only' for='" + prefix + "-email'>" + TL("Adresse e-mail","البريد الإلكتروني") + "</label>" +
       "<input class='gate-input' id='" + prefix + "-email' type='email' inputmode='email' " +
         "autocomplete='email' autocapitalize='off' spellcheck='false' " +
         "placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
-      passwordFieldHtml(prefix + "-pw",
-        opts.newPassword ? "Mot de passe (8 min.) · كلمة السر" : "Mot de passe · كلمة السر",
+      passwordFieldHtml(prefix + "-pw", "Mot de passe · كلمة السر",
         opts.newPassword ? "new-password" : "current-password",
         TL("Mot de passe","كلمة السر")) +
       (opts.confirm
         ? passwordFieldHtml(prefix + "-pw2", "Répéter le mot de passe · كرّر كلمة السر",
                             "new-password", TL("Répéter le mot de passe","كرّر كلمة السر"))
-        : "");
+        : "") +
+      (opts.newPassword ? passwordRuleHtml() : "");
   }
   function cloudReadFields(prefix){
     var nameEl = document.getElementById(prefix + "-name");
@@ -8503,7 +8532,8 @@ var qrcode = function() {
           "placeholder='Mot de passe actuel · الحالية' aria-label=\"" + TL("Mot de passe actuel","كلمة السر الحالية") + "\" />" +
         "<label class='sr-only' for='cpw-new'>" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "</label>" +
         "<input class='gate-input' id='cpw-new' type='password' autocomplete='new-password' " +
-          "placeholder='Nouveau (8 min.) · الجديدة' aria-label=\"" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "\" />" +
+          "placeholder='Nouveau mot de passe · الجديدة' aria-label=\"" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "\" />" +
+        passwordRuleHtml() +
         cloudRecoveryNote() +
         "<p class='gate-err' id='cpw-err' role='alert'></p>" +
         "<button class='btn' id='cpw-go'>" + T("Changer","غيّر") + "</button>" +

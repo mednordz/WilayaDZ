@@ -73,6 +73,21 @@
     });
   }
 
+  /* Dire ce à quoi on s'engage, à l'endroit où l'on s'engage — et non
+     dans un recoin qu'il faudrait aller chercher. Les liens s'ouvrent à
+     part pour ne pas faire perdre ce qui est déjà saisi. */
+  function legalNoteHtml(){
+    if(!/^https?:$/.test(location.protocol)) return "";
+    return "<p class='field-note' style='text-align:center;margin-top:10px'>" +
+      TL("En créant un compte, tu acceptes les ", "بإنشاء حساب، فإنك تقبل ") +
+      "<a href='/conditions' target='_blank' rel='noopener'>" +
+        TL("conditions d'utilisation","شروط الاستعمال") + "</a>" +
+      TL(" et la ", " و") +
+      "<a href='/confidentialite' target='_blank' rel='noopener'>" +
+        TL("politique de confidentialité","سياسة الخصوصية") + "</a>." +
+    "</p>";
+  }
+
   function cloudFieldsHtml(prefix, opts){
     opts = opts || {};
     return (opts.name
