@@ -1,3 +1,4 @@
+const {mountMascotFixture}=require('./mascot_fixture');
 /* Visual coverage for the shared Algerian design and four new mascots.
    Only synthetic local profiles; all account API requests blocked. */
 const {chromium}=require('playwright');
@@ -34,6 +35,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
  const page=await browser.newPage({viewport:{width:415,height:950},reducedMotion:'reduce'});
  for(const [name,crowns] of [['fennec',{}],['cigogne',{u1:1,u2:1}],['palmier',{u1:1,u2:1,u3:1,u4:1}],['chameau',{u1:1,u2:1,u3:1,u4:1,u5:1,u6:1}]]){
   await seedSignedIn(page,url,{name:'Test',lang:'fr',data:{keyDone:true,crowns,photoNon:true}});
+  await mountMascotFixture(page);
   const stage=page.locator('#hero-card .mascot-stage');
   assert.equal(await stage.getAttribute('data-mascot'),name);
   await stage.locator('img').evaluateAll(async imgs=>{await Promise.all(imgs.map(i=>i.decode()));});

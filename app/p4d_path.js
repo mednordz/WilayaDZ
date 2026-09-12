@@ -132,9 +132,8 @@
     var hero = document.getElementById("hero-card");
     /* `ui1` est reposé à chaque rendu : la carte est habillage, pas
        contenu, et réécrire className l'effacerait sinon. */
-    hero.className = "hero ui1" + (o.classe ? " " + o.classe : "");
+    hero.className = "hero patio-card ui1" + (o.classe ? " " + o.classe : "");
     hero.innerHTML =
-      (typeof KIT !== "undefined" && KIT.patio ? "<img class='hero-patio' src='" + KIT.patio.src + "' alt='' aria-hidden='true'/>" : "") +
       "<div class='hero-haut'>" +
         "<p class='hero-kicker'>" + o.kicker + "</p>" +
         (o.badge ? "<span class='hero-unite'>" + o.badge + "</span>" : "") +
@@ -145,7 +144,7 @@
         (o.reperes || "") +
         (o.meta ? "<p class='hero-meta'>" + o.meta + "</p>" : "") +
       "</div>" +
-      "<div class='hero-bete'>" + o.mascotte + "</div>" +
+      "<template class='hero-mascot-template'>" + o.mascotte + "</template>" +
       "<span class='hero-go'>" + PLAY_ICON + " " + o.cta + "</span>";
     hero.setAttribute("aria-label", o.aria);
     hero.onclick = o.action;
@@ -160,8 +159,7 @@
         kicker:T("Commence ici","ابدأ هنا"),
         badge:T("2 min","دقيقتان"),
         titre:T("La Clé","المفتاح"),
-        sous:TS("Les codes 01–31 suivent une règle. Comprends-la d'abord, et il te restera trois fois moins à mémoriser.",
-                "الرموز 01–31 تتبع قاعدة. افهمها أولا، وسيبقى عليك حفظ ثلث ما كنت ستحفظه."),
+        sous:TS("Les codes 01–31 suivent une règle. Comprends-la d’abord.","الرموز 01–31 تتبع قاعدة. افهمها أولا."),
         mascotte:mascotHtml("fennec", 96, "excited"),
         cta:T("Découvrir","اكتشف"),
         aria:TL("La Clé, leçon de découverte de deux minutes","المفتاح، درس اكتشاف في دقيقتين"),
@@ -175,9 +173,8 @@
       heroCarte({
         classe:"review",
         kicker:T("Le bon moment","الوقت المناسب"),
-        titre:T(due + " wilaya" + (due>1?"s":"") + " à réviser", due + " ولاية للمراجعة"),
-        sous:TS("Elles arrivent au bord de l'oubli. Les revoir maintenant coûte une minute et vaut dix répétitions plus tard.",
-                "إنها على حافة النسيان. مراجعتها الآن تكلّف دقيقة وتساوي عشر تكرارات لاحقا."),
+        titre:T("Prêt pour une révision ?","هل أنت مستعد للمراجعة؟"),
+        sous:T("Consolide tes connaissances sur les wilayas.","رسّخ معرفتك بالولايات."),
         mascotte:mascotHtml("cigogne", 96, "happy"),
         cta:T("Réviser","راجع"),
         aria:TL(due + " wilayas à réviser", due + " ولاية للمراجعة"),
@@ -393,13 +390,7 @@
     var pool = poolForTier(state.tier);
     var solides = pool.filter(function(w){ return getBox(w.c) >= 5; }).length;
     var dus = dueCodes(pool).length;
-    bande.innerHTML =
-      "<span class='stat-part'><span class='stat-pill ok'>" + CHECK_ICON + "</span>" +
-        "<b>" + T(solides + " solides", solides + " راسخة") + "</b></span>" +
-      "<span class='sep' aria-hidden='true'></span>" +
-      "<span class='stat-part'><span class='stat-pill due'>" + REVISION_ICON + "</span>" +
-        "<b>" + T(dus + " à revoir", dus + " للمراجعة") + "</b></span>" +
-      "<span class='chev' aria-hidden='true'>" + CHEVRON_ICON + "</span>";
+    bande.innerHTML = '<span class="patio-map-icon" aria-hidden="true"></span><span class="patio-progress-copy">'+T(solides+" wilayas solides · "+dus+" à revoir",solides+" ولايات راسخة · "+dus+" للمراجعة")+'<span class="patio-progress-track" aria-hidden="true"><span style="width:'+Math.round(solides/Math.max(pool.length,1)*100)+'%"></span></span></span><span class="chev" aria-hidden="true">'+CHEVRON_ICON+'</span>';
     bande.setAttribute("aria-label", TL(
       solides + " wilayas solides, " + dus + " à revoir. Ouvrir l'entraînement.",
       solides + " ولاية راسخة، " + dus + " للمراجعة."));

@@ -1,3 +1,4 @@
+const {mountMascotFixture}=require('./mascot_fixture');
 const {chromium}=require('playwright'),{seedSignedIn}=require('./seed_profile');
 const assert=require('assert'),path=require('path'),fs=require('fs');
 (async()=>{
@@ -23,6 +24,7 @@ const assert=require('assert'),path=require('path'),fs=require('fs');
   }});
  });
  await seedSignedIn(page,url,{lang:'fr',data:{keyDone:true,crowns:character==='cigogne'?{u1:1}:{},photoNon:true}});
+ await mountMascotFixture(page);
  const hero=page.locator('#hero-card .mascot-stage');
  assert.equal(await hero.getAttribute('data-mascot'),character);
  await hero.locator('canvas').waitFor();await page.waitForFunction(()=>document.querySelector('#hero-card .rive-ready'));
@@ -59,6 +61,7 @@ const assert=require('assert'),path=require('path'),fs=require('fs');
  const fallback=await browser.newPage();
  await fallback.addInitScript(()=>{let n;Object.defineProperty(window,'rive',{get:()=>n,set:v=>{n=new Proxy(v,{get:(t,k)=>k==='Rive'?function(){throw Error('test failure')}:t[k]})}})});
  await seedSignedIn(fallback,url,{lang:'fr',data:{keyDone:true,photoNon:true}});
+ await mountMascotFixture(fallback);
  await fallback.waitForTimeout(200);
  assert.equal(await fallback.locator('.mascot-rive-canvas').count(),0);
  assert(await fallback.locator('#hero-card .mascot-breathe').isVisible());
