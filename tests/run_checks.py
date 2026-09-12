@@ -8,6 +8,7 @@ run(sys.executable,'app/build.py')
 run('node','--check','app/_check.js')
 run('node','tests/test_sync.js')
 run(sys.executable,'tests/test_payload.py')
+run(sys.executable,'tests/test_production.py')
 run(sys.executable,'tests/test_api.py')
 # Quelques anciens tests utilisent ce chemin ; la copie est toujours reconstruite.
 legacy=pathlib.Path('/tmp/wilayas');legacy.mkdir(exist_ok=True)

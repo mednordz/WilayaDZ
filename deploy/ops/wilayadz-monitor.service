@@ -1,0 +1,10 @@
+[Unit]
+Description=WilayaDZ : santé, sauvegarde et espace disque
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/wilayadz-ops/monitor.py
+TimeoutStartSec=1min
+NoNewPrivileges=true
+PrivateTmp=true

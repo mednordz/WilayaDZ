@@ -10,4 +10,5 @@ app/_check.js
 **/*.jks
 **/*.keystore
 .env*
+.local-ops
 v6_*.png
