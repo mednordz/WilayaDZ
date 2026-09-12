@@ -139,7 +139,7 @@ d'Android Studio) pour `zipalign` et `apksigner`.
 4. Signer avec `apksigner sign --ks android/keystore/wilayas-v2.jks`.
 
 **Le keystore `wilayas-v2.jks` est le fichier le plus critique de toute
-l'archive.** Mot de passe : `wilayasapp2026`. Toutes les versions livrées à
+l'archive.** Mot de passe : conservé hors dépôt. Cette clé a été exposée ; voir SECURITY.md. Toutes les versions livrées à
 l'utilisateur depuis "v9" sont signées avec cette clé — si l'utilisateur a
 déjà installé une version signée par cette clé sur son téléphone, **toute
 nouvelle version doit être signée avec la même clé**, sinon Android refuse

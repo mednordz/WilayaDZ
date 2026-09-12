@@ -1,4 +1,4 @@
-import os, re, sys, shutil, base64, json, xml.etree.ElementTree as ET
+import os, re, sys, shutil, base64, json, gzip, xml.etree.ElementTree as ET
 os.chdir(os.path.dirname(os.path.abspath(__file__)) or '.')
 def R(p): return open(p, encoding='utf-8').read()
 # Canvas Lite is pinned and embedded: no CDN, including in the APK/file build.
@@ -25,6 +25,8 @@ out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_
   R('p4q_rive.js'), R('p4p_musique.js'), map_bundle, R('p4r_map.js'), R('p4e_practice.js'), R('p4j_pwa.js'), "\n})();\n</script>\n"])
 target = sys.argv[1] if len(sys.argv) > 1 else 'wilaya-v6.html'
 open(target,'w',encoding='utf-8').write(out)
+with open(target+'.gz','wb') as compressed:
+    compressed.write(gzip.compress(out.encode('utf-8'), compresslevel=9, mtime=0))
 open('_check.js','w',encoding='utf-8').write(re.search(r'<script>(.*)</script>', out, re.S).group(1))
 # sw.js doit rester un fichier à part (un service worker ne peut pas
 # s'enregistrer depuis un <script> inline) : copié à côté du HTML produit,

@@ -11,3 +11,10 @@ v6_*.png
 # Cache Python (tests/serve_test.py importe server/app.py)
 __pycache__/
 *.pyc
+
+# Matériel de signature : jamais dans Git
+*.jks
+*.keystore
+.env
+.env.*
+app/wilaya-v6.html.gz

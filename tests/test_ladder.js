@@ -4,7 +4,8 @@ const { seedSignedIn } = require('./seed_profile');
 /* Depuis que le compte est obligatoire, la progression ne se pose plus
    dans `wilaya-progress-v4` : elle vit dans le profil, sous
    `wilaya-account-v1`. On sème donc un appareil deja connecte. */
-const URL = 'file:///tmp/wilayas/wilaya-v6.html';
+const assert=require('assert'),path=require('path');
+const URL = 'file://'+path.resolve(__dirname,'../app/wilaya-v6.html');
 const prog4 = {};
 for (let c = 1; c <= 10; c++) prog4[c] = { box: 4, due: 0, seen: 9, ok: 9, best: 2000 };
 
@@ -38,29 +39,16 @@ for (let c = 1; c <= 10; c++) prog4[c] = { box: 4, due: 0, seen: 9, ok: 9, best:
     streak: { count: 0, last: null } } });
   await p.locator('.noeud').nth(0).click(); await p.waitForTimeout(250);
 
-  const promptName = await p.locator('#lesson-prompt-focus').innerText();
-  const label = await p.locator('.lesson-prompt-label').innerText();
-  await p.waitForTimeout(6500);                       // > 5 s => réponse lente
-  const opts = await p.locator('.lesson-choice').allInnerTexts();
-  // on clique la bonne réponse en la déduisant
-  const html = require('fs').readFileSync('/tmp/wilayas/wilaya-v6.html', 'utf8');
-  const DATA = eval(html.match(/var DATA = (\[[\s\S]*?\]);/)[1].replace(/(\w+):/g, '"$1":').replace(/"(\-?\d)/g, '$1'));
-  const N = {}, C = {}; DATA.forEach(w => { N[w.c] = w.n; C[w.n] = w.c; });
-  const pad = n => String(n).padStart(2, '0');
-  let want = label.toLowerCase().includes('quelle wilaya') ? N[parseInt(promptName, 10)] : pad(C[promptName.split('\n')[0].trim()]);
-  const idx = opts.map(s => s.trim()).indexOf(want);
-  if (idx >= 0) {
-    await p.locator('.lesson-choice').nth(idx).click();
-    await p.waitForTimeout(250);
-    const noteTxt = await p.locator('.lesson-footer-note').count() ? await p.locator('.lesson-footer-note').innerText() : '(aucune)';
-    console.log('Réponse juste mais lente → message:', noteTxt.trim());
-    const box = await p.evaluate(() => {
-      const a = JSON.parse(localStorage.getItem('wilaya-account-v1'));
-      return a.profiles[0].data.progress;
-    });
-    console.log('Boîtes après réponse lente:', JSON.stringify(box));
-  } else console.log('bonne option introuvable, test sauté');
-
+  const correct = p.locator('.lesson-choice[data-correct="1"]');
+  assert.equal(await correct.count(),1,'Une réponse correcte doit être disponible');
+  await p.waitForTimeout(5500);
+  await correct.click();
+  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('wilaya-account-v1')).profiles[0].data.progress);
+  assert(Object.keys(saved).length>0,'La réponse doit être enregistrée');
+  assert(Object.values(saved).every(r=>r.box===0),'Une réponse lente ne doit pas promouvoir la maîtrise');
+  assert(type>0,'La boîte 4 doit produire de la saisie libre');
+  assert.deepEqual(errs,[]);
+  console.log('Saisie libre en boîte 4 et réponse juste lente sans promotion : validées');
   console.log('ERREURS:', errs.length ? errs.join('|') : 'aucune');
   await b.close();
-})();
+})().catch(e=>{console.error(e);process.exit(1);});

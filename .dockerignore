@@ -1,0 +1,13 @@
+.git
+node_modules
+android
+.audits
+audits
+app/wilaya-v6.html*
+app/_check.js
+**/__pycache__
+**/*.pyc
+**/*.jks
+**/*.keystore
+.env*
+v6_*.png

@@ -127,13 +127,11 @@
   document.getElementById("skip-btn").addEventListener("click", function(){ newQuestion(); });
 
   document.getElementById("reset-progress").addEventListener("click", function(){
-    confirmDialog(TS("Réinitialiser toute la progression de ce profil (parcours, XP, série, confusions) ?",
-                     "إعادة ضبط كل تقدّم هذا الملف (المسار، النقاط، السلسلة، الالتباسات)؟"), TL("Réinitialiser","أعد الضبط"))
+    confirmDialog(TS("Réinitialiser la progression de ce compte sur tous tes appareils (parcours, XP, série, confusions) ? La remise à zéro sera transmise au retour de la connexion.",
+                     "إعادة ضبط تقدّم هذا الحساب على كل أجهزتك (المسار، النقاط، السلسلة، الالتباسات)؟ ستُنقل إعادة الضبط عند عودة الاتصال."), TL("Réinitialiser","أعد الضبط"))
       .then(function(ok){
         if(!ok) return;
-        state.progress = {}; state.confusions = {}; state.crowns = {};
-        state.xp = 0; state.streak = {count:0, last:null};
-        state.keyDone = false; state.bestBlitz = 0;
+        resetProgress();
         state.sessionCorrect = 0; state.sessionTotal = 0;
         persist(); refreshStats(); refreshTopStats(); newQuestion();
         renderPath(); refreshPracticeCards(); buildLedger(); renderSyncPanel();

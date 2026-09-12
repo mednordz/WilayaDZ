@@ -14,7 +14,7 @@
           empêcher de réviser.
        2. On ne remplace jamais, on FUSIONNE — avec exactement la même
           fonction (mergeInto) que les codes de transfert, déjà éprouvée :
-          pour chaque wilaya, la meilleure des deux mémoires gagne.
+          la réponse la plus récente et la génération de remise à zéro font foi.
        3. Rien n'est poussé sans avoir d'abord lu ce que le serveur a.
           C'est ce qui permet à deux appareils utilisés le même jour de
           converger au lieu de s'effacer l'un l'autre.
@@ -78,6 +78,8 @@
       case "unauthorized":    return TL("Session expirée — reconnecte-toi.","انتهت الجلسة — أعد الاتصال.");
       case "not_verified":    return TL("Confirme d'abord ton adresse e-mail.","أكّد بريدك الإلكتروني أولا.");
       case "too_large":       return TL("Progression trop volumineuse pour être envoyée.","التقدّم أكبر من أن يُرسل.");
+      case "bad_payload": return TL("Cette sauvegarde est invalide. Tes données locales sont conservées.","هذه النسخة غير صالحة. بياناتك المحلية محفوظة.");
+      case "client_update_required": return TL("Mets à jour l’application pour synchroniser ce compte.","حدّث التطبيق لمزامنة هذا الحساب.");
       case "offline":         return TL("Pas de connexion — réessaie plus tard.","لا يوجد اتصال — أعد المحاولة لاحقا.");
       default:                return TL("Le service est indisponible pour le moment.","الخدمة غير متاحة حاليا.");
     }
@@ -115,87 +117,81 @@
 
   var syncInFlight = false;
   var syncTimer = null;
+  var syncPending = null;
 
-  /* Le profil actif a sa progression en cours dans `state`, pas encore
-     forcément écrite dans p.data. Il faut la coucher AVANT de fusionner,
-     sinon la fusion travaille sur une version périmée et le prochain
-     persist() écrase le résultat. */
   function flushActive(p){
-    if(activeProfile() && activeProfile().id === p.id) persist();
+    if(activeProfile() && activeProfile().id === p.id) persist(true);
   }
-  function reloadActive(p){
-    if(activeProfile() && activeProfile().id === p.id) bootProfile();
+  function refreshSyncedProfile(p, reset){
+    if(!activeProfile() || activeProfile().id !== p.id) return;
+    applyProgressState(p.data);
+    if(reset && typeof session !== 'undefined' && session.alive) closeSession();
+    // Ne pas redémarrer la leçon ou remplacer sa question en cours.
+    renderAvatar(); refreshTopStats(); refreshStats();
+    renderPath(); refreshPracticeCards(); buildLedger(); renderSyncPanel();
   }
 
-  /* Renvoie une promesse de {ok, changed, added, improved, error}. */
   function cloudSync(p, opts){
-    opts = opts || {};
-    var c = cloudOf(p);
-    if(!c || !c.token) return Promise.resolve({ok:false, error:"unlinked"});
-    if(syncInFlight) return Promise.resolve({ok:false, error:"busy"});
-    syncInFlight = true;
-
+    opts=opts||{};
+    var c=cloudOf(p);
+    if(!c || !c.token) return Promise.resolve({ok:false,error:'unlinked'});
+    if(syncInFlight){ syncPending=p; return Promise.resolve({ok:false,error:'busy'}); }
+    syncInFlight=true;
+    var token=c.token, added=0, improved=0, changed=false;
     flushActive(p);
-    var added = 0, improved = 0, nomChange = false;
-
+    function linked(){return cloudOf(p) === c && c.token === token;}
     function finish(result){
-      syncInFlight = false;
-      c.lastError = result.ok ? null : (result.error || "unknown");
+      syncInFlight=false;
+      if(linked()) c.lastError=result.ok ? null : (result.error||'unknown');
       saveAccount();
+      if(syncPending){
+        var next=syncPending; syncPending=null;
+        setTimeout(function(){cloudSync(next,{silent:true});},1000);
+      }
       return result;
     }
-
-    function pushWith(baseVersion, attempt){
-      return cloudCall("PUT", "/sync",
-                       {base_version:baseVersion, data:packProfile(p)}, c.token)
-        .then(function(res){
-          if(res.status === 200){
-            c.version = res.data.version;
-            c.lastSync = Date.now();
-            return {ok:true, changed:(added+improved) > 0, added:added, improved:improved};
-          }
-          /* 409 : un autre appareil a écrit entre notre lecture et notre
-             envoi. On refusionne sur l'état qu'il nous rend et on
-             retente une seule fois — au-delà, mieux vaut réessayer plus
-             tard que de boucler sur un appareil qui écrit sans arrêt. */
-          if(res.status === 409 && attempt < 2){
-            if(res.data && res.data.data){
-              var r = mergeInto(p, res.data.data);
-              added += r.added; improved += r.improved;
-              saveAccount();
-            }
-            return pushWith(res.data.version, attempt + 1);
-          }
-          if(res.status === 401){ c.token = null; }
-          return {ok:false, error:(res.status === 0 ? "offline"
-                                 : (res.data && res.data.error) || "push")};
-        });
+    function receive(data){
+      if(!linked()) throw new Error('unlinked');
+      if(!validPayload(data)) throw new Error('bad_payload');
+      // L'utilisateur peut avoir répondu depuis le début du GET/PUT.
+      flushActive(p);
+      var reset=(data.ra||0) > (p.data.resetAt||0);
+      var r=mergeInto(p,data);
+      added+=r.added; improved+=r.improved; changed=changed||r.changed;
+      if(activeProfile() && activeProfile().id === p.id) applyProgressState(p.data);
+      saveAccount();
+      if(r.changed) refreshSyncedProfile(p,reset);
     }
-
-    return cloudCall("GET", "/sync", null, c.token).then(function(res){
-      if(res.status === 401){ c.token = null; return finish({ok:false, error:"unauthorized"}); }
-      if(res.status !== 200)  return finish({ok:false, error:(res.status === 0 ? "offline" : "pull")});
-
-      /* Le pseudo appartient au compte : c'est le serveur qui fait foi.
-         Quelqu'un qui le change sur son téléphone doit le voir changer
-         sur sa tablette, sans rien faire de plus. */
-      if(res.data && res.data.name && res.data.name !== p.name){
-        p.name = res.data.name;
-        if(p.cloud) p.cloud.name = res.data.name;
-        saveAccount();
-        nomChange = true;
-      }
-      if(res.data && res.data.data){
-        var r = mergeInto(p, res.data.data);
-        added = r.added; improved = r.improved;
-        saveAccount();
-      }
-      return pushWith(res.data.version, 1).then(function(out){
-        if(out.ok && (out.changed || nomChange) && !opts.silent) reloadActive(p);
-        else if(nomChange) renderAvatar();
-        return finish(out);
+    function pushWith(version, attempt){
+      if(!linked()) return Promise.resolve({ok:false,error:'unlinked'});
+      flushActive(p);
+      var sent=packProfile(p);
+      return cloudCall('PUT','/sync',{base_version:version,data:sent},token).then(function(res){
+        if(res.status === 200){
+          c.version=res.data.version; c.lastSync=Date.now();
+          // Une réponse saisie pendant l'envoi doit partir à son tour.
+          flushActive(p);
+          if(JSON.stringify(sent) !== JSON.stringify(packProfile(p))) syncPending=p;
+          return {ok:true,changed:changed,added:added,improved:improved};
+        }
+        if(res.status === 409 && attempt < 3 && res.data && res.data.data){
+          receive(res.data.data); return pushWith(res.data.version,attempt+1);
+        }
+        if(res.status === 401 && linked()) c.token=null;
+        return {ok:false,error:res.status === 0 ? 'offline' : (res.data&&res.data.error)||'push'};
       });
-    });
+    }
+    return cloudCall('GET','/sync',null,token).then(function(res){
+      if(!linked()) return {ok:false,error:'unlinked'};
+      if(res.status === 401){c.token=null; return {ok:false,error:'unauthorized'};}
+      if(res.status !== 200 || !res.data) return {ok:false,error:res.status === 0 ? 'offline' : 'pull'};
+      if(res.data.name && res.data.name !== p.name){
+        p.name=res.data.name; c.name=p.name; changed=true;
+        if(activeProfile() && activeProfile().id === p.id) renderAvatar();
+      }
+      if(res.data.data) receive(res.data.data);
+      return pushWith(res.data.version,1);
+    }).catch(function(e){return {ok:false,error:e.message === 'bad_payload' ? 'bad_payload' : 'sync_failed'};}).then(finish);
   }
 
   /* Poussée discrète après une réponse : on ne synchronise pas à chaque

@@ -364,6 +364,31 @@ def main():
         check("l'envoi refait sur la bonne base passe",
               code == 200 and res["version"] == 3, res)
 
+        # Deux requêtes qui partent de la même version ne peuvent pas réussir ensemble.
+        from concurrent.futures import ThreadPoolExecutor
+        def simultaneous(_):
+            return api.call("PUT", "/sync", {"base_version":3,"data":progress(**{"16":5,"31":3})}, token=token)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            races=list(pool.map(simultaneous,range(2)))
+        check("une seule écriture concurrente est acceptée", sorted(r[0] for r in races)==[200,409],races)
+        modern=dict(progress(**{"16":5,"31":3}),sv=2,ra=0)
+        code,res=api.call("PUT","/sync",{"base_version":4,"data":modern},token=token)
+        check("migration vers la sauvegarde datée",code==200,res)
+        code,res=api.call("PUT","/sync",{"base_version":5,"data":progress()},token=token)
+        check("ancien client ne retire pas les dates",code==409 and res["error"]=="client_update_required",res)
+        modern["ra"]=100
+        code,res=api.call("PUT","/sync",{"base_version":5,"data":modern},token=token)
+        check("nouvelle génération acceptée",code==200,res)
+        modern["ra"]=0
+        code,res=api.call("PUT","/sync",{"base_version":6,"data":modern},token=token)
+        check("ancienne génération ne ressuscite pas les données",code==409,res)
+        with open(os.path.join(ROOT,"tests","payload_cases.json")) as fh:
+            cases=json.load(fh)
+        for case in cases:
+            if case["valid"]: continue
+            code,res=api.call("PUT","/sync",{"base_version":6,"data":case["payload"]},token=token)
+            check("payload rejeté : "+case["name"],code==400,res)
+
         print("\nCharges utiles refusees")
         code, res = api.call("PUT", "/sync",
                              {"base_version": 3, "data": {"nimporte": "quoi"}}, token=token)
@@ -457,7 +482,7 @@ def main():
         print("\nLa progression survit a tout cela")
         code, res = api.call("GET", "/sync", token=token)
         check("la progression est intacte",
-              code == 200 and res["version"] == 3 and res["data"]["p"]["16"][0] == 5, res)
+              code == 200 and res["version"] == 6 and res["data"]["p"]["16"][0] == 5, res)
 
         print("\nMot de passe oublie")
         before = len(sink.messages)

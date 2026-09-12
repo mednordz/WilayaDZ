@@ -70,7 +70,7 @@ function check(label, ok, detail) {
 /* Un profil local deja garni, tel que l'application l'ecrit elle-meme. */
 function seedAccount(codes) {
   const progress = {};
-  codes.forEach((c, i) => { progress[c] = { box: 3 + (i % 3), due: 0, seen: 6, ok: 4, best: 2 }; });
+  codes.forEach((c, i) => { progress[Number(c)] = { box: 3 + (i % 3), due: 0, seen: 6, ok: 4, best: 2 }; });
   return {
     profiles: [{
       id: 'ptest1', name: 'Amine', salt: 'abc', pin: null, lang: 'bi', color: 0,
@@ -335,7 +335,7 @@ const cloudEmail = (page) => page.evaluate(() => {
   await b2.evaluate((raw) => {
     const acc = JSON.parse(raw);
     const p = acc.profiles.find(x => x.id === acc.activeId);
-    p.data.progress['06'] = { box: 5, due: 0, seen: 9, ok: 8, best: 4 };
+    p.data.progress['6'] = { box: 5, due: 0, seen: 9, ok: 8, best: 4 };
     p.data.xp = 500;
     localStorage.setItem('wilaya-account-v1', JSON.stringify(acc));
   }, accB);
@@ -353,7 +353,7 @@ const cloudEmail = (page) => page.evaluate(() => {
   const xpA = await a.evaluate(() => {
     const acc = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
     const p = acc.profiles.find(x => x.id === acc.activeId);
-    return { xp: p.data.xp, box06: p.data.progress['06'] ? p.data.progress['06'].box : null };
+    return { xp: p.data.xp, box06: p.data.progress['6'] ? p.data.progress['6'].box : null };
   });
   check('A a reçu les XP les plus eleves', xpA.xp === 500, xpA);
   check('A a reçu la bonne boite pour 06', xpA.box06 === 5, xpA);

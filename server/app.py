@@ -33,6 +33,7 @@ import urllib.parse
 import urllib.request
 import threading
 import time
+from payload import encode_payload
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -452,18 +453,7 @@ def clean_name(value):
 
 
 def clean_payload(value):
-    """La progression appartient au client : le serveur la range sans
-    l'interpreter. Il verifie seulement que c'est bien du JSON a la
-    forme attendue, pour ne jamais stocker d'octets qui rendraient
-    l'application inutilisable au retour."""
-    if not isinstance(value, dict):
-        return None
-    if value.get("v") != 1 or not isinstance(value.get("p"), dict):
-        return None
-    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-    if len(encoded.encode("utf-8")) > MAX_BODY:
-        return None
-    return encoded
+    return encode_payload(value, MAX_BODY)
 
 
 # --------------------------------------------------------------------
@@ -1143,7 +1133,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._fail(400, "bad_payload")
 
         base = body.get("base_version")
-        if not isinstance(base, int):
+        if type(base) is not int or base < 0:
             return self._fail(400, "bad_request")
 
         # Le client fusionne toujours avant de pousser. Si le serveur a
@@ -1151,9 +1141,13 @@ class Handler(BaseHTTPRequestHandler):
         # laquelle la fusion a ete faite : on refuse et on lui rend
         # l'etat courant pour qu'il refasse la fusion. Sans ce garde-fou,
         # deux appareils actifs le meme jour s'effaceraient l'un l'autre.
-        if base != row["version"]:
+        current = json.loads(row["data"]) if row["data"] else {}
+        incoming = body["data"]
+        obsolete = current.get("sv") == 2 and incoming.get("sv") != 2
+        reset_stale = incoming.get("ra", 0) < current.get("ra", 0)
+        if base != row["version"] or obsolete or reset_stale:
             return self._send(409, {
-                "error": "conflict",
+                "error": "client_update_required" if obsolete else "conflict",
                 "version": row["version"],
                 "updated": row["updated"],
                 "data": json.loads(row["data"]) if row["data"] else None,
@@ -1161,9 +1155,15 @@ class Handler(BaseHTTPRequestHandler):
 
         version = row["version"] + 1
         now = int(time.time())
-        store.write(
-            "UPDATE accounts SET data = ?, version = ?, updated = ? WHERE id = ?",
-            (encoded, version, now, row["id"]))
+        updated = store.write(
+            "UPDATE accounts SET data = ?, version = ?, updated = ? WHERE id = ? AND version = ?",
+            (encoded, version, now, row["id"], base))
+        if updated.rowcount != 1:
+            latest = store.one("SELECT * FROM accounts WHERE id = ?", (row["id"],))
+            if not latest: return self._fail(401, "unauthorized")
+            return self._send(409, {"error":"conflict", "version":latest["version"],
+                                   "updated":latest["updated"],
+                                   "data":json.loads(latest["data"]) if latest["data"] else None})
         self._send(200, {"version": version, "updated": now})
 
 

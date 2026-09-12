@@ -8,7 +8,7 @@ RUN mkdir -p /out && python3 app/build.py /out/index.html && ls -la /out
 
 FROM nginx:1.27-alpine
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /out/index.html /out/sw.js /usr/share/nginx/html/
+COPY --from=build /out/index.html /out/index.html.gz /out/sw.js /usr/share/nginx/html/
 # Confidentialite et conditions d'utilisation : des pages a part, lisibles
 # sans l'application et sans compte. Google les exige pour ouvrir la
 # connexion Google a tout le monde, mais elles se justifient d'elles-memes

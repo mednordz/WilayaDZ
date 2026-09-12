@@ -801,8 +801,12 @@
             toast(TL("Sauvegarde enregistrée.","حُفظت النسخة."));
           }catch(e){ toast(TL("Enregistrement annulé.","أُلغي الحفظ.")); }
         }else{
-          codeBox.select();
-          toast(TL("Copie le code et garde-le en lieu sûr.","انسخ الرمز واحفظه في مكان آمن."));
+          var blob=new Blob([exportCode(p)],{type:'text/plain;charset=utf-8'});
+          var url=URL.createObjectURL(blob), link=document.createElement('a');
+          link.href=url; link.download='wilayadz-sauvegarde.txt';
+          document.body.appendChild(link); link.click(); link.remove();
+          setTimeout(function(){URL.revokeObjectURL(url);},30000);
+          toast(TL("Sauvegarde téléchargée.","تم تنزيل النسخة."));
         }
       })();
     });
@@ -831,12 +835,14 @@
     if(!p) return;
     var n = Object.keys(obj.p||{}).length;
     confirmDialog(
-      TL("Le code vient de « " + esc(obj.n || "?") + " » et contient " + n + " wilayas. Il sera FUSIONNÉ avec « " + esc(p.name) + " » : pour chaque wilaya, la meilleure des deux mémoires est gardée. Rien n'est effacé.",
-         "الرمز من « " + esc(obj.n || "?") + " » ويحتوي " + n + " ولاية. سيُدمج مع « " + esc(p.name) + " »: تُحفظ الأفضل من الذاكرتين. لا شيء يُمحى."),
+      TL("Le code vient de « " + esc(obj.n || "?") + " » et contient " + n + " wilayas. Il sera FUSIONNÉ avec « " + esc(p.name) + " » : les réponses les plus récentes sont conservées. Une remise à zéro plus récente est également appliquée.",
+         "الرمز من « " + esc(obj.n || "?") + " » ويحتوي " + n + " ولاية. سيُدمج مع « " + esc(p.name) + " »: تُحفظ أحدث الإجابات وتُطبّق أيضا إعادة الضبط الأحدث."),
       TL("Fusionner","ادمج")
     ).then(function(ok){
       if(!ok) return;
+      flushActive(p);
       var r = mergeInto(p, obj);
+      if(r.error){ toast(cloudErrorText(r.error)); return; }
       saveAccount(); bootProfile();
       if(onDone) onDone();
       toast(TL(r.added + " ajoutées, " + r.improved + " améliorées.",
@@ -850,10 +856,10 @@
      section reste masquée hors http(s). */
   function isWebOrigin(){ return /^https?:$/.test(location.protocol); }
 
-  function shareUrl(){
+  function shareUrl(compact){
     var p = activeProfile();
     if(!p) return null;
-    return location.origin + location.pathname + "#w=" + exportCode(p);
+    return location.origin + location.pathname + "#w=" + exportCode(p, compact);
   }
 
   function initWebShare(){
@@ -890,9 +896,10 @@
         qrBox.innerHTML = ""; qrBtn.setAttribute("aria-expanded","false");
         return;
       }
-      var url = shareUrl();
+      var url = shareUrl(true);
       if(!url) return;
       try{
+        if(url.length > 2300) throw new Error("too_large");
         var qr = qrcode(0, "M");
         qr.addData(url);
         qr.make();
@@ -900,7 +907,7 @@
         qrBox.style.display = ""; qrHint.style.display = "";
         qrBtn.setAttribute("aria-expanded","true");
       }catch(e){
-        toast(TL("Code QR indisponible sur cet appareil.","رمز QR غير متاح على هذا الجهاز."));
+        toast(TL("Sauvegarde trop volumineuse pour un QR. Utilise « Enregistrer » pour transférer le fichier.","النسخة أكبر من سعة رمز QR. استخدم «احفظ» لنقل الملف."));
       }
     });
   }

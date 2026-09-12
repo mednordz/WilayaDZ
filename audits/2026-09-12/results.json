@@ -1,0 +1,92 @@
+[
+  {
+    "test": "test_api",
+    "exit": 0,
+    "seconds": 8
+  },
+  {
+    "test": "test_map",
+    "exit": 0,
+    "seconds": 8
+  },
+  {
+    "test": "test_design_pages",
+    "exit": 0,
+    "seconds": 10
+  },
+  {
+    "test": "test_visual_parcours",
+    "exit": 0,
+    "seconds": 7
+  },
+  {
+    "test": "test_play5",
+    "exit": 0,
+    "seconds": 30
+  },
+  {
+    "test": "test_ladder",
+    "exit": 0,
+    "seconds": 11
+  },
+  {
+    "test": "test_bidi",
+    "exit": 0,
+    "seconds": 5
+  },
+  {
+    "test": "test_rive",
+    "exit": 0,
+    "seconds": 8
+  },
+  {
+    "test": "test_gate_scroll",
+    "exit": 0,
+    "seconds": 15
+  },
+  {
+    "test": "test_life",
+    "exit": 0,
+    "seconds": 15
+  },
+  {
+    "test": "test_rig",
+    "exit": 0,
+    "seconds": 8
+  },
+  {
+    "test": "test_v6",
+    "exit": 0,
+    "seconds": 20
+  },
+  {
+    "test": "audit_a11y",
+    "exit": 0,
+    "seconds": 23
+  },
+  {
+    "test": "audit_touch_focus",
+    "exit": 0,
+    "seconds": 1
+  },
+  {
+    "test": "audit_xss",
+    "exit": 0,
+    "seconds": 1
+  },
+  {
+    "test": "test_cloud_e2e",
+    "exit": 0,
+    "seconds": 20
+  },
+  {
+    "test": "audit_a11y_cloud",
+    "exit": 0,
+    "seconds": 21
+  },
+  {
+    "test": "test_musique",
+    "exit": 0,
+    "seconds": 12
+  }
+]

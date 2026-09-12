@@ -1,0 +1,19 @@
+[
+ {"name":"legacy","valid":true,"payload":{"v":1,"p":{"1":[5,100]}}},
+ {"name":"modern","valid":true,"payload":{"v":1,"sv":2,"ra":123,"p":{"69":[0,100.5,456]},"av":null}},
+ {"name":"null record","valid":false,"payload":{"v":1,"p":{"1":null}}},
+ {"name":"prototype","valid":false,"payload":{"v":1,"p":{"__proto__":[5,100]}}},
+ {"name":"confusion prototype","valid":false,"payload":{"v":1,"p":{},"cf":{"1":{"constructor":1}}}},
+ {"name":"bad code","valid":false,"payload":{"v":1,"p":{"70":[1,100]}}},
+ {"name":"padded code","valid":false,"payload":{"v":1,"p":{"01":[1,100]}}},
+ {"name":"boolean xp","valid":false,"payload":{"v":1,"p":{},"x":true}},
+ {"name":"negative box","valid":false,"payload":{"v":1,"p":{"1":[-1,100]}}},
+ {"name":"future schema","valid":false,"payload":{"v":1,"sv":3,"p":{}}},
+ {"name":"unknown top field","valid":false,"payload":{"v":1,"p":{},"constructor":{}}},
+ {"name":"invalid date","valid":false,"payload":{"v":1,"p":{},"sl":"2026-02-30"}},
+ {"name":"year zero","valid":false,"payload":{"v":1,"p":{},"sl":"0000-01-01"}},
+ {"name":"valid leap date","valid":true,"payload":{"v":1,"p":{},"sl":"2024-02-29"}},
+ {"name":"bad avatar","valid":false,"payload":{"v":1,"p":{},"av":{"k":"p","v":"https://example.com/image"}}},
+ {"name":"mascot","valid":true,"payload":{"v":1,"p":{},"av":{"k":"m","v":"fennec"}}},
+ {"name":"svg avatar","valid":false,"payload":{"v":1,"p":{},"av":{"k":"p","v":"data:image/svg+xml;base64,AAAA"}}}
+]

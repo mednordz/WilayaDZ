@@ -67,17 +67,20 @@ self.addEventListener("fetch", (event) => {
   const chemin = new URL(req.url).pathname;
   if (NO_CACHE_PREFIX.some((p) => chemin.startsWith(p))) return;
 
+  let complete;
+  event.waitUntil(new Promise((resolve) => { complete = resolve; }));
   event.respondWith(
     caches.open(CACHE).then((cache) =>
       cache.match(req).then((cached) => {
         const network = fetch(req)
           .then((fresh) => {
-            if (fresh && fresh.ok) cache.put(req, fresh.clone());
+            if (fresh && fresh.ok) return cache.put(req, fresh.clone()).then(() => fresh);
             return fresh;
           })
-          .catch(() => cached);
+          .catch(() => cached)
+          .finally(complete);
         return cached || network;
       })
-    )
+    ).catch((error) => { complete(); throw error; })
   );
 });

@@ -1,0 +1,6 @@
+SCALAR_SYNC {"silent":false,"result":{"ok":true,"changed":false,"added":0,"improved":0},"before":{"profileXP":900,"screenXP":0,"key":false},"afterPersistXP":0}
+SCALAR_SYNC {"silent":true,"result":{"ok":true,"changed":false,"added":0,"improved":0},"before":{"profileXP":900,"screenXP":0,"key":false},"afterPersistXP":0}
+RESET_RESURRECTION {"xp":900,"crown":5,"box":5}
+ERROR_DOWNGRADE_UNDONE {"box":5,"due":1791936000000}
+INVALID_IMPORT_CRASH Cannot read properties of null (reading '0')
+IMPORT_PROTOTYPE_POLLUTION 5

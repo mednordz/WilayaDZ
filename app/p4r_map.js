@@ -10,8 +10,7 @@ var mapReady = false;
 var mapFullBox = [862.86, 943.66, 10000, 9715];
 
 function mapArabic(w){
-  // El Asnam reste le repère historique dans La Clé ; sur la carte c'est Chlef.
-  return w.c === 2 ? 'الشلف' : (ARABIC[w.c] || '');
+  return ARABIC[w.c] || '';
 }
 
 function mapSetBox(box){
