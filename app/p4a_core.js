@@ -492,6 +492,7 @@
       var active = b.getAttribute("data-tab") === name;
       b.classList.toggle("active", active);
       b.setAttribute("aria-selected", active ? "true" : "false");
+      b.tabIndex=active||(name==="settings"&&b.getAttribute("data-tab")==="path")?0:-1;
     });
     var target = null;
     Array.prototype.forEach.call(document.querySelectorAll(".view"), function(v){
@@ -506,6 +507,14 @@
   }
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function(btn){
     btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
+    btn.tabIndex=btn.getAttribute('aria-selected')==='true'?0:-1;
+    btn.addEventListener('keydown',function(e){
+      if(['ArrowLeft','ArrowRight','Home','End'].indexOf(e.key)<0)return;
+      e.preventDefault();var tabs=Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+      var step=(e.key==='ArrowRight'?1:-1)*(document.documentElement.dir==='rtl'?-1:1);
+      var index=e.key==='Home'?0:e.key==='End'?tabs.length-1:(tabs.indexOf(btn)+step+tabs.length)%tabs.length;
+      tabs[index].click();tabs[index].focus({preventScroll:true});
+    });
   });
 
   function refreshTopStats(){

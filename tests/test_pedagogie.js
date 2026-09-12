@@ -86,7 +86,8 @@ console.log('Ordonnanceur : espacement, lenteur, reprise, QCM et identifiants va
    if(result.done)break;
   }
   assert(result.done);assert(result.total<=17);assert.equal(result.crowns.u1,1,'Pas de niveau gagné avec des difficultés non résolues');
-  await page.evaluate(()=>pedagogy.close());
+  await page.evaluate(()=>pedagogy.begin());assert(await page.locator('#view-path').evaluate(e=>e.inert),'Recommencer garde le fond neutralisé');
+  await page.evaluate(()=>pedagogy.close());assert(!(await page.locator('#view-path').evaluate(e=>e.inert)),'Fermer après une reprise réactive le parcours');
   const before=JSON.stringify(result.progress);
   await page.evaluate(()=>pedagogy.blitz());await page.locator('.lesson-choice[data-correct="1"]').click();
   assert.equal(JSON.stringify((await page.evaluate(()=>pedagogy.inspect())).progress),before,'Rafale isolée de la mémoire');

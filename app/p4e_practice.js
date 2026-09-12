@@ -14,17 +14,29 @@
     return source[source.length-1];
   }
 
+  // Merge legacy practice and pilot evidence without turning discovery into mastery.
+  function memoryCategory(code){
+    var old=state.progress[code], p=(state.learning||{})[code];
+    var category=old ? (getBox(code)>=5?3:getBox(code)>=3?2:1) : 0;
+    if(!p || !(p.d||p.r||p.n[3]||p.c[3]))return category;
+    if(['n','c'].some(function(k){return p[k][3] && p[k][4]===0;}))return 1;
+    var pilot=p.n[0]>=2&&p.c[0]>=2?3:p.n[0]>=1&&p.c[0]>=1?2:1;
+    return Math.max(category,pilot);
+  }
+
   function refreshStats(){
     var total = state.pool.length;
-    var mastered = state.pool.filter(function(w){ return getBox(w.c) >= 5; }).length;
-    var due = state.pool.filter(function(w){ return state.progress[w.c] && isDue(w.c); }).length;
+    var mastered = state.pool.filter(function(w){ return memoryCategory(w.c) === 3; }).length;
+    var due = reviewWilayaCount();
     document.getElementById("stat-session").textContent = state.sessionCorrect + "/" + state.sessionTotal;
     document.getElementById("stat-mastered").textContent = mastered;
     document.getElementById("stat-total").textContent = total;
     document.getElementById("stat-due").textContent = due;
   }
 
+  var freeQuestionTimer=null;
   function newQuestion(){
+    if(freeQuestionTimer!==null){window.clearTimeout(freeQuestionTimer);freeQuestionTimer=null;}
     state.locked = false;
     var feedback = document.getElementById("feedback");
     feedback.textContent = ""; feedback.className = "feedback";
@@ -96,14 +108,20 @@
                                  : T("Non — " + numIf(spec.answerText), "لا — " + numIf(spec.answerText));
     feedback.className = "feedback " + (correct ? "correct" : "wrong");
     refreshStats();
-    window.setTimeout(newQuestion, correct ? 650 : 1600);
+    refreshPracticeCards();renderPath();buildLedger();
+    freeQuestionTimer=window.setTimeout(newQuestion, correct ? 650 : 1600);
   }
 
   function submitTypein(){
     if(state.locked) return;
     var inp = document.getElementById("typein-input");
-    var val = parseInt(inp.value, 10);
-    if(isNaN(val)) return;
+    var digits=inp.value.trim().replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);})
+      .replace(/[۰-۹]/g,function(c){return String(c.charCodeAt(0)-1776);});
+    if(!/^\d{1,2}$/.test(digits)){
+      document.getElementById('feedback').innerHTML=T('Saisis un code avec un ou deux chiffres.','أدخل رمزا من رقم أو رقمين.');
+      return;
+    }
+    var val=Number(digits);
     state.locked = true;
     state.sessionTotal++;
     var correct = val === state.currentAnswer;
@@ -120,7 +138,8 @@
           "لا — " + (ARABIC[state.current.c] || state.current.n) + " = " + pad(state.current.c));
     feedback.className = "feedback " + (correct ? "correct" : "wrong");
     refreshStats();
-    window.setTimeout(newQuestion, correct ? 650 : 1600);
+    refreshPracticeCards();renderPath();buildLedger();
+    freeQuestionTimer=window.setTimeout(newQuestion, correct ? 650 : 1600);
   }
   document.getElementById("typein-submit").addEventListener("click", submitTypein);
   document.getElementById("typein-input").addEventListener("keydown", function(e){
@@ -186,17 +205,17 @@
   function renderForecast(){
     var pool = poolForTier(state.tier);
     var buckets = [
-      {label:"Jamais vues", ar:"لم تُرَ بعد", test:function(c){ return !state.progress[c]; } },
-      {label:"Fragiles",    ar:"هشّة",        test:function(c){ return state.progress[c] && getBox(c) <= 2; } },
-      {label:"Solides",     ar:"متينة",       test:function(c){ return state.progress[c] && getBox(c) >= 3 && getBox(c) < 5; } },
-      {label:"Ancrées",     ar:"راسخة",       test:function(c){ return state.progress[c] && getBox(c) >= 5; } }
+      {label:"Jamais vues", ar:"لم تُرَ بعد", test:function(c){ return memoryCategory(c)===0; } },
+      {label:"Fragiles",    ar:"هشّة",        test:function(c){ return memoryCategory(c)===1; } },
+      {label:"Solides",     ar:"متينة",       test:function(c){ return memoryCategory(c)===2; } },
+      {label:"Ancrées",     ar:"راسخة",       test:function(c){ return memoryCategory(c)===3; } }
     ];
     var total = pool.length || 1;
     var rows = buckets.map(function(b){
       var n = pool.filter(function(w){ return b.test(w.c); }).length;
       var pct = Math.round((n/total)*100);
       return "<div class='forecast-row'>" +
-               "<span style='min-width:132px;'>" + T(b.label, b.ar) + "</span>" +
+               "<span class='forecast-label'>" + T(b.label, b.ar) + "</span>" +
                "<span class='forecast-bar'><i style='width:" + pct + "%;'></i></span>" +
                "<span class='v'>" + n + "</span>" +
              "</div>";

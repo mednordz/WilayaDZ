@@ -10,4 +10,9 @@
 .pilot-summary{font-size:.9rem;line-height:1.35}
 .pilot-summary ol{list-style:none;padding:0}
 .pilot-summary li{display:flex;align-items:center;gap:8px}
-.pilot-step-label{flex:1;min-width:0}.pilot-summary li>bdi{white-space:nowrap;margin:0}
+.pilot-step-label{flex:1;min-width:0;overflow-wrap:anywhere}.pilot-summary li>bdi{flex:none;white-space:nowrap;margin:0}
+
+@media(max-width:420px){
+ :root[data-lang="bi"] .pilot-summary .bi{flex-direction:column;align-items:stretch;gap:5px;}
+ :root[data-lang="bi"] .pilot-summary .bi>.bs{display:none;}
+}

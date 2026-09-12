@@ -155,7 +155,7 @@ Le dernier APK livré est inclus tel quel : `android/wilayas-v14.apk`.
 
 ```bash
 npm install --no-save axe-core   # déjà présent dans node_modules si copié
-npx playwright install chromium   # si Chromium n'est pas déjà installé localement
+npx playwright install chromium webkit   # moteurs requis par les contrôles visuels
 node tests/audit_a11y.js
 node tests/test_rig.js
 ```
