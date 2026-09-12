@@ -153,6 +153,46 @@
       "</button>";
   }
 
+  /* ---------------- Changer son pseudo ----------------
+     Il appartient au compte : le changer ici le change partout. */
+  function openRenameSheet(){
+    var p = activeProfile();
+    if(!p) return;
+    openSheet(
+      "<h2 id='sheet-title'>" + T("Ton pseudo","اسمك المستعار") + "</h2>" +
+      "<p class='sub'>" + TS("C'est le nom affiché dans l'application. Il n'a pas à être ton vrai nom, et il te suit sur tous tes appareils.",
+                             "هو الاسم الظاهر في التطبيق. ليس مطلوبا أن يكون اسمك الحقيقي، وهو يتبعك على كل أجهزتك.") + "</p>" +
+      "<label class='sr-only' for='ren-name'>" + TL("Ton pseudo","اسمك المستعار") + "</label>" +
+      "<input class='gate-input' id='ren-name' maxlength='24' autocomplete='nickname' " +
+        "placeholder='Pseudo · الاسم المستعار' aria-label=\"" + TL("Ton pseudo","اسمك المستعار") + "\" />" +
+      "<p class='gate-err' id='ren-err' role='alert'></p>" +
+      "<button class='btn' id='ren-go'>" + T("Enregistrer","احفظ") + "</button>" +
+      "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Fermer","إغلاق") + "</button>"
+    );
+    var champ = document.getElementById("ren-name");
+    champ.value = p.name;
+    var btn = document.getElementById("ren-go");
+    function enregistrer(){
+      var n = champ.value.trim();
+      cloudErrInto("ren-err", "");
+      if(!n){ return cloudErrInto("ren-err", TL("Choisis un pseudo.","اختر اسما مستعارا.")); }
+      if(n === p.name){ return closeSheet(); }
+      cloudBusy(btn, true);
+      cloudRename(p, n).then(function(r){
+        cloudBusy(btn, false);
+        if(!r.ok) return cloudErrInto("ren-err", r.message);
+        closeSheet();
+        bootProfile();
+        toast(TL("Tu t'appelles maintenant " + esc(r.name) + ".",
+                 "اسمك الآن " + esc(r.name) + "."));
+      });
+    }
+    btn.addEventListener("click", enregistrer);
+    champ.addEventListener("keydown", function(e){ if(e.key === "Enter") enregistrer(); });
+    document.getElementById("sheet-close").addEventListener("click", closeSheet);
+    champ.focus();
+  }
+
   /* ---------------- Feuille principale ---------------- */
 
   function openCloudSheet(){

@@ -455,6 +455,24 @@ const cloudEmail = (page) => page.evaluate(() => {
     check('la langue choisie est appliquee',
           (await n.evaluate(() => document.documentElement.getAttribute('data-lang'))) === 'ar');
 
+    // Changer son pseudo depuis l'interface. La route serveur existait
+    // depuis le debut mais n'etait branchee NULLE PART — et la politique
+    // de confidentialite promettait pourtant qu'on pouvait le faire.
+    await n.locator('#profile-btn').click(); await n.waitForTimeout(500);
+    check('le profil montre le pseudo', await n.locator('#prof-name').isVisible());
+    await n.locator('#prof-name').click(); await n.waitForTimeout(500);
+    await n.fill('#ren-name', 'Sarita');
+    await n.locator('#ren-go').click();
+    await waitFor(async () => await n.evaluate(() => {
+      const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+      const p = (a.profiles || []).find(x => x.id === a.activeId);
+      return !!(p && p.name === 'Sarita');
+    }));
+    check('le pseudo est change', await n.evaluate(() => {
+      const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+      return (a.profiles || []).find(x => x.id === a.activeId).name;
+    }) === 'Sarita');
+
     // L'avatar doit suivre sur un autre appareil. On attend que la
     // poussee soit reellement partie : la version du compte avance.
     await waitFor(async () => await n.evaluate(() => {
@@ -477,6 +495,11 @@ const cloudEmail = (page) => page.evaluate(() => {
     });
     check('l avatar a suivi sur l autre appareil',
           av2 && av2.k === 'm' && av2.v === 'fennec', av2);
+    check('et le pseudo aussi — il appartient au compte, pas a l appareil',
+          (await n2.evaluate(() => {
+            const a = JSON.parse(localStorage.getItem('wilaya-account-v1') || '{}');
+            return (a.profiles || []).find(x => x.id === a.activeId).name;
+          })) === 'Sarita');
   }
 
   /* ------------- Mauvais mot de passe ------------- */

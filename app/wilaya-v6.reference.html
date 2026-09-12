@@ -7002,7 +7002,14 @@ var qrcode = function() {
       "<p class='sub' style='margin:18px 0 8px;'>" + TL("Langue de l'interface","لغة الواجهة") + "</p>" +
       langPickerHtml(p.lang || "bi") +
       cloudRowHtml(p) +
-      "<button class='profile-row' id='prof-avatar' style='margin-top:14px'>" +
+      "<button class='profile-row' id='prof-name' style='margin-top:14px'>" +
+        "<span class='cloud-row-icon'>" + USER_ICON + "</span>" +
+        "<span class='gate-profile-body'>" +
+          "<b>" + TL("Ton pseudo","اسمك المستعار") + "</b>" +
+          "<span>" + esc(p.name) + "</span>" +
+        "</span>" +
+      "</button>" +
+      "<button class='profile-row' id='prof-avatar'>" +
         avatarHtml(p, "gate-profile-av") +
         "<span class='gate-profile-body'>" +
           "<b>" + TL("Ta photo","صورتك") + "</b>" +
@@ -7049,6 +7056,7 @@ var qrcode = function() {
     });
     var cloudRow = document.getElementById("prof-cloud");
     if(cloudRow) cloudRow.addEventListener("click", function(){ openCloudSheet(); });
+    document.getElementById("prof-name").addEventListener("click", openRenameSheet);
     document.getElementById("prof-avatar").addEventListener("click", openAvatarSheet);
     document.getElementById("prof-pin").addEventListener("click", openPinSheet);
     document.getElementById("prof-new").addEventListener("click", function(){ closeSheet(); showGate("create"); });
@@ -7428,7 +7436,7 @@ var qrcode = function() {
     syncInFlight = true;
 
     flushActive(p);
-    var added = 0, improved = 0;
+    var added = 0, improved = 0, nomChange = false;
 
     function finish(result){
       syncInFlight = false;
@@ -7468,13 +7476,23 @@ var qrcode = function() {
       if(res.status === 401){ c.token = null; return finish({ok:false, error:"unauthorized"}); }
       if(res.status !== 200)  return finish({ok:false, error:(res.status === 0 ? "offline" : "pull")});
 
+      /* Le pseudo appartient au compte : c'est le serveur qui fait foi.
+         Quelqu'un qui le change sur son téléphone doit le voir changer
+         sur sa tablette, sans rien faire de plus. */
+      if(res.data && res.data.name && res.data.name !== p.name){
+        p.name = res.data.name;
+        if(p.cloud) p.cloud.name = res.data.name;
+        saveAccount();
+        nomChange = true;
+      }
       if(res.data && res.data.data){
         var r = mergeInto(p, res.data.data);
         added = r.added; improved = r.improved;
         saveAccount();
       }
       return pushWith(res.data.version, 1).then(function(out){
-        if(out.ok && out.changed && !opts.silent) reloadActive(p);
+        if(out.ok && (out.changed || nomChange) && !opts.silent) reloadActive(p);
+        else if(nomChange) renderAvatar();
         return finish(out);
       });
     });
@@ -7744,6 +7762,24 @@ var qrcode = function() {
     var token = c.token;
     detachCloud(p);
     return cloudCall("POST", "/auth/logout", null, token);
+  }
+
+  /* Le pseudo se change, et il se change DANS LE COMPTE : c'est lui qui
+     le porte, pas l'appareil. La route existait déjà côté serveur mais
+     n'était appelée nulle part — et la politique de confidentialité
+     promettait pourtant qu'on pouvait le changer. */
+  function cloudRename(p, name){
+    var c = cloudOf(p);
+    if(!c || !c.token) return Promise.resolve({ok:false, message:cloudErrorText("unauthorized")});
+    return cloudCall("POST", "/auth/name", {name:name}, c.token)
+      .then(function(res){
+        if(res.status !== 200) return {ok:false, message:cloudFailText(res)};
+        p.name = res.data.account.name;
+        c.name = p.name;
+        saveAccount();
+        renderAvatar();
+        return {ok:true, name:p.name};
+      });
   }
 
   function cloudChangePassword(p, current, next){
@@ -8296,6 +8332,46 @@ var qrcode = function() {
           "<span>" + sub + "</span>" +
         "</span>" +
       "</button>";
+  }
+
+  /* ---------------- Changer son pseudo ----------------
+     Il appartient au compte : le changer ici le change partout. */
+  function openRenameSheet(){
+    var p = activeProfile();
+    if(!p) return;
+    openSheet(
+      "<h2 id='sheet-title'>" + T("Ton pseudo","اسمك المستعار") + "</h2>" +
+      "<p class='sub'>" + TS("C'est le nom affiché dans l'application. Il n'a pas à être ton vrai nom, et il te suit sur tous tes appareils.",
+                             "هو الاسم الظاهر في التطبيق. ليس مطلوبا أن يكون اسمك الحقيقي، وهو يتبعك على كل أجهزتك.") + "</p>" +
+      "<label class='sr-only' for='ren-name'>" + TL("Ton pseudo","اسمك المستعار") + "</label>" +
+      "<input class='gate-input' id='ren-name' maxlength='24' autocomplete='nickname' " +
+        "placeholder='Pseudo · الاسم المستعار' aria-label=\"" + TL("Ton pseudo","اسمك المستعار") + "\" />" +
+      "<p class='gate-err' id='ren-err' role='alert'></p>" +
+      "<button class='btn' id='ren-go'>" + T("Enregistrer","احفظ") + "</button>" +
+      "<button class='btn ghost' id='sheet-close' style='margin-top:9px;'>" + T("Fermer","إغلاق") + "</button>"
+    );
+    var champ = document.getElementById("ren-name");
+    champ.value = p.name;
+    var btn = document.getElementById("ren-go");
+    function enregistrer(){
+      var n = champ.value.trim();
+      cloudErrInto("ren-err", "");
+      if(!n){ return cloudErrInto("ren-err", TL("Choisis un pseudo.","اختر اسما مستعارا.")); }
+      if(n === p.name){ return closeSheet(); }
+      cloudBusy(btn, true);
+      cloudRename(p, n).then(function(r){
+        cloudBusy(btn, false);
+        if(!r.ok) return cloudErrInto("ren-err", r.message);
+        closeSheet();
+        bootProfile();
+        toast(TL("Tu t'appelles maintenant " + esc(r.name) + ".",
+                 "اسمك الآن " + esc(r.name) + "."));
+      });
+    }
+    btn.addEventListener("click", enregistrer);
+    champ.addEventListener("keydown", function(e){ if(e.key === "Enter") enregistrer(); });
+    document.getElementById("sheet-close").addEventListener("click", closeSheet);
+    champ.focus();
   }
 
   /* ---------------- Feuille principale ---------------- */

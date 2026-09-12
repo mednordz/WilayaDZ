@@ -398,6 +398,28 @@ def main():
         check("les comptes sont toujours la",
               api.call("GET", "/me", token=token)[0] == 200)
 
+        print("\nChangement de pseudo")
+        check("401 sans jeton",
+              api.call("POST", "/auth/name", {"name": "Zoubir"})[0] == 401)
+        check("400 sur un pseudo vide",
+              api.call("POST", "/auth/name", {"name": "   "}, token=token)[0] == 400)
+        check("400 sur un pseudo trop long",
+              api.call("POST", "/auth/name", {"name": "z" * 25}, token=token)[0] == 400)
+
+        code, res = api.call("POST", "/auth/name", {"name": "  Zoubir  "}, token=token)
+        check("200 au changement", code == 200, (code, res))
+        check("le pseudo est nettoye", res["account"]["name"] == "Zoubir", res)
+        check("/me le confirme",
+              api.call("GET", "/me", token=token)[1]["account"]["name"] == "Zoubir")
+
+        # Le point qui compte : un AUTRE appareil doit le voir, sans quoi
+        # le pseudo resterait celui de l'appareil et non celui du compte.
+        code, res = api.call("GET", "/sync", token=second)
+        check("un autre appareil voit le nouveau pseudo",
+              res.get("name") == "Zoubir", res.get("name"))
+
+        api.call("POST", "/auth/name", {"name": "Amine"}, token=token)
+
         print("\nChangement de mot de passe")
         code, res = api.call("POST", "/auth/password",
                              {"current": "faux", "next": "nouveaumotdepasse"},

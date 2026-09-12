@@ -1121,9 +1121,13 @@ class Handler(BaseHTTPRequestHandler):
         row = self._account()
         if not row:
             return self._fail(401, "unauthorized")
+        # Le pseudo voyage avec la synchronisation : il appartient au
+        # COMPTE, pas a l'appareil. Sans cela, le changer ici laisserait
+        # l'ancien nom affiche sur tous les autres telephones.
         self._send(200, {
             "version": row["version"],
             "updated": row["updated"],
+            "name": row["name"],
             "data": json.loads(row["data"]) if row["data"] else None,
         })
 

@@ -616,7 +616,14 @@
       "<p class='sub' style='margin:18px 0 8px;'>" + TL("Langue de l'interface","لغة الواجهة") + "</p>" +
       langPickerHtml(p.lang || "bi") +
       cloudRowHtml(p) +
-      "<button class='profile-row' id='prof-avatar' style='margin-top:14px'>" +
+      "<button class='profile-row' id='prof-name' style='margin-top:14px'>" +
+        "<span class='cloud-row-icon'>" + USER_ICON + "</span>" +
+        "<span class='gate-profile-body'>" +
+          "<b>" + TL("Ton pseudo","اسمك المستعار") + "</b>" +
+          "<span>" + esc(p.name) + "</span>" +
+        "</span>" +
+      "</button>" +
+      "<button class='profile-row' id='prof-avatar'>" +
         avatarHtml(p, "gate-profile-av") +
         "<span class='gate-profile-body'>" +
           "<b>" + TL("Ta photo","صورتك") + "</b>" +
@@ -663,6 +670,7 @@
     });
     var cloudRow = document.getElementById("prof-cloud");
     if(cloudRow) cloudRow.addEventListener("click", function(){ openCloudSheet(); });
+    document.getElementById("prof-name").addEventListener("click", openRenameSheet);
     document.getElementById("prof-avatar").addEventListener("click", openAvatarSheet);
     document.getElementById("prof-pin").addEventListener("click", openPinSheet);
     document.getElementById("prof-new").addEventListener("click", function(){ closeSheet(); showGate("create"); });

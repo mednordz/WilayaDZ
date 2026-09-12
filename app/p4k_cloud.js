@@ -136,7 +136,7 @@
     syncInFlight = true;
 
     flushActive(p);
-    var added = 0, improved = 0;
+    var added = 0, improved = 0, nomChange = false;
 
     function finish(result){
       syncInFlight = false;
@@ -176,13 +176,23 @@
       if(res.status === 401){ c.token = null; return finish({ok:false, error:"unauthorized"}); }
       if(res.status !== 200)  return finish({ok:false, error:(res.status === 0 ? "offline" : "pull")});
 
+      /* Le pseudo appartient au compte : c'est le serveur qui fait foi.
+         Quelqu'un qui le change sur son téléphone doit le voir changer
+         sur sa tablette, sans rien faire de plus. */
+      if(res.data && res.data.name && res.data.name !== p.name){
+        p.name = res.data.name;
+        if(p.cloud) p.cloud.name = res.data.name;
+        saveAccount();
+        nomChange = true;
+      }
       if(res.data && res.data.data){
         var r = mergeInto(p, res.data.data);
         added = r.added; improved = r.improved;
         saveAccount();
       }
       return pushWith(res.data.version, 1).then(function(out){
-        if(out.ok && out.changed && !opts.silent) reloadActive(p);
+        if(out.ok && (out.changed || nomChange) && !opts.silent) reloadActive(p);
+        else if(nomChange) renderAvatar();
         return finish(out);
       });
     });
@@ -452,6 +462,24 @@
     var token = c.token;
     detachCloud(p);
     return cloudCall("POST", "/auth/logout", null, token);
+  }
+
+  /* Le pseudo se change, et il se change DANS LE COMPTE : c'est lui qui
+     le porte, pas l'appareil. La route existait déjà côté serveur mais
+     n'était appelée nulle part — et la politique de confidentialité
+     promettait pourtant qu'on pouvait le changer. */
+  function cloudRename(p, name){
+    var c = cloudOf(p);
+    if(!c || !c.token) return Promise.resolve({ok:false, message:cloudErrorText("unauthorized")});
+    return cloudCall("POST", "/auth/name", {name:name}, c.token)
+      .then(function(res){
+        if(res.status !== 200) return {ok:false, message:cloudFailText(res)};
+        p.name = res.data.account.name;
+        c.name = p.name;
+        saveAccount();
+        renderAvatar();
+        return {ok:true, name:p.name};
+      });
   }
 
   function cloudChangePassword(p, current, next){
