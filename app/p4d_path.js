@@ -328,7 +328,7 @@
     var action=due?T("Réviser cette unité","راجع هذه الوحدة"):!n?T("Commencer la leçon","ابدأ الدرس"):n<5?T("Continuer l’entraînement","واصل التدريب"):T("S’entraîner à nouveau","تدرّب مجددا");
     if(u.id === "u1")action=T("Ouvrir mon atelier","افتح ورشتي");
     openSheet("<button class='sheet-dismiss' id='sheet-close' aria-label='"+TL("Fermer","إغلاق")+"'>×</button>"+
-      "<h2 id='sheet-title'>"+T("Unité "+(i+1),"الوحدة "+(i+1))+" · "+num(u.label)+"</h2>"+
+      "<h2 id='sheet-title'>"+T("Unité "+(i+1)+" · "+num(u.label),"الوحدة "+(i+1)+" · "+num(u.label))+"</h2>"+
       "<p class='sub'>"+T(u.title,UNIT_AR[u.id]||"")+"</p>"+
       (u.id === "u1" ? "<button class='btn' id='sheet-start'>"+action+"</button>"+pilotSummary() : "")+
       (unlocked?"<p class='earned-level'>"+T((u.id === "u1" ? "Leçons déjà accomplies : " : "Niveau acquis ")+num(n+"/5"),(u.id === "u1" ? "الدروس المنجزة سابقا : " : "المستوى المكتسب ")+num(n+"/5"))+"</p>"+

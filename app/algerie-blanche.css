@@ -1,0 +1,61 @@
+/* Shared materials. Artwork is embedded once and reused; controls remain native.
+   Header and settings keep their approved composition and local palette. */
+:root{
+ --blanche-patio:url('BLANCHE_PATIO');
+ --blanche-frise:url('BLANCHE_FRISE');
+ --relief-doux:inset 0 1px 0 #ffffff40,0 4px 14px #163f4310;
+}
+body{background:var(--bg);}
+.view:not(#view-path):not(#view-settings){background:var(--bg);}
+.page-intro{border-radius:36px 36px 18px 18px;padding:24px 22px;border-color:var(--border-strong);background:var(--surface);box-shadow:inset 0 0 0 5px var(--bg),0 5px 18px #173f430a;}
+.page-intro::before{background:var(--blanche-patio) center 35%/cover;opacity:.12;mask-image:none;}
+.section-title,.page-intro h2,.forecast h3,.profile-head h2,.sheet h2,.gate-brand{color:var(--ink);}
+.action-card{background:var(--surface);border-radius:26px 26px 16px 16px;box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--line),0 4px 12px #173f4310;}
+.action-card .icon-chip{background:var(--teal-soft);color:var(--teal);border-color:var(--teal);border-radius:50% 50% 32% 32%;}
+.action-card.gold .icon-chip{background:var(--gold-soft);color:var(--gold);border-color:var(--gold);}
+.forecast,.quiz-card,.map-card,.hook,.sheet,.confirm-box,.sync-panel{background-image:none;box-shadow:var(--relief-doux);}
+.forecast,.quiz-card,.map-card{border-top:3px double var(--border-strong);}
+.btn{background:var(--accent);box-shadow:inset 0 0 0 2px #ffffff20,0 3px 0 var(--accent-deep),0 5px 12px #173f4315;}
+.btn.ghost,.btn.secondary{background:var(--surface);}
+.choice,.lesson-choice,.chain-chip{background:var(--surface);}
+.gate-input,.gate-pin,.sync-code,.lesson-type-row input,.search-input,input[type="text"],input[type="password"],input[type="email"]{color:var(--ink);}
+.lesson-overlay,.gate{background:var(--bg);}
+.lesson-overlay::before,.gate::before{content:'';position:fixed;inset:0;pointer-events:none;background:var(--blanche-patio) center/cover;opacity:.09;}
+.lesson-head,.lesson-footer{background:var(--surface);border-color:var(--border-strong);}
+.lesson-body,.gate-box{position:relative;}
+.gate-box{border-radius:48px 48px 22px 22px;box-shadow:inset 0 0 0 5px var(--bg),inset 0 0 0 6px var(--line),0 12px 40px #173f4320;}
+.sheet,.confirm-box{border-top:3px double var(--border-strong);}
+.pilot-tile{border-radius:28px 28px 16px 16px;box-shadow:inset 0 0 0 4px var(--surface),inset 0 0 0 5px var(--line),0 5px 14px #173f4310;}
+.pilot-tile>bdi{display:grid;place-items:center;min-width:64px;min-height:64px;background:var(--teal-soft);border:1px solid var(--teal);border-radius:50% 50% 35% 35%;}
+.pilot-summary{background:var(--surface);border-color:var(--border-strong);}
+.result-stat,.sheet-stat{background:var(--surface-2);}
+/* A shared, fixed ceramic navigation; no transformed ancestor. */
+.app-shell .tabbar{background:var(--surface);border-top:1px solid var(--border-strong);box-shadow:0 -3px 14px #173f4312;}
+.app-shell .tabbar::before{height:8px;opacity:.65;background:var(--blanche-frise) center/auto 30px repeat-x;}
+.app-shell .tab-btn{color:var(--ink-dim);}
+.app-shell .tab-btn.active{color:var(--accent);background:transparent;}
+.app-shell .tab-btn.active .tab-arch path{fill:var(--teal-soft);stroke:var(--accent);}
+/* The approved ivory learning courtyard stays light in both ambient themes. */
+#view-path{--bg:#f5efe3;--surface:#fffcf5;--surface-2:#e8ede5;--ink:#173f43;--ink-dim:#49615d;--ink-faint:#52655e;--border-strong:#b7a782;--accent:#17666b;--accent-deep:#10474c;--accent-ink:#fffcf5;--teal:#1f6b68;--teal-soft:#dcebe9;--gold:#855a14;--line:#dcd7c5;}
+#view-path .chemin{margin-inline:-5.55%;padding-inline:5%;background:var(--blanche-patio) center top/100% auto repeat-y;border:0;border-radius:28px;}
+#path-track{padding-block:26px 36px;}
+#path-track .etape{min-height:222px;}
+#path-track .etape-corps{padding:10px 8px;border-radius:18px;background:#fffcf5ed;}
+#path-track .step-link path{stroke:#b6a680;stroke-width:3;stroke-dasharray:2 8;stroke-linecap:round;}
+#path-track .noeud{filter:drop-shadow(0 4px 3px #69532920);}
+#path-track .step-recommendation{background:#fffcf5;border-color:#9c804d;box-shadow:0 2px 5px #69532920;}
+#sheet-box.parcours-sheet{background-image:linear-gradient(#fffaf0ef,#fffaf0ef),var(--blanche-patio);background-size:cover;background-position:center;}
+@media(max-width:350px){.pilot-tile{padding:16px;gap:12px}.pilot-tile>bdi{min-width:52px;min-height:52px}#path-track .etape{min-height:210px;}}
+@media(forced-colors:active){.lesson-overlay::before,.gate::before,.page-intro::before{display:none}#view-path .chemin{background:Canvas}#path-track .etape-corps{background:Canvas;color:CanvasText}}
+/* Space the architectural vignettes so a row never competes with a facade. */
+#view-path .chemin{background-size:100% 900px;}
+#path-track .node-locked::before{content:'';position:absolute;inset:16%;border-radius:38%;background:#fffcf5;z-index:-1;}
+.lesson-head{position:relative;padding-bottom:18px;}
+.lesson-head::after{content:'';position:absolute;inset-inline:0;bottom:0;height:7px;background:var(--blanche-frise) center/auto 34px repeat-x;pointer-events:none;}
+.pilot-summary{border-top:3px double var(--border-strong);}
+.profile-head,.gate-brand{border-bottom:3px double var(--border-strong);}
+/* Bilingual sheet titles read as two complete lines, with bidi-safe codes. */
+.parcours-sheet h2 .bi{width:100%;flex-direction:column;align-items:stretch;gap:6px;}
+.parcours-sheet h2 .bi>.bs{display:none;}
+.parcours-sheet h2 .bi>.bf,.parcours-sheet h2 .bi>.ba{flex:auto;text-align:start;}
+.parcours-sheet .sheet-dismiss{appearance:none;display:grid;place-items:center;padding:0;box-shadow:inset 0 0 0 3px #fffdf5,0 2px 5px #69532920;}
