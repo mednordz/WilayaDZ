@@ -2,13 +2,14 @@ name: Vérifier WilayaDZ
 on:
   workflow_call:
   pull_request:
-  push:
-    branches: ['codex/**']
 permissions:
   contents: read
 jobs:
   checks:
     runs-on: ubuntu-latest
+    concurrency:
+      group: checks-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

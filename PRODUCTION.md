@@ -61,7 +61,9 @@ après perte de cette machine : la copie de récupération est indispensable.
 
 ## Publication
 
-1. Branche `codex/...` et contrôles `npm test` sur données jetables.
+1. Branche `codex/...`, contrôles locaux `npm test`, puis proposition de mise à jour
+   (PR) pour les contrôles GitHub. Une seule suite par PR, sans doublon au push ;
+   une nouvelle révision annule les anciens contrôles devenus inutiles.
 2. Relecture du diff ; pour l'interface, captures mobile/français/arabe.
 3. Arrivée sur `main` : tests GitHub, puis installation des scripts validés.
 4. Construction des images étiquetées avec le SHA Git.
