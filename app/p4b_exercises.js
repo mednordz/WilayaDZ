@@ -47,7 +47,7 @@
       kind:"mcq", code:code,
       label:"Quelle wilaya porte ce code ?", labelAr:"أي ولاية تحمل هذا الرمز؟",
       promptHtml:"<span class='code'>" + pad(code) + "</span>",
-      options:shuffle(opts), answerText:wnameL(w), fastLimit:FAST_MCQ, note:noteFor(code)
+      options:shuffle(opts), answerText:wnameL(w), fastLimit:FAST_MCQ, note:noteFor(code), noteAr:noteForAr(code)
     };
   }
   function exName2Code(code, nOpts, pool){
@@ -58,7 +58,7 @@
       kind:"mcq", code:code,
       label:"Quel est le code de…", labelAr:"ما رمز…",
       promptHtml:wnameBig(w), options:shuffle(opts), answerText:pad(code),
-      fastLimit:FAST_MCQ, note:noteFor(code)
+      fastLimit:FAST_MCQ, note:noteFor(code), noteAr:noteForAr(code)
     };
   }
   function exType(code){
@@ -66,7 +66,7 @@
     return {
       kind:"type", code:code,
       label:"Écris le code de…", labelAr:"اكتب رمز…",
-      promptHtml:wnameBig(w), answerText:pad(code), fastLimit:FAST_TYPE, note:noteFor(code)
+      promptHtml:wnameBig(w), answerText:pad(code), fastLimit:FAST_TYPE, note:noteFor(code), noteAr:noteForAr(code)
     };
   }
   function exBlock(code){
@@ -85,6 +85,7 @@
     opts.push(blockOpt(b, true));
     return {
       kind:"mcq", code:code,
+      noRecord:true,
       label:"Dans quel bloc alphabétique tombe…", labelAr:"في أي كتلة أبجدية تقع…",
       promptHtml:wnameBig(w), options:shuffle(opts), answerText:blockLabel(b),
       fastLimit:FAST_MCQ,
@@ -106,7 +107,7 @@
       .map(function(x){ return {text:num(pad(x.c)) + " " + x.n, ar:num(pad(x.c)) + " " + (ARABIC[x.c]||x.n), code:x.c, correct:false, keep:true}; });
     opts.push({text:num(pad(ans.c)) + " " + ans.n, ar:num(pad(ans.c)) + " " + (ARABIC[ans.c]||ans.n), code:ans.c, correct:true, keep:true});
     return {
-      kind:"mcq", code:ans.c,
+      kind:"mcq", code:ans.c, noRecord:true,
       label: dir==="next" ? "Quel code vient juste après…" : "Quel code vient juste avant…",
       labelAr: dir==="next" ? "ما الرمز الذي يأتي مباشرة بعد…" : "ما الرمز الذي يأتي مباشرة قبل…",
       promptHtml: wnameBig(w) + "<span class='sub'>" + pad(code) + "</span>",
@@ -133,6 +134,7 @@
     }
     return {
       kind:"mcq", code:b.c,
+      noRecord:true,
       label:"Combien de codes séparent…", labelAr:"كم رمزا يفصل…",
       promptHtml:"<span class='code'>" + pad(a.c) + "</span>" + wname(a) +
                  "<span class='sub'>↓</span>" + wname(b),
@@ -149,6 +151,7 @@
     var run = sorted.slice(start, start+len);
     return {
       kind:"chain", code:run[0].c,
+      noRecord:true,
       label:"Remets ces wilayas dans l'ordre des codes",
       labelAr:"رتّب هذه الولايات حسب الرموز",
       promptHtml:T("Du plus petit au plus grand", "من الأصغر إلى الأكبر"),
@@ -178,6 +181,12 @@
       options:shuffle([optCode(a, true), optCode(b, false)]),
       answerText:pad(a.c), fastLimit:FAST_MCQ, confuse:true, note:note
     };
+  }
+
+  function noteForAr(code){
+    var b = blockOf(code);
+    return b ? "الكتلة " + b.ar + " : " + blockLabel(b) + "."
+      : (ARABIC[code] || "") + " : " + pad(code) + ".";
   }
 
   function noteFor(code){
