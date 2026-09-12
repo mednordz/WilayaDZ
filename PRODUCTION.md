@@ -215,3 +215,19 @@ la consultation de la fiche.
 Une ancienne image reste compatible avec la colonne supplémentaire, mais ne
 met pas ce nouvel indicateur à jour ; après un éventuel retour de version,
 une connexion par mot de passe sur la nouvelle version reconfirme son état.
+
+## Connexion par pseudo
+
+La migration **6** ajoute et indexe `accounts.login_name`, calculé depuis les
+pseudos existants (Unicode NFKC, casse et espaces normalisés), sans modifier
+comptes, mots de passe ou progression. Elle est transactionnelle. Seul un
+pseudo correspondant à exactement un compte confirmé permet la connexion,
+toujours avec son mot de passe. Un doublon ou un nom contenant @ demande
+l'adresse e-mail. Aucun endpoint public ne révèle la disponibilité des noms.
+La fiche privée indique la disponibilité au moment de sa consultation.
+
+Les inscriptions et changements de pseudo actualisent cet index. La récupération
+de mot de passe reste par e-mail. Une ancienne image conserve la colonne mais
+ne la met pas à jour : après un retour temporaire à cette image, utiliser
+l'e-mail et vérifier les pseudos modifiés avant de réactiver cette fonction.
+Ne pas restaurer une ancienne base pour annuler ce changement.

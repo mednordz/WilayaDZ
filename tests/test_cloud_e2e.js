@@ -293,7 +293,12 @@ const cloudEmail = (page) => page.evaluate(() => {
   check('B propose « J ai deja un compte »', await b.locator('#gate-login').isVisible());
 
   await b.locator('#gate-login').click(); await b.waitForTimeout(400);
-  await b.fill('#glog-email', EMAIL);
+  check('identifiant accepte un pseudo', await b.locator('#glog-email').getAttribute('type') === 'text');
+  await b.fill('#glog-email', 'aMiNe');
+  await b.locator('#glog-forgot').click();
+  check('récupération demande le mail et non le pseudo', await b.locator('#gfor-email').inputValue() === '');
+  await b.locator('#gate-back').click();
+  await b.fill('#glog-email', 'aMiNe');
   await b.fill('#glog-pw', PASSWORD);
   const gateGone = () => b.locator('#gate-box').isVisible().catch(() => false).then(v => !v);
   await b.locator('#glog-go').click();
@@ -484,7 +489,7 @@ const cloudEmail = (page) => page.evaluate(() => {
     const n2 = await ctxN2.newPage();
     await n2.goto(BASE); await n2.waitForTimeout(700);
     await n2.locator('#gate-login').click(); await n2.waitForTimeout(400);
-    await n2.fill('#glog-email', MAIL2);
+    await n2.fill('#glog-email', 'Sarita');
     await n2.fill('#glog-pw', PASSWORD);
     await n2.locator('#glog-go').click();
     await waitFor(async () => await n2.locator('#profile-btn').isVisible());

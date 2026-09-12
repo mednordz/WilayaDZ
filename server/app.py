@@ -21,6 +21,7 @@ C'est ce qui rend `http.server` acceptable ici — il ne voit jamais
 l'internet hostile en direct.
 """
 
+import unicodedata
 import hashlib
 import hmac
 import json
@@ -121,7 +122,7 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_TOKENINFO = "https://oauth2.googleapis.com/tokeninfo?id_token="
 GOOGLE_TIMEOUT = 10
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 # --------------------------------------------------------------------
@@ -249,6 +250,15 @@ class Store:
                 PRAGMA user_version=5;
                 COMMIT;
             """)
+
+        if version < 6:
+            with self._db:
+                self._db.execute("BEGIN IMMEDIATE")
+                self._db.execute("ALTER TABLE accounts ADD COLUMN login_name TEXT")
+                for row in self._db.execute("SELECT id,name FROM accounts").fetchall():
+                    self._db.execute("UPDATE accounts SET login_name=? WHERE id=?", (login_name_key(row["name"]), row["id"]))
+                self._db.execute("CREATE INDEX accounts_login_name ON accounts(login_name,verified)")
+                self._db.execute("PRAGMA user_version=6")
 
     def query(self, sql, args=()):
         with self._lock:
@@ -482,6 +492,14 @@ def clean_name(value):
     if not name or len(name) > MAX_NAME:
         return None
     return name
+
+
+def login_name_key(value):
+    value = str(value or "")
+    if len(value) > 128:
+        return None
+    key = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value).casefold()).strip()
+    return key if key and "@" not in key else None
 
 
 def clean_payload(value):
@@ -747,7 +765,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _public(self, row):
         identity = store.one("SELECT email FROM google_identities WHERE account_id = ?", (row["id"],))
+        matches = store.query("SELECT id FROM accounts WHERE login_name=? AND verified=1 LIMIT 2", (row["login_name"],)) if row["login_name"] else []
         return {"email": row["email"], "name": row["name"],
+                "pseudo_login_available": bool(row["verified"] and len(matches) == 1),
                 "created": row["created"], "version": row["version"],
                 "updated": row["updated"], "verified": bool(row["verified"]),
                 "google_email": identity["email"] if identity else None,
@@ -881,8 +901,8 @@ class Handler(BaseHTTPRequestHandler):
                     if previous and previous["subject"] != subject:
                         return self._fail(409, "google_conflict")
                 else:
-                    cur = db.execute("INSERT INTO accounts (email,name,pw_salt,pw_hash,created,verified,password_configured) VALUES (?,?,?,?,?,1,0)",
-                                     (email, name, secrets.token_bytes(16), secrets.token_bytes(32), int(time.time())))
+                    cur = db.execute("INSERT INTO accounts (email,name,pw_salt,pw_hash,created,verified,password_configured,login_name) VALUES (?,?,?,?,?,1,0,?)",
+                                     (email, name, secrets.token_bytes(16), secrets.token_bytes(32), int(time.time()), login_name_key(name)))
                     row = db.execute("SELECT * FROM accounts WHERE id = ?", (cur.lastrowid,)).fetchone()
                 db.execute("INSERT INTO google_identities (subject,account_id,email) VALUES (?,?,?) ON CONFLICT(subject) DO UPDATE SET email=excluded.email",
                            (subject, row["id"], email))
@@ -998,17 +1018,17 @@ class Handler(BaseHTTPRequestHandler):
 
         if existant:
             store.write(
-                "UPDATE accounts SET name = ?, pw_salt = ?, pw_hash = ?, created = ?, password_configured = 1"
+                "UPDATE accounts SET name = ?, pw_salt = ?, pw_hash = ?, created = ?, password_configured = 1, login_name = ?"
                 " WHERE id = ?",
-                (name, salt, hash_password(password, salt), now, existant["id"]))
+                (name, salt, hash_password(password, salt), now, login_name_key(name), existant["id"]))
             account_id = existant["id"]
             store.write("DELETE FROM confirms WHERE account_id = ?", (account_id,))
         else:
             try:
                 cur = store.write(
-                    "INSERT INTO accounts (email, name, pw_salt, pw_hash, created, password_configured)"
-                    " VALUES (?,?,?,?,?,1)",
-                    (email, name, salt, hash_password(password, salt), now))
+                    "INSERT INTO accounts (email, name, pw_salt, pw_hash, created, password_configured, login_name)"
+                    " VALUES (?,?,?,?,?,1,?)",
+                    (email, name, salt, hash_password(password, salt), now, login_name_key(name)))
                 account_id = cur.lastrowid
             except sqlite3.IntegrityError:
                 return self._fail(409, "email_taken")
@@ -1036,10 +1056,17 @@ class Handler(BaseHTTPRequestHandler):
         if limiter.over("log-bad:" + client, 10, 900):
             return self._fail(429, "too_many")
 
-        email = clean_email(body.get("email"))
+        identifier = body.get("identifier", body.get("email"))
+        email = clean_email(identifier)
         password = str(body.get("password") or "")
-        row = store.one("SELECT * FROM accounts WHERE email = ?",
-                        (email,)) if email else None
+        if email:
+            row = store.one("SELECT * FROM accounts WHERE email = ?", (email,))
+        else:
+            # Never try passwords across accounts with a shared display name.
+            # Only confirmed accounts participate; pending signups cannot block a name.
+            candidates = store.query("SELECT * FROM accounts WHERE login_name=? AND verified=1 LIMIT 2",
+                                     (login_name_key(identifier),))
+            row = candidates[0] if len(candidates) == 1 else None
 
         # Meme reponse, meme cout, que l'adresse existe ou non : sinon
         # cette porte devient un moyen de savoir qui a un compte ici.
@@ -1090,7 +1117,7 @@ class Handler(BaseHTTPRequestHandler):
         name = clean_name(body.get("name"))
         if not name:
             return self._fail(400, "bad_name")
-        store.write("UPDATE accounts SET name = ? WHERE id = ?", (name, row["id"]))
+        store.write("UPDATE accounts SET name = ?, login_name = ? WHERE id = ?", (name, login_name_key(name), row["id"]))
         acc = store.one("SELECT * FROM accounts WHERE id = ?", (row["id"],))
         self._send(200, {"account": self._public(acc)})
 

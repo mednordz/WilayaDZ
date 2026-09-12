@@ -7,7 +7,7 @@ const {signedInProfile}=require('./seed_profile');
  for(const [lang,width,theme] of [['fr',390,'light'],['ar',360,'dark'],['bi',320,'dark']]){
   const page=await browser.newPage({viewport:{width,height:900},reducedMotion:'reduce',colorScheme:theme});
   const p=signedInProfile({lang,data:{keyDone:true,xp:900,photoNon:true}});
-  let state={email:p.cloud.email,verified:true,password_configured:true,google_email:'google-demo@example.com'},response=200,mails=0;
+  let state={name:'Fictif',pseudo_login_available:true,email:p.cloud.email,verified:true,password_configured:true,google_email:'google-demo@example.com'},response=200,mails=0;
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());
    if(u.hostname!=='wilaya.test')return route.abort();
@@ -20,7 +20,7 @@ const {signedInProfile}=require('./seed_profile');
   await page.addInitScript(p=>localStorage.setItem('wilaya-account-v1',JSON.stringify({profiles:[p],activeId:p.id})),p);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('https://wilaya.test/');
   async function open(){await page.locator('#settings-btn').click();await page.locator('[data-settings="account"]').click();await page.locator('[data-settings="methods"]').click();await page.locator('#connection-methods[aria-busy="false"]').waitFor();}
-  await open();assert.equal(await page.locator('.connection-card').count(),3);
+  await open();assert.equal(await page.locator('.connection-card').count(),4);
   assert.equal(await page.locator('[data-connection-action="google"]').count(),0);
   assert(await page.locator('[data-connection-action="password"]').isVisible());
   assert((await page.locator('#connection-methods').innerText()).includes('google-demo@example.com'));
@@ -31,7 +31,7 @@ const {signedInProfile}=require('./seed_profile');
    await page.screenshot({path:out+'/connexion-'+name+'-'+lang+'.png',fullPage:false});
   }
   await check('associe');
-  state={...state,password_configured:null,google_email:null};await open();
+  state={...state,password_configured:null,pseudo_login_available:false,google_email:null};await open();
   assert(await page.locator('[data-connection-action="google"]').isVisible());
   assert.equal(await page.locator('[data-connection-action="password"]').count(),0);await check('ancien');
   state={...state,password_configured:false,google_email:'google-demo@example.com'};await open();
