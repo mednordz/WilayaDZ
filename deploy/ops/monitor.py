@@ -42,7 +42,10 @@ def check():
     previous = {}
     path = STATE / 'health-status.json'
     if path.exists():
-        previous = json.loads(path.read_text())
+        try:
+            previous = json.loads(path.read_text())
+        except (OSError, ValueError):
+            pass
     tmp = path.with_suffix('.partial')
     tmp.write_text(json.dumps(report) + '\n')
     tmp.replace(path)

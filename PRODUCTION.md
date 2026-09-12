@@ -136,6 +136,9 @@ chiffrement/restauration, NAS absent, clé incorrecte, retour après échec,
 limitation des calculs et saturation HTTP/récupération. GPG est testé sur Linux ;
 son absence sur le Mac est signalée comme test sauté.
 Les images sont en outre éprouvées dans Docker avant la bascule réelle.
+`python3 tests/test_deploy_rollback.py <SHA>` simule une mauvaise version dans
+un projet Docker jetable, vérifie le retour aux deux anciennes images et
+confirme que les conteneurs de production n’ont pas changé.
 
 Pour vérifier les images sans publication ni sauvegarde réelle :
 `python3 deploy/release.py --check-only <SHA-complet>` sur bigpc.
