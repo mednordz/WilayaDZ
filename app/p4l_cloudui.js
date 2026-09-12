@@ -95,10 +95,11 @@
           "<input class='gate-input' id='" + prefix + "-name' maxlength='24' autocomplete='nickname' " +
           "placeholder='Pseudo · الاسم المستعار' aria-label=\"" + TL("Ton pseudo","اسمك المستعار") + "\" />"
         : "") +
-      "<label class='sr-only' for='" + prefix + "-email'>" + TL("Adresse e-mail","البريد الإلكتروني") + "</label>" +
-      "<input class='gate-input' id='" + prefix + "-email' type='email' inputmode='email' " +
-        "autocomplete='email' autocapitalize='off' spellcheck='false' " +
-        "placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
+      "<label class='sr-only' for='" + prefix + "-email'>" + TL(opts.login ? "E-mail ou pseudo" : "Adresse e-mail",opts.login ? "البريد الإلكتروني أو الاسم المستعار" : "البريد الإلكتروني") + "</label>" +
+      "<input class='gate-input' id='" + prefix + "-email' type='" + (opts.login ? "text" : "email") + "' inputmode='" + (opts.login ? "text" : "email") + "' " +
+        "autocomplete='" + (opts.login ? "username" : "email") + "' autocapitalize='off' spellcheck='false' maxlength='254' " +
+        "placeholder='" + TL(opts.login ? "E-mail ou pseudo" : "E-mail",opts.login ? "البريد أو الاسم المستعار" : "البريد") + "' aria-label=\"" + TL(opts.login ? "E-mail ou pseudo" : "Adresse e-mail",opts.login ? "البريد الإلكتروني أو الاسم المستعار" : "البريد الإلكتروني") + "\" />" +
+      (opts.login ? "<p class='gate-note'>" + TS("Ton pseudo peut remplacer ton e-mail. Ton mot de passe reste nécessaire. Si plusieurs comptes portent ce pseudo, utilise ton e-mail.","يمكنك استخدام اسمك المستعار بدل البريد. تبقى كلمة السر مطلوبة. إذا تشاركت حسابات في الاسم نفسه، استخدم البريد.") + "</p>" : "") +
       passwordFieldHtml(prefix + "-pw", "Mot de passe · كلمة السر",
         opts.newPassword ? "new-password" : "current-password",
         TL("Mot de passe","كلمة السر")) +
@@ -335,7 +336,7 @@
         "<p class='sub'>" + TS(
           "La progression du compte sera FUSIONNÉE avec « " + esc(p.name) + " » : pour chaque wilaya, la meilleure des deux mémoires est gardée. Rien n'est effacé.",
           "سيُدمج تقدّم الحساب مع « " + esc(p.name) + " »: تُحفظ الأفضل من الذاكرتين. لا شيء يُمحى.") + "</p>" +
-        cloudFieldsHtml("clog", {}) +
+        cloudFieldsHtml("clog", {login:true}) +
         "<p class='gate-err' id='clog-err' role='alert'></p>" +
         "<button class='btn' id='clog-go'>" + T("Se connecter","ادخل") + "</button>" +
         "<button class='btn ghost' id='clog-forgot' style='margin-top:9px;'>" + T("Mot de passe oublié ?","نسيت كلمة السر؟") + "</button>" +

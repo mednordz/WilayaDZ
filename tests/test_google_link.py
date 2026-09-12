@@ -87,11 +87,42 @@ class GoogleLinkTests(unittest.TestCase):
   self.assertEqual(self.req('/auth/register',{'email':'new-email@example.com','name':'Fictif','password':self.password})[0],202)
   self.assertEqual(api.store.one('SELECT password_configured FROM accounts WHERE email=?',('new-email@example.com',))['password_configured'],1)
 
+ def test_pseudo_login_and_collisions(self):
+  def rename(token,name):
+   code,data=self.req('/auth/name',{'name':name},token)
+   self.assertEqual(code,200,data)
+   return data['account']
+  def login(name,password=None):
+   return self.req('/auth/login',{'email':name,'password':self.password if password is None else password})
+  self.assertTrue(rename(self.token,'Étoile Alger')['pseudo_login_available'])
+  code,data=login('  ÉTOILE   ALGER  ')
+  self.assertEqual(code,200,data);self.assertEqual(data['account']['email'],'first@example.com')
+  self.assertEqual(api.store.one('SELECT data FROM accounts WHERE id=?',(self.a,))['data'],'{"xp":900}')
+  self.assertEqual(login('Étoile Alger','wrong')[0],401)
+  self.assertEqual(login('Étoile Alger','')[0],401)
+  self.assertFalse(rename(self.token_b,'ÉTOILE Alger')['pseudo_login_available'])
+  self.assertEqual(login('Étoile Alger')[0],401)
+  self.assertEqual(login('first@example.com')[0],200)
+  api.store.write('UPDATE accounts SET verified=0 WHERE id=?',(self.b,))
+  self.assertEqual(login('Étoile Alger')[0],200,'pending duplicates cannot block login')
+  self.assertTrue(rename(self.token,'الجزائر')['pseudo_login_available'])
+  self.assertEqual(login('الجزائر')[0],200)
+  self.assertEqual(login('Étoile Alger')[0],401,'old name cannot log in')
+  self.assertFalse(rename(self.token,'name@example.com')['pseudo_login_available'])
+  self.assertEqual(login('first@example.com')[0],200)
+  self.assertEqual(api.login_name_key(' Ａｍｉｎｅ '),'amine')
+  self.assertEqual(api.login_name_key('e\u0301toile'),api.login_name_key('Étoile'))
+  self.assertIsNone(api.login_name_key('x'*129))
+  self.assertEqual(self.req('/auth/register',{'email':'pseudo-new@example.com','name':'Nouveau','password':self.password})[0],202)
+  self.assertEqual(api.store.one('SELECT login_name FROM accounts WHERE email=?',('pseudo-new@example.com',))['login_name'],'nouveau')
+
  def test_migration_preserves_existing_data(self):
   with api.store._lock,api.store._db:
-   api.store._db.execute('DROP TABLE google_links');api.store._db.execute('DROP TABLE google_identities');api.store._db.execute('ALTER TABLE accounts DROP COLUMN password_configured');api.store._db.execute('PRAGMA user_version=3')
+   api.store._db.execute('DROP TABLE google_links');api.store._db.execute('DROP TABLE google_identities');api.store._db.execute('DROP INDEX accounts_login_name');api.store._db.execute('ALTER TABLE accounts DROP COLUMN login_name');api.store._db.execute('ALTER TABLE accounts DROP COLUMN password_configured');api.store._db.execute('PRAGMA user_version=3')
    api.store._migrate()
   self.assertEqual(api.store.one('SELECT data FROM accounts WHERE id=?',(self.a,))['data'],'{"xp":900}')
+  self.assertEqual(api.store.one('SELECT login_name FROM accounts WHERE id=?',(self.a,))['login_name'],'fictif')
+  self.assertEqual(self.req('/auth/login',{'email':'Fictif','password':self.password})[0],401)
   self.assertEqual(self.link(self.prepare())[0],200)
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -73,7 +73,7 @@
       case "bad_name":        return TL("Choisis un pseudo (24 caractères au plus).","اختر اسما مستعارا (24 حرفا على الأكثر).");
       case "weak_password":   return TL("Le mot de passe doit faire au moins 8 caractères.","كلمة السر 8 أحرف على الأقل.");
       case "email_taken":     return TL("Un compte existe déjà avec cette adresse.","يوجد حساب بهذا البريد الإلكتروني.");
-      case "bad_credentials": return TL("Adresse ou mot de passe incorrect.","البريد أو كلمة السر غير صحيحة.");
+      case "bad_credentials": return TL("Identifiant ou mot de passe incorrect. Si ton pseudo n’est pas reconnu, utilise ton e-mail.","المعرّف أو كلمة السر غير صحيح. إذا لم يُعرف اسمك المستعار، استخدم بريدك الإلكتروني.");
       case "too_many":        return TL("Trop de tentatives. Réessaie dans un moment.","محاولات كثيرة. أعد المحاولة بعد قليل.");
       case "unauthorized":    return TL("Session expirée — reconnecte-toi.","انتهت الجلسة — أعد الاتصال.");
       case "not_verified":    return TL("Confirme d'abord ton adresse e-mail.","أكّد بريدك الإلكتروني أولا.");

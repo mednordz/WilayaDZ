@@ -126,7 +126,7 @@
                  "سيُدمج تقدّم « " + esc(loginInto.name) + " » مع تقدّم الحساب: تُحفظ الأفضل من الذاكرتين.")
             : TS("Ta progression te rejoint sur cet appareil.",
                  "سيصلك تقدّمك على هذا الجهاز.")) + "</p>" +
-          cloudFieldsHtml("glog", {}) +
+          cloudFieldsHtml("glog", {login:true}) +
           "<p class='gate-err' id='glog-err' role='alert'></p>" +
           "<button class='btn' id='glog-go'>" + T("Se connecter","ادخل") + "</button>" +
           googleButtonHtml("glog") +
@@ -171,7 +171,8 @@
         if(e.key === "Enter") doGateLogin();
       });
       document.getElementById("glog-forgot").addEventListener("click", function(){
-        showGate("forgot", document.getElementById("glog-email").value.trim());
+        var identifier=document.getElementById("glog-email").value.trim();
+        showGate("forgot", identifier.indexOf("@")!==-1?identifier:"");
       });
       document.getElementById("gate-back").addEventListener("click", function(){
         if(loginInto) return showGate("create", loginInto);
