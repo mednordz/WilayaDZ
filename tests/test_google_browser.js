@@ -23,7 +23,7 @@ const {signedInProfile}=require('./seed_profile');
  });
  await page.addInitScript(p=>{if(!localStorage.getItem('wilaya-account-v1'))localStorage.setItem('wilaya-account-v1',JSON.stringify({activeId:p.id,profiles:[p]}));},profile);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(base);await page.locator('#settings-btn').click();await page.locator('[data-settings="account"]').click();await page.locator('[data-settings="google"]').click();
+ await page.goto(base);await page.locator('#settings-btn').click();await page.locator('[data-settings="account"]').click();await page.locator('[data-settings="methods"]').click();await page.locator('[data-connection-action="google"]').click();
  await page.locator('#google-link-password').fill('Test-password-only');await page.locator('#google-link-start').click();
  await page.waitForURL('https://accounts.google.com/**');
  assert.equal(prepareBody.password,'Test-password-only');assert.equal(googleURL.searchParams.get('nonce'),prepareBody.nonce);
@@ -35,7 +35,7 @@ const {signedInProfile}=require('./seed_profile');
  await page.goto(base+'#state=bad&id_token=replay');await page.reload();await page.waitForTimeout(150);assert.equal(linkCount,1);
  assert.equal(new URL(page.url()).hash,'');
  // Capture the real settings page with music enabled as an available web control.
- await page.locator('#settings-btn').click();await page.screenshot({path:'/tmp/wilayas/settings/home-web.png',fullPage:true});
+ await page.locator('#settings-btn').click();await page.screenshot({path:'/tmp/wilayas/settings/home-web.png',fullPage:false});
  await page.locator('[data-settings="audio"]').click();
  await page.locator('[data-switch="music"]').click();await page.locator('#setting-volume').fill('67');
  assert.equal(await page.evaluate(()=>document.getElementById('musique').volume),.67);

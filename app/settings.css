@@ -22,3 +22,6 @@ button.settings-row{cursor:pointer}.settings-row:last-child{border-bottom:0}.set
 .settings-hero{position:relative;border-bottom:0;padding-bottom:28px}.settings-hero::after{content:'';position:absolute;bottom:0;inset-inline:0;height:9px;background:url('TILE_IMAGE') center/85px;border-block:1px solid #c8b88d}
 .settings-row>span:not(.settings-icon):not(.settings-arrow){flex:1;min-width:0}
 #view-settings{--accent-soft:#e8d4b0;--border-strong:#a98a5f;--ink-faint:#594b38}
+.connection-card{margin:18px 0;background:linear-gradient(110deg,#fff9eef7,#f4ebdaf7);border:1px solid #bca17a;border-radius:20px;padding:18px}
+.connection-card-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}.connection-card-heading h2{margin:0;flex:1}.connection-card-heading h2::before{content:none}
+.connection-status{border:1px solid #b1ab8b;background:#e9ecdf;border-radius:12px;padding:5px 10px;color:#34412d;font-size:.82rem}.connection-description{margin:14px 0;color:#594b38;font-size:.95rem}.connection-address{font-weight:700;overflow-wrap:anywhere;unicode-bidi:plaintext}.connection-card .settings-back{max-width:100%;font-size:.95rem}

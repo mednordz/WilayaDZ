@@ -195,3 +195,23 @@ visibles hors ligne. La révision compilée apparaît dans « À propos ».
 Validation dédiée : `tests/test_settings.js`, `tests/test_google_browser.js`
 et `tests/test_google_link.py`, inclus dans `npm test`. Le fournisseur Google
 est simulé dans ces tests : aucun compte réel n'est utilisé.
+
+## Fiche Moyens de connexion
+
+La migration **5** ajoute `accounts.password_configured`, sans modifier les
+mots de passe ni les données de progression. Elle est transactionnelle.
+La valeur reste inconnue (`NULL`) pour les anciens comptes ; elle devient
+vraie après une connexion par mot de passe réussie, une création ou une
+réinitialisation de mot de passe. Une nouvelle inscription e-mail la définit
+à vrai ; un nouveau compte créé par Google la définit à faux.
+
+La fiche lit `/me` et `/config` à son ouverture. Sans réponse valide du compte,
+elle affiche une impossibilité de vérification, jamais un faux « Non associé ».
+Le lien de récupération utilise le mécanisme existant et n'est envoyé qu'après
+un clic explicite sur « Envoyer le lien ». Les tests utilisent un transport
+simulé. Les préférences, appareils et associations ne sont pas modifiés par
+la consultation de la fiche.
+
+Une ancienne image reste compatible avec la colonne supplémentaire, mais ne
+met pas ce nouvel indicateur à jour ; après un éventuel retour de version,
+une connexion par mot de passe sur la nouvelle version reconfirme son état.
