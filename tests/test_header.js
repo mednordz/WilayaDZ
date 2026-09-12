@@ -6,7 +6,7 @@ const {signedInProfile}=require('./seed_profile');
  fs.mkdirSync('mockups/bandeau',{recursive:true});
  for(const [lang,width,theme,size] of [['fr',500,'dark',100],['ar',360,'light',100],['bi',320,'dark',125]]){
   const page=await browser.newPage({viewport:{width,height:900},colorScheme:theme,reducedMotion:'reduce'});
-  const name=lang==='ar'?'نور الدين الجزائري':'Mednor-Voyageur-Algérien';
+  const name=lang==='ar'?'نور الدين الجزائري':lang==='fr'?'mednor':'Mednor-Voyageur-Algérien';
   const p=signedInProfile({name,lang,data:{keyDone:true,xp:900,photoNon:true}});
   await page.route('**/*',r=>new URL(r.request().url()).pathname==='/'?r.fulfill({contentType:'text/html',body:html}):r.fulfill({status:503}));
   await page.addInitScript(({p,size,theme})=>{
@@ -30,7 +30,10 @@ const {signedInProfile}=require('./seed_profile');
   await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
   for(const section of ['settings','info','practice','path']){
    if(section!=='settings')await page.locator('#tab-'+section).click();
+   if(section==='settings')await page.evaluate(()=>scrollTo(0,0));
+   else assert.equal(await page.evaluate(()=>scrollY),0,'navigation keeps header visible');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),lang+' overflow');
+   if(section==='path'){const header=await page.locator('.topbar').boundingBox(),banner=await page.locator('.banner').boundingBox();assert(banner.y>=header.y+header.height-.5,'panorama must start below header');}
    const boxes=await Promise.all(['#brand-home','#topstat-streak','#topstat-xp','#sound-btn','#profile-btn','#settings-btn'].map(s=>page.locator(s).boundingBox()));
    for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
     const a=boxes[i],b=boxes[j];assert(a.x+a.width<=b.x+.5||b.x+b.width<=a.x+.5||a.y+a.height<=b.y+.5||b.y+b.height<=a.y+.5,lang+' overlapping controls '+i+' '+j);

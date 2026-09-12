@@ -478,7 +478,7 @@
       v.classList.toggle("active", active);
       if(active) target = v;
     });
-    if(target) target.focus({preventScroll:false});
+    if(target){target.focus({preventScroll:true});window.scrollTo({top:0,behavior:"auto"});}
     if(name === "practice") refreshPracticeCards();
     if(name === "info") renderSyncPanel();
   }

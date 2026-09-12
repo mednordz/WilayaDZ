@@ -27,3 +27,27 @@
  .topbar button.topstat{padding-inline:7px;min-width:48px;}
 }
 @media(prefers-reduced-motion:reduce){.topbar button{transition:none;}}
+
+/* Two aligned rows; the panorama starts after the header, never behind controls. */
+.topbar{height:auto;display:block;padding:12px 18px 14px;pointer-events:auto;}
+.topbar .topbar-inner{display:flex;flex-direction:column;gap:10px;width:100%;pointer-events:auto;}
+.header-identity,.header-tools{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;}
+.header-identity{min-height:48px;}
+.header-tools{padding-top:10px;border-top:1px solid var(--border);}
+.header-actions{display:flex;align-items:center;gap:8px;}
+.topbar .brand{font-size:1.25rem;min-height:44px;}
+.topbar .profil-bloc{flex-direction:row-reverse;width:auto;max-width:46%;gap:10px;}
+.topbar .profil-bloc .profile-btn{width:44px;height:44px;min-width:44px;outline-offset:2px;box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--border);}
+.topbar .profile-caption{max-width:95px;padding:0;background:none;border-radius:0;font-size:.8rem;}
+.topbar .topstats{gap:8px;}
+.topbar button.topstat{min-height:44px;border-radius:12px;padding:6px 12px;box-shadow:inset 0 1px 0 #d5af7120;}
+.topbar .sound-btn,.topbar #settings-btn{border-radius:12px;box-shadow:inset 0 0 0 3px var(--bg);}
+.topbar::before{opacity:.2;}
+.banner{margin-top:0;}
+@media(max-width:380px){
+ .topbar{padding-inline:14px;}
+ .topbar .brand{font-size:1.08rem;}
+ .topbar .profil-bloc{gap:7px;}
+ .topbar .profile-caption{max-width:64px;font-size:.75rem;}
+ .topbar button.topstat{padding-inline:9px;}
+}
