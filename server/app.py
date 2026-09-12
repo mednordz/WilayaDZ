@@ -121,7 +121,7 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_TOKENINFO = "https://oauth2.googleapis.com/tokeninfo?id_token="
 GOOGLE_TIMEOUT = 10
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 # --------------------------------------------------------------------
@@ -219,6 +219,25 @@ class Store:
                 """
             )
             self._db.execute("PRAGMA user_version=3")
+            self._db.commit()
+
+        if version < 4:
+            # Additive migration: old application versions can still read accounts.
+            self._db.executescript("""
+                CREATE TABLE IF NOT EXISTS google_identities (
+                  subject TEXT PRIMARY KEY,
+                  account_id INTEGER NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+                  email TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS google_links (
+                  token_hash BLOB PRIMARY KEY,
+                  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                  session_hash BLOB NOT NULL,
+                  nonce TEXT NOT NULL,
+                  expires INTEGER NOT NULL
+                );
+                PRAGMA user_version=4;
+            """)
             self._db.commit()
 
     def query(self, sql, args=()):
@@ -682,6 +701,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._change_password(body)
         if path == "/auth/name":
             return self._change_name(body)
+        if path == "/auth/google/prepare":
+            return self._google_prepare(body)
+        if path == "/auth/google/link":
+            return self._google(body, linking=True)
         if path == "/auth/google":
             return self._google(body)
         if path == "/auth/confirm":
@@ -713,9 +736,11 @@ class Handler(BaseHTTPRequestHandler):
     # -- comptes -----------------------------------------------------
 
     def _public(self, row):
+        identity = store.one("SELECT email FROM google_identities WHERE account_id = ?", (row["id"],))
         return {"email": row["email"], "name": row["name"],
                 "created": row["created"], "version": row["version"],
-                "updated": row["updated"], "verified": bool(row["verified"])}
+                "updated": row["updated"], "verified": bool(row["verified"]),
+                "google_email": identity["email"] if identity else None}
 
     def _issue_confirm(self, account_id, email, name):
         raw, digest = new_token()
@@ -732,7 +757,30 @@ class Handler(BaseHTTPRequestHandler):
                 print("mail non configure — lien de confirmation : %s" % link,
                       flush=True)
 
-    def _google(self, body):
+    def _google_prepare(self, body):
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        if not GOOGLE_CLIENT_ID:
+            return self._fail(503, "google_off")
+        row = self._account()
+        if not row:
+            return self._fail(401, "unauthorized")
+        if not limiter.allow("google-link:%d" % row["id"], 5, 900):
+            return self._fail(429, "too_many")
+        if not verify_password(str(body.get("password") or ""), row["pw_salt"], row["pw_hash"]):
+            return self._fail(401, "bad_credentials")
+        nonce = str(body.get("nonce") or "")
+        if not re.fullmatch(r"[a-f0-9]{48}", nonce):
+            return self._fail(400, "bad_request")
+        raw, digest = new_token()
+        now = int(time.time())
+        with store._lock, store._db:
+            store._db.execute("DELETE FROM google_links WHERE account_id = ? OR expires < ?", (row["id"], now))
+            store._db.execute("INSERT INTO google_links VALUES (?,?,?,?,?)",
+                              (digest, row["id"], token_fingerprint(self._bearer()), nonce, now + 600))
+        self._send(200, {"challenge": raw})
+
+    def _google(self, body, linking=False):
         """
         Connexion par Google. Le jeton d'identite est verifie AUPRES DE
         GOOGLE plutot que localement : verifier une signature RS256
@@ -746,6 +794,18 @@ class Handler(BaseHTTPRequestHandler):
         if not limiter.allow("google:" + self._client(), 20, 900):
             return self._fail(429, "too_many")
 
+        link_account = self._account() if linking else None
+        challenge = None
+        if linking:
+            if not link_account:
+                return self._fail(401, "unauthorized")
+            raw_challenge = str(body.get("challenge") or "")
+            if not TOKEN_RE.match(raw_challenge):
+                return self._fail(400, "bad_challenge")
+            challenge = store.one("SELECT * FROM google_links WHERE token_hash = ? AND account_id = ? AND session_hash = ? AND expires > ?",
+                                  (token_fingerprint(raw_challenge), link_account["id"], token_fingerprint(self._bearer()), int(time.time())))
+            if not challenge:
+                return self._fail(400, "bad_challenge")
         credential = str(body.get("credential") or "")
         if not credential or len(credential) > 4096:
             return self._fail(400, "bad_token")
@@ -768,9 +828,17 @@ class Handler(BaseHTTPRequestHandler):
         if str(info.get("email_verified")).lower() not in ("true", "1"):
             return self._fail(400, "bad_token")
 
+        subject = str(info.get("sub") or "")
+        try:
+            valid_expiry = int(info.get("exp", 0)) > int(time.time())
+        except (TypeError, ValueError):
+            valid_expiry = False
+        if info.get("iss") not in ("accounts.google.com", "https://accounts.google.com") or not valid_expiry or not subject or len(subject) > 255:
+            return self._fail(400, "bad_token")
+
         # Le nonce lie ce jeton a la demande qu'on vient d'emettre.
-        attendu = str(body.get("nonce") or "")
-        if attendu and not hmac.compare_digest(str(info.get("nonce") or ""), attendu):
+        attendu = challenge["nonce"] if challenge else str(body.get("nonce") or "")
+        if not attendu or not hmac.compare_digest(str(info.get("nonce") or ""), attendu):
             return self._fail(400, "bad_token")
 
         email = clean_email(info.get("email"))
@@ -778,25 +846,45 @@ class Handler(BaseHTTPRequestHandler):
             return self._fail(400, "bad_email")
         name = clean_name(info.get("given_name") or info.get("name") or "") or "Toi"
 
-        row = store.one("SELECT * FROM accounts WHERE email = ?", (email,))
-        if row is None:
-            # Google a deja verifie cette adresse : pas de courriel de
-            # confirmation a envoyer, le compte est utilisable tout de
-            # suite. Le mot de passe est un alea qu'aucune saisie ne peut
-            # reproduire — on se connecte par Google, ou en passant par
-            # « mot de passe oublie » pour s'en choisir un.
-            now = int(time.time())
-            cur = store.write(
-                "INSERT INTO accounts (email, name, pw_salt, pw_hash, created, verified)"
-                " VALUES (?,?,?,?,?,1)",
-                (email, name, secrets.token_bytes(16), secrets.token_bytes(32), now))
-            row = store.one("SELECT * FROM accounts WHERE id = ?", (cur.lastrowid,))
-        elif not row["verified"]:
-            # Une inscription par courriel restee en attente : Google
-            # vient de prouver que l'adresse est bien la sienne.
-            store.write("UPDATE accounts SET verified = 1 WHERE id = ?", (row["id"],))
-            store.write("DELETE FROM confirms WHERE account_id = ?", (row["id"],))
-            row = store.one("SELECT * FROM accounts WHERE id = ?", (row["id"],))
+        # Stable Google subject identifies the account; email is only a label.
+        # Both linking and login serialize the uniqueness checks and writes.
+        try:
+            with store._lock, store._db:
+                db = store._db
+                identity = db.execute("SELECT * FROM google_identities WHERE subject = ?", (subject,)).fetchone()
+                email_account = db.execute("SELECT * FROM accounts WHERE email = ?", (email,)).fetchone()
+                if linking:
+                    current = db.execute("SELECT * FROM google_links WHERE token_hash = ? AND expires > ?",
+                                         (challenge["token_hash"], int(time.time()))).fetchone()
+                    if not current:
+                        return self._fail(400, "bad_challenge")
+                    row = link_account
+                    if (identity and identity["account_id"] != row["id"]) or (email_account and email_account["id"] != row["id"]):
+                        return self._fail(409, "google_conflict")
+                elif identity:
+                    row = db.execute("SELECT * FROM accounts WHERE id = ?", (identity["account_id"],)).fetchone()
+                else:
+                    row = email_account
+                if row:
+                    previous = db.execute("SELECT subject FROM google_identities WHERE account_id = ?", (row["id"],)).fetchone()
+                    if previous and previous["subject"] != subject:
+                        return self._fail(409, "google_conflict")
+                else:
+                    cur = db.execute("INSERT INTO accounts (email,name,pw_salt,pw_hash,created,verified) VALUES (?,?,?,?,?,1)",
+                                     (email, name, secrets.token_bytes(16), secrets.token_bytes(32), int(time.time())))
+                    row = db.execute("SELECT * FROM accounts WHERE id = ?", (cur.lastrowid,)).fetchone()
+                db.execute("INSERT INTO google_identities (subject,account_id,email) VALUES (?,?,?) ON CONFLICT(subject) DO UPDATE SET email=excluded.email",
+                           (subject, row["id"], email))
+                if linking:
+                    db.execute("DELETE FROM google_links WHERE token_hash = ?", (challenge["token_hash"],))
+                if not row["verified"]:
+                    db.execute("UPDATE accounts SET verified=1 WHERE id=?", (row["id"],))
+                    db.execute("DELETE FROM confirms WHERE account_id=?", (row["id"],))
+                row = db.execute("SELECT * FROM accounts WHERE id=?", (row["id"],)).fetchone()
+        except sqlite3.IntegrityError:
+            return self._fail(409, "google_conflict")
+        if linking:
+            return self._send(200, {"account": self._public(row)})
 
         token = self._open_session(row["id"])
         self._send(200, {"token": token, "account": self._public(row)})

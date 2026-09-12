@@ -51,7 +51,7 @@
     a.id = "musique";
     a.loop = true;
     a.preload = "none";
-    a.volume = MUSIQUE_VOLUME;
+    a.volume = appPrefs.volume / 100;
     /* Deux encodages, une seule qui sera téléchargée : le navigateur
        prend la première qu'il sait lire. Opus est plus léger d'un tiers
        et passe partout sauf sur les Safari d'avant 17.4 — d'où l'AAC

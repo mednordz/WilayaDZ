@@ -212,7 +212,7 @@
     osc.start(t0); osc.stop(t0 + dur + 0.02);
   }
   function trySound(fn){
-    if(!soundEnabled()) return;
+    if(!soundEnabled() || !appPrefs.effects) return;
     try{ fn(); }catch(e){}
   }
   function sndCorrect(){ trySound(function(){ tone(587,0,.11,"sine",.1); tone(880,.08,.16,"sine",.1); }); }
@@ -312,7 +312,7 @@
   var mascotTimer = null;
 
   function prefersReducedMotion(){
-    try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+    try{ return appPrefs.motion || window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
     catch(e){ return false; }
   }
 
@@ -374,6 +374,7 @@
   }
 
   function tryVibrate(pattern){
+    if(!appPrefs.vibration) return;
     try{ if(navigator && typeof navigator.vibrate === "function") navigator.vibrate(pattern); }catch(e){}
   }
 
@@ -397,7 +398,7 @@
           "<div class='confirm-box' role='alertdialog' aria-modal='true' aria-labelledby='confirm-msg'>" +
             "<p id='confirm-msg'>" + message + "</p>" +
             "<div class='confirm-actions'>" +
-              "<button class='btn ghost' id='confirm-cancel'>Annuler</button>" +
+              "<button class='btn ghost' id='confirm-cancel'>" + TL("Annuler","إلغاء") + "</button>" +
               "<button class='btn' id='confirm-ok'>" + confirmLabel + "</button>" +
             "</div>" +
           "</div>" +
@@ -449,8 +450,8 @@
     if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeSheet(); return; }
     if(e.key === "Tab"){
       var box = document.getElementById("sheet-box");
-      var f = Array.prototype.filter.call(box.querySelectorAll("button,[href],input,[tabindex]:not([tabindex='-1'])"),
-        function(el){ return el.offsetParent !== null; });
+      var f = Array.prototype.filter.call(box.querySelectorAll("button,[href],input,select,textarea,summary,[tabindex]:not([tabindex='-1'])"),
+        function(el){ return el.offsetParent !== null && !el.disabled; });
       if(!f.length) return;
       var first = f[0], last = f[f.length-1];
       if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }

@@ -168,3 +168,30 @@ Pour vérifier les images sans publication ni sauvegarde réelle :
 `python3 deploy/release.py --check-only <SHA-complet>` sur bigpc.
 nginx passe de 1.27.5 à 1.30.4, version stable vérifiée dans les
 [publications officielles](https://nginx.org/en/download.html).
+
+## Réglages Casbah et association Google
+
+La version Casbah ajoute une migration **4**, additive : `google_identities`
+(identifiant Google stable unique, compte unique, adresse d'affichage) et
+`google_links` (autorisation d'association à usage unique, liée à la session,
+au nonce et limitée à dix minutes). Les comptes et leur progression ne sont
+pas réécrits par la migration. L'association demande le mot de passe WilayaDZ
+avant la redirection ; celui-ci ne figure jamais dans l'URL ni le stockage de
+session. Une adresse appartenant à un autre compte provoque un refus explicite.
+
+La sauvegarde précédant la première publication contient encore le schéma 3.
+Les sauvegardes suivantes incluent les associations Google. Un retour à une
+ancienne image conserve ces tables mais l'ancien code ne sait pas exploiter
+les associations à une adresse différente : utiliser alors la connexion par
+l'adresse et le mot de passe WilayaDZ d'origine, jusqu'à la republication.
+Ne pas restaurer l'ancienne base pour annuler l'interface.
+
+Les préférences de confort sont locales (`wilaya-preferences-v1`), séparées des
+profils et des données synchronisées. Réinitialiser les préférences ne supprime
+ni compte ni progression. Les réglages de langue restent ceux du profil.
+Les deux illustrations Casbah sont intégrées au HTML en WebP pour rester
+visibles hors ligne. La révision compilée apparaît dans « À propos ».
+
+Validation dédiée : `tests/test_settings.js`, `tests/test_google_browser.js`
+et `tests/test_google_link.py`, inclus dans `npm test`. Le fournisseur Google
+est simulé dans ces tests : aucun compte réel n'est utilisé.

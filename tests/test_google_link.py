@@ -1,0 +1,80 @@
+"""Google identity/link HTTP regressions. Fake Google transport; isolated SQLite only."""
+import io, json, os, sys, tempfile, threading, time, unittest, urllib.request, urllib.error
+from pathlib import Path
+from unittest import mock
+scratch=tempfile.TemporaryDirectory(prefix='wilaya-google-test-')
+os.environ['WILAYA_DB']=scratch.name+'/accounts.sqlite3'
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'server'))
+import app as api
+
+class GoogleLinkTests(unittest.TestCase):
+ def setUp(self):
+  api.store=api.Store(scratch.name+'/'+str(time.time_ns())+'.sqlite3')
+  api.GOOGLE_CLIENT_ID='test-client'
+  api.limiter=api.RateLimiter()
+  self.server=api.BoundedHTTPServer(('127.0.0.1',0),api.Handler)
+  self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+  self.base='http://127.0.0.1:%d/api'%self.server.server_port
+  self.password='Fictif-only-password-92'
+  self.a,self.token=self.account('first@example.com')
+  self.b,self.token_b=self.account('second@example.com')
+  self.nonce='a'*48
+  self.info={'aud':'test-client','iss':'https://accounts.google.com','exp':int(time.time())+300,'sub':'google-subject-one','email':'different@gmail.com','email_verified':True,'nonce':self.nonce}
+  # Patch only the API's Google transport, not the client's HTTP library.
+  self.original=urllib.request.urlopen
+  self.patch=mock.patch.object(api.urllib.request,'urlopen',side_effect=self.transport);self.patch.start()
+ def tearDown(self):
+  self.patch.stop();self.server.shutdown();self.server.server_close();self.thread.join()
+ def transport(self,url,*args,**kwargs):
+  if isinstance(url,str) and url.startswith(api.GOOGLE_TOKENINFO):return io.BytesIO(json.dumps(self.info).encode())
+  return self.original(url,*args,**kwargs)
+ def account(self,email):
+  salt=os.urandom(16);cur=api.store.write('INSERT INTO accounts (email,name,pw_salt,pw_hash,created,verified,data) VALUES (?,?,?,?,?,1,?)',(email,'Fictif',salt,api.hash_password(self.password,salt),int(time.time()),'{"xp":900}'))
+  raw,digest=api.new_token();api.store.write('INSERT INTO sessions VALUES (?,?,?,?)',(digest,cur.lastrowid,int(time.time()),int(time.time())))
+  return cur.lastrowid,raw
+ def req(self,path,body,token=None):
+  headers={'Content-Type':'application/json'}
+  if token:headers['Authorization']='Bearer '+token
+  req=urllib.request.Request(self.base+path,data=json.dumps(body).encode(),headers=headers,method='POST')
+  try:r=urllib.request.urlopen(req)
+  except urllib.error.HTTPError as e:r=e
+  return r.status,json.loads(r.read() or '{}')
+ def prepare(self,token=None):
+  code,data=self.req('/auth/google/prepare',{'password':self.password,'nonce':self.nonce},token or self.token);self.assertEqual(code,200,data);return data['challenge']
+ def link(self,challenge,token=None):return self.req('/auth/google/link',{'credential':'fake-token','nonce':self.nonce,'challenge':challenge},token or self.token)
+ def test_link_and_future_login_preserve_account(self):
+  challenge=self.prepare();code,data=self.link(challenge);self.assertEqual(code,200,data)
+  self.assertEqual(data['account']['email'],'first@example.com');self.assertEqual(data['account']['google_email'],'different@gmail.com')
+  self.assertEqual(api.store.one('SELECT data FROM accounts WHERE id=?',(self.a,))['data'],'{"xp":900}')
+  self.assertEqual(self.link(challenge)[0],400,'single-use')
+  self.info['email']='renamed@gmail.com'
+  code,data=self.req('/auth/google',{'credential':'fake','nonce':self.nonce});self.assertEqual(code,200,data);self.assertEqual(data['account']['email'],'first@example.com')
+  self.assertEqual(len(api.store.query('SELECT * FROM accounts')),2)
+  self.assertEqual(self.req('/auth/login',{'email':'first@example.com','password':self.password})[0],200)
+ def test_reauth_and_binding(self):
+  self.assertEqual(self.req('/auth/google/prepare',{'password':'wrong','nonce':self.nonce},self.token)[0],401)
+  self.assertEqual(self.req('/auth/google/prepare',{'password':self.password,'nonce':self.nonce})[0],401)
+  challenge=self.prepare();self.assertEqual(self.link(challenge,self.token_b)[0],400)
+  self.info['nonce']='wrong';self.assertEqual(self.link(challenge)[0],400)
+  self.info['nonce']=self.nonce;api.store.write('UPDATE google_links SET expires=0');self.assertEqual(self.link(challenge)[0],400)
+  self.assertEqual(len(api.store.query('SELECT * FROM google_identities')),0)
+ def test_conflicts_do_not_merge(self):
+  self.assertEqual(self.link(self.prepare())[0],200)
+  self.assertEqual(self.link(self.prepare(self.token_b),self.token_b)[0],409)
+  self.info['sub']='another-subject';self.info['email']='second@example.com'
+  self.assertEqual(self.link(self.prepare())[0],409)
+  self.assertEqual(len(api.store.query('SELECT * FROM accounts')),2)
+ def test_token_validation(self):
+  challenge=self.prepare()
+  for field,value in [('aud','other-client'),('iss','evil.example'),('exp',0),('sub',''),('email_verified',False)]:
+   old=self.info[field];self.info[field]=value
+   self.assertEqual(self.link(challenge)[0],400,field);self.info[field]=old
+  self.assertEqual(self.req('/auth/google',{'credential':'fake'})[0],400)
+ def test_migration_preserves_existing_data(self):
+  with api.store._lock,api.store._db:
+   api.store._db.execute('DROP TABLE google_links');api.store._db.execute('DROP TABLE google_identities');api.store._db.execute('PRAGMA user_version=3')
+   api.store._migrate()
+  self.assertEqual(api.store.one('SELECT data FROM accounts WHERE id=?',(self.a,))['data'],'{"xp":900}')
+  self.assertEqual(self.link(self.prepare())[0],200)
+
+if __name__=='__main__':unittest.main(verbosity=2)
