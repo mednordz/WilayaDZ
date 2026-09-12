@@ -573,7 +573,7 @@
   /* Recharge toute l'application pour le profil actif. */
   function bootProfile(){
     loadState();                 /* applique aussi la langue du profil */
-    buildCompass();
+    buildMap();
     buildMethodBlocks();
     buildAnchorHooks();
     buildFullHooks();

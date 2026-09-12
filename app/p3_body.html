@@ -198,17 +198,29 @@
     </section>
 
     <section id="map-section">
-      <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Carte mentale</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">الخريطة الذهنية</span></span></h2>
-      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Positions approximatives, pour ancrer chaque code à un endroit du pays. Le registre plus bas donne la même information en texte.</span><span class="ba2" lang="ar" dir="rtl">مواقع تقريبية، لربط كل رمز بمكان في البلاد. السجل أسفله يعطي المعلومة نفسها نصّا.</span></span></p>
+      <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">La carte d’Algérie</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">خريطة الجزائر</span></span></h2>
+      <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Touche une wilaya pour retrouver son code et son nom. La liste permet aussi de choisir les plus petites.</span><span class="ba2" lang="ar" dir="rtl">المس ولاية لمعرفة رمزها واسمها. يمكنك أيضا اختيار الولايات الصغيرة من القائمة.</span></span></p>
       <div class="map-card">
+        <figure class="map-landscape">
+          <img id="map-landscape" alt="" width="830" height="277" decoding="async" />
+          <figcaption id="map-landscape-caption"></figcaption>
+        </figure>
+        <div class="map-controls ui1">
+          <button type="button" class="btn ghost" id="map-all" aria-pressed="true"></button>
+          <button type="button" class="btn ghost" id="map-north" aria-pressed="false"></button>
+        </div>
         <div class="map-svg-wrap">
-          <svg id="map-svg" viewBox="0 0 500 420" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Carte schématique des wilayas — خريطة تخطيطية للولايات">
-            <g class="map-compass" id="map-compass"></g>
-            <g id="map-points"></g>
+          <svg id="map-svg" viewBox="862.86 943.66 10000 9715" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Carte des wilayas d’Algérie — خريطة ولايات الجزائر" aria-describedby="map-source-text">
+            <g id="map-regions"></g>
           </svg>
         </div>
-        <p class="map-caption" id="map-caption"><span class="bi"><span class="bf" lang="fr">Touche un point</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">المس نقطة</span></span></p>
-        <div class="map-legend" id="map-legend"></div>
+        <p class="map-caption" id="map-caption" role="status" aria-live="polite" aria-atomic="true"></p>
+        <label class="map-picker-label ui1" for="map-picker" id="map-picker-label"></label>
+        <select id="map-picker" class="map-picker"></select>
+        <div class="map-controls map-detail-controls ui1">
+          <button type="button" class="btn ghost" id="map-detail"></button>
+        </div>
+        <details class="map-source"><summary id="map-source-title"></summary><p id="map-source-text"></p></details>
       </div>
     </section>
 

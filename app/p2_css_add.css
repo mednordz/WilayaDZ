@@ -1759,3 +1759,25 @@
  .mascot-stage > .mascot-rive-canvas{display:none;}
  .mascot-stage.rive-ready > .mascot-breathe{visibility:visible;}
 }
+/* Carte Infos : conserve le cadre cuivré et l'organisation existante. */
+#map-section .map-landscape{ margin:0 0 15px; }
+#map-section .map-landscape img{ display:block; width:100%; height:auto; border-radius:11px; }
+#map-section .map-landscape figcaption{ font-size:.72rem; color:var(--ink-dim); margin-top:6px; text-align:center; }
+#map-section .map-controls{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:12px 0; }
+#map-section .map-controls .btn{ min-height:44px; padding:9px 12px; font-size:.8rem; flex:1 1 130px; }
+#map-section .map-controls .btn[aria-pressed="true"]{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+#map-section #map-svg{ aspect-ratio:10000 / 9715; overflow:hidden; direction:ltr; }
+#map-section .map-region{ fill:var(--surface-2); stroke:var(--accent); stroke-width:.7px; vector-effect:non-scaling-stroke; stroke-linejoin:round; cursor:pointer; }
+#map-section .map-region:hover{ fill:var(--accent-soft); stroke-width:1.5px; }
+#map-section .map-region.selected{ fill:var(--accent); stroke:var(--ink); stroke-width:1px; }
+#map-section .map-region:focus{ outline:none; }
+#map-section .map-region:focus-visible{ outline:none; stroke:var(--ink); stroke-width:3px; }
+#map-section .map-caption{ display:flex; align-items:center; justify-content:center; gap:14px; margin:16px 0; min-height:64px; }
+#map-section .map-code{ display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-family:var(--font-mono); font-weight:800; font-size:1.15rem; }
+#map-section .map-names{ display:flex; flex-direction:column; gap:5px; font-size:1.12rem; font-weight:800; min-width:0; overflow-wrap:anywhere; }
+#map-section .map-names [lang="ar"]{ font-family:var(--font-ar); font-size:1.3rem; }
+#map-section .map-picker-label{ display:block; font-size:.82rem; font-weight:700; margin:16px 0 7px; }
+#map-section .map-picker{ display:block; width:100%; min-height:44px; max-width:100%; padding:10px 12px; border:1px solid var(--border-strong); border-radius:10px; background:var(--surface); color:var(--ink); font:inherit; font-size:16px; }
+#map-section .map-source{ margin-top:16px; color:var(--ink-dim); font-size:.75rem; }
+#map-section .map-source summary{ cursor:pointer; min-height:44px; padding:12px 0; }
+#map-section .map-source p{ margin:8px 0 0; }

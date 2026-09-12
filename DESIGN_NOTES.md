@@ -40,3 +40,13 @@ La famille de cadres cuivrés, de surfaces sahariennes et de touches de céramiq
 Les quatre mascottes ont été redessinées avec des textiles brodés. Sources et prompts : `app/assets/mascottes/README.md`. Leurs portraits sont cadrés séparément pour remplir les médaillons des avatars. Aucun identifiant ni champ de compte ne change.
 
 Validation : 18 écrans et quatre mascottes via `test_design_pages.js`, six dispositions du Parcours, dix vues et 22 écrans de compte audités, cibles tactiles, animations, six leçons complètes (69 questions).
+
+## Carte dans Infos — évolution ciblée
+
+La carte à points est remplacée à son emplacement par les contours des 69 wilayas, avec sélection, noms français/arabe, liste accessible, vue nationale, zoom Nord et agrandissement de la wilaya choisie. Le parcours, les mascottes, les cadres et les trois onglets sont conservés. Les choix cartographiques ne changent aucune donnée de progression.
+
+Une petite illustration originale du littoral, du Mzab et du Hoggar occupe le haut du cadre ; elle est explicitement décorative et ne présente pas ces lieux comme voisins. Source, prompt et conversion : `app/assets/illustrations/README.md`. Le WebP embarqué pèse environ 44 Ko.
+
+Les contours communautaires sont ceux du logo, sous MIT. Leurs codes 59–69 ont été raccordés par nom aux codes du projet : `app/assets/maps/README.md`. Ce raccord ne valide pas le référentiel administratif, dont la réserve reste visible dans « À propos de la carte ». Le déplacement des chemins du fournisseur est conservé via le viewBox, pour ne pas couper le sud.
+
+Validation : `tests/test_map.js` couvre six formats/langues/thèmes, la correspondance des codes, le cadrage national complet, le zoom vers une wilaya hors champ, souris/clavier/liste, le décodage de l’image embarquée, la conservation de la progression et axe. Les 18 écrans et quatre mascottes de `test_design_pages.js` passent également.
