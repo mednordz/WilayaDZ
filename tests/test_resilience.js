@@ -34,7 +34,7 @@ if(!/^http:\/\/127\.0\.0\.1:\d+\/$/.test(BASE))throw Error('Serveur local obliga
   await photo.goto(BASE);
   p.avatar={k:'p',v:await photo.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=160;const x=c.getContext('2d');for(let i=0;i<160;i++)for(let j=0;j<160;j++){x.fillStyle=`rgb(${(i*43+j*17)%256},${(i*3+j*47)%256},${(i*31+j*5)%256})`;x.fillRect(i,j,1,1)}return c.toDataURL('image/jpeg',.7)})};p.avatarAt=Date.now();
   await seedAccount(photo,BASE,{profiles:[p],activeId:p.id});
-  await photo.locator('#tab-info').click();assert((await photo.locator('#sync-code').inputValue()).length>20000);
+  await photo.locator('#settings-btn').click();await photo.locator('[data-settings="backup"]').click();await photo.locator('#settings-transfer summary').click();assert((await photo.locator('#sync-code').inputValue()).length>20000);
   await photo.locator('#sync-qr-toggle').click();assert.equal(await photo.locator('#sync-qr-box svg').count(),1,'photo does not overflow QR');
   const downloaded=photo.waitForEvent('download');await photo.locator('#sync-save').click();const file=await downloaded;
   const content=require('fs').readFileSync(await file.path(),'utf8');const payload=JSON.parse(Buffer.from(content.split('.')[1],'base64url').toString('utf8'));

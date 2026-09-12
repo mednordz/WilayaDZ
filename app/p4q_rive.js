@@ -19,7 +19,7 @@
     record.canvas.remove();
   }
   function mount(stage){
-    if(active.has(stage) || motion.matches || failed || !window.rive) return;
+    if(active.has(stage) || prefersReducedMotion() || failed || !window.rive) return;
     if(!configured){
       try{
         window.rive.RuntimeLoader.setWasmBinary(bytes(RIVE_WASM));
@@ -42,7 +42,7 @@
     function alive(){ return active.get(stage) === record; }
     function rendering(){
       if(!alive() || !record.loaded) return;
-      if(record.visible && !document.hidden && !motion.matches) record.player.startRendering();
+      if(record.visible && !document.hidden && !prefersReducedMotion()) record.player.startRendering();
       else record.player.stopRendering();
     }
     record.rendering = rendering;
@@ -87,8 +87,8 @@
   }
   function reconcile(){
     queued=false;
-    active.forEach(function(record,stage){if(!stage.isConnected || motion.matches) release(stage);});
-    if(!motion.matches && !failed) document.querySelectorAll('.mascot-stage[data-mascot]').forEach(function(stage){
+    active.forEach(function(record,stage){if(!stage.isConnected || prefersReducedMotion()) release(stage);});
+    if(!prefersReducedMotion() && !failed) document.querySelectorAll('.mascot-stage[data-mascot]').forEach(function(stage){
       if(RIVE_MASCOTS[stage.getAttribute('data-mascot')]) mount(stage);
     });
   }
@@ -97,5 +97,6 @@
   document.addEventListener('visibilitychange',function(){active.forEach(function(r){r.rendering();});});
   if(motion.addEventListener) motion.addEventListener('change',schedule);
   else motion.addListener(schedule);
+  document.addEventListener('wilaya-preferences', schedule);
   schedule();
 })();

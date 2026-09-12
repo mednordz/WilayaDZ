@@ -406,7 +406,7 @@
       "<div class='lesson-footer-msg'>" + msg + "</div>" + note + slow + mascotLine +
       "<button class='btn' id='lesson-continue-btn'>" + T("Continuer","تابع") + "</button>";
     document.getElementById("lesson-body").appendChild(footer);
-    footer.scrollIntoView({behavior:"smooth", block:"end"});
+    footer.scrollIntoView({behavior:prefersReducedMotion()?"auto":"smooth", block:"end"});
     announce((correct ? "Correct." : "Pas tout à fait. La bonne réponse était " + spec.answerText + ".") +
              (spec.note && !correct ? " " + spec.note : ""));
 

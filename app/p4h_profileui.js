@@ -279,6 +279,7 @@
         if(r.ok){
           if(r.cree) return showGate("welcome", r.profile);
           hideGate(); bootProfile();
+          if(r.linked){openSettings("account");toast(TL("Google est associé à ton compte.","تم ربط Google بحسابك."));return;}
           toast(TL("Bienvenue, " + esc(r.profile.name) + ".","مرحبا، " + esc(r.profile.name) + "."));
           return;
         }
@@ -684,8 +685,9 @@
     document.getElementById("prof-pin").addEventListener("click", openPinSheet);
     document.getElementById("prof-new").addEventListener("click", function(){ closeSheet(); showGate("create"); });
     document.getElementById("prof-sync").addEventListener("click", function(){
-      closeSheet(); switchTab("info");
-      document.getElementById("sync-section").scrollIntoView({behavior:"smooth", block:"start"});
+      closeSheet(); openSettings("backup");
+      document.getElementById("settings-transfer").open = true;
+      document.getElementById("sync-section").scrollIntoView({behavior:prefersReducedMotion()?"auto":"smooth", block:"start"});
       document.getElementById("sync-code").focus();
     });
     var del = document.getElementById("prof-del");

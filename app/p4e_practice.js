@@ -208,7 +208,7 @@
   document.getElementById("act-blitz").addEventListener("click", function(){ startBlitz(this); });
   document.getElementById("act-confuse").addEventListener("click", function(){ startConfusion(this); });
   document.getElementById("act-free").addEventListener("click", function(){
-    document.getElementById("quiz-section").scrollIntoView({behavior:"smooth", block:"start"});
+    document.getElementById("quiz-section").scrollIntoView({behavior:prefersReducedMotion()?"auto":"smooth", block:"start"});
     document.getElementById("prompt-text").focus();
   });
 

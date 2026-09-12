@@ -1,0 +1,24 @@
+/* The approved Casbah room is confined to settings. Artwork is embedded offline. */
+#settings-btn{font-size:1.5rem;color:var(--accent);flex-shrink:0}
+#view-settings{position:relative;isolation:isolate;background:#eee3cf;color:#332a20;border:1px solid #b49a70;border-radius:20px;overflow:hidden;margin-block:18px;padding:0 0 24px;--ink:#332a20;--ink-dim:#594b38;--bg:#eee3cf;--surface:#fff8eb;--border:#cfb991;--accent:#94451b}
+#view-settings::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(90deg,#eee3cf30,#eee3cfb8 26%,#eee3cfb8 74%,#eee3cf30),url('TILE_IMAGE');background-size:100% 100%,330px 330px;opacity:.23}
+.settings-hero{padding:90px 22px 20px;background:linear-gradient(0deg,#21190fe6,transparent),url('PATIO_IMAGE') center 45%/cover;color:#fff7e8;border-bottom:9px solid #768c95}
+.settings-hero h1{margin:4px 0;font-size:2rem;color:inherit}.settings-hero p{margin:4px 0;color:inherit}.settings-hero small{font-weight:800;letter-spacing:.08em}
+.settings-body{padding:16px 20px 0}.settings-body h2{font-size:1.05rem;margin:24px 0 12px;color:#332a20}.settings-body h2::before{content:'◆';color:#88662c;font-size:.6em;margin-inline-end:9px}
+.settings-group{background:linear-gradient(110deg,#fff9eef7,#f4ebdaf7);border:1px solid #bca17a;border-radius:22px;overflow:hidden;margin-bottom:15px}
+.settings-row{display:flex;align-items:center;gap:12px;padding:16px;width:100%;border:0;border-bottom:1px solid #d7c4a4;background:transparent;color:#332a20;text-align:start;font:inherit;min-height:64px;box-sizing:border-box}
+button.settings-row{cursor:pointer}.settings-row:last-child{border-bottom:0}.settings-row>span:first-child{flex:1;min-width:0}.settings-row b{display:block}.settings-row small{display:block;color:#594b38;font-size:.82rem;margin-top:4px}.settings-row .settings-arrow{flex:none;color:#765322}
+.settings-row select{max-width:52%;min-height:44px;background:#fff9ee;color:#332a20;border:1px solid #9e825c;border-radius:9px;font:inherit;padding:6px}
+.settings-switch{position:relative;direction:ltr;flex:none;width:67px;height:44px;border:0;background:transparent;cursor:pointer;padding:0}
+.settings-switch::before{content:'';position:absolute;inset:5px 0;border-radius:30px;background:linear-gradient(#b9493a,#962e27);box-shadow:inset 0 2px 4px #0005}
+.settings-switch::after{content:'';position:absolute;left:3px;top:8px;width:28px;height:28px;border-radius:50%;background:linear-gradient(white,#e8e7e2);box-shadow:0 2px 3px #0004;transition:transform .18s}
+.settings-switch[aria-checked=true]::before{background:linear-gradient(#438d5c,#286d44)}.settings-switch[aria-checked=true]::after{transform:translateX(33px)}
+.settings-note{padding:14px;background:#e7eadcef;border:1px solid #aeb798;border-radius:15px;font-size:.88rem;color:#34412d}.settings-back{background:#fff8eb;border:1px solid #bca17a;border-radius:12px;padding:10px 15px;min-height:44px;color:#332a20;font:inherit;cursor:pointer}.settings-volume{display:block;padding:16px;color:#332a20}.settings-volume input{display:block;width:100%;min-height:44px;accent-color:#347748}.settings-volume input:disabled{opacity:.45}
+#settings-transfer{margin:16px 20px;background:#fff8eb;border:1px solid #bca17a;border-radius:15px;padding:16px}#settings-transfer summary{cursor:pointer;min-height:44px;font-weight:700}#settings-transfer[hidden]{display:none}#settings-transfer #sync-section{margin:0;padding:0}#settings-transfer .sync-code{background:#fffdf7;color:#332a20}#settings-transfer .map-card{background:#f5ebda}
+#view-settings :focus-visible{outline:3px solid #13658a;outline-offset:3px}
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+@media(max-width:380px){.settings-body{padding-inline:12px}.settings-row{padding:12px;gap:8px}.topbar-droite{gap:4px!important}#settings-btn{width:36px}.settings-row select{font-size:.88rem}}
+.settings-row .settings-icon{flex:none!important;display:grid;place-items:center;width:36px;height:36px;border:1px solid #bca17a;border-radius:12px;color:#235b6e;font-size:1.25rem;font-weight:500}
+.settings-hero{position:relative;border-bottom:0;padding-bottom:28px}.settings-hero::after{content:'';position:absolute;bottom:0;inset-inline:0;height:9px;background:url('TILE_IMAGE') center/85px;border-block:1px solid #c8b88d}
+.settings-row>span:not(.settings-icon):not(.settings-arrow){flex:1;min-width:0}
+#view-settings{--accent-soft:#e8d4b0;--border-strong:#a98a5f;--ink-faint:#594b38}

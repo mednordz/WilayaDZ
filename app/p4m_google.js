@@ -72,15 +72,15 @@
 
   var GOOGLE_STATE_KEY = "wilaya-google-v1";
 
-  function googleStart(profileId){
+  function googleStart(profileId, link){
     googleReady(function(id){
       if(!id) return;
-      var nonce = randomToken();
+      var nonce = link ? link.nonce : randomToken();
       var state = randomToken();
       try{
         sessionStorage.setItem(GOOGLE_STATE_KEY,
-          JSON.stringify({nonce:nonce, state:state, profileId:profileId || null}));
-      }catch(e){ /* navigation privée : on continue, le contrôle sautera */ }
+          JSON.stringify({nonce:nonce, state:state, profileId:profileId || null, challenge:link ? link.challenge : null, created:Date.now()}));
+      }catch(e){ toast(TL("Autorise le stockage de session pour continuer avec Google.","اسمح بتخزين الجلسة للمتابعة مع Google.")); return; }
 
       var retour = location.origin + location.pathname;
       location.href = "https://accounts.google.com/o/oauth2/v2/auth" +
@@ -124,13 +124,23 @@
     /* `state` doit revenir tel qu'on l'a envoyé : c'est ce qui
        distingue un retour de NOTRE demande d'un jeton qu'on nous
        glisserait par un lien fabriqué. */
-    if(garde && garde.state && params.state !== garde.state) return null;
+    if(!garde || !garde.state || !garde.nonce || params.state !== garde.state || !garde.created || Date.now()-garde.created>600000) return null;
     return { credential: params.id_token,
              nonce: garde ? garde.nonce : "",
-             profileId: garde ? garde.profileId : null };
+             profileId: garde.profileId, challenge:garde.challenge || null };
   }
 
   function cloudGoogle(retour){
+    if(retour.challenge){
+      var p=account.profiles.find(function(x){return x.id===retour.profileId;});
+      var c=p && cloudOf(p);
+      if(!c || !c.token) return Promise.resolve({ok:false,message:TL('Reconnecte-toi avant d’associer Google.','أعد الدخول قبل ربط Google.')});
+      return cloudCall('POST','/auth/google/link',{credential:retour.credential,nonce:retour.nonce,challenge:retour.challenge},c.token).then(function(res){
+        if(res.status!==200) return {ok:false,message:res.status===409?TL('Ce compte Google est déjà associé à un autre compte WilayaDZ. Aucun compte n’a été fusionné.','حساب Google مرتبط بحساب WilayaDZ آخر. لم يُدمج أي حساب.'):TL('Association impossible ou expirée. Recommence depuis les réglages.','تعذّر الربط أو انتهت صلاحيته. أعد المحاولة من الإعدادات.')};
+        c.googleEmail=res.data.account.google_email;account.activeId=p.id;saveAccount();
+        return {ok:true,profile:p,linked:true};
+      });
+    }
     return cloudCall("POST", "/auth/google",
                      {credential:retour.credential, nonce:retour.nonce})
       .then(function(res){
@@ -153,4 +163,25 @@
         return adoptSession(res.data.account, res.data.token, cible)
           .then(function(r){ clearPending(); return r; });
       });
+  }
+
+  function openGoogleLinkSheet(){
+    var p=activeProfile(), c=p && cloudOf(p);
+    if(!c || !c.token) return openCloudSheet();
+    openSheet('<h2 id="sheet-title">'+T('Associer Google','ربط Google')+'</h2><p class="sub">'+TS('La liaison conserve ton compte et ta progression, même si ton adresse Google est différente. Confirme avec ton mot de passe WilayaDZ, puis choisis ton compte chez Google.','يحافظ الربط على حسابك وتقدّمك حتى إن اختلف بريد Google. أكّد بكلمة سر WilayaDZ ثم اختر حسابك لدى Google.')+'</p><p id="google-link-status" role="status"></p><label for="google-link-password">'+TL('Mot de passe WilayaDZ','كلمة سر WilayaDZ')+'</label><input class="gate-input" id="google-link-password" type="password" autocomplete="current-password" maxlength="1024"><p class="gate-err" id="google-link-error" role="alert"></p><button class="btn google-btn" id="google-link-start" disabled>'+GOOGLE_ICON+T('Choisir mon compte Google','اختيار حساب Google')+'</button><p class="gate-note">'+TS('Si tu utilises uniquement Google, définis d’abord un mot de passe avec « Mot de passe oublié » à la connexion.','إذا كنت تستخدم Google فقط، أنشئ كلمة سر عبر «نسيت كلمة السر» عند الدخول.')+'</p><button class="btn ghost" id="sheet-close">'+T('Fermer','إغلاق')+'</button>');
+    var b=document.getElementById('google-link-start'), status=document.getElementById('google-link-status');
+    document.getElementById('sheet-close').onclick=closeSheet;
+    if(!googleUsable()){status.textContent=TL('Disponible depuis la version web connectée.','متاح من نسخة الويب المتصلة.');return;}
+    googleReady(function(id){if(!b.isConnected)return;b.disabled=!id;status.textContent=id?'':TL('Google n’est pas configuré sur cette version.','Google غير مُعدّ في هذه النسخة.');});
+    cloudCall('GET','/me',null,c.token).then(function(res){if(!status.isConnected)return;if(res.status===200 && res.data.account.google_email){status.textContent=TL('Google associé : ','Google مرتبط: ')+res.data.account.google_email;b.hidden=true;document.getElementById('google-link-password').disabled=true;}});
+    b.onclick=function(){
+      var input=document.getElementById('google-link-password'), password=input.value;
+      if(!password){document.getElementById('google-link-error').textContent=TL('Saisis ton mot de passe.','أدخل كلمة السر.');input.focus();return;}
+      b.disabled=true;var nonce=randomToken();
+      cloudCall('POST','/auth/google/prepare',{password:password,nonce:nonce},c.token).then(function(res){
+        password='';if(!b.isConnected)return;input.value='';b.disabled=false;
+        if(res.status!==200){document.getElementById('google-link-error').textContent=TL('Vérifie ton mot de passe et ta connexion, puis réessaie.','تحقق من كلمة السر والاتصال ثم أعد المحاولة.');return;}
+        googleStart(p.id,{nonce:nonce,challenge:res.data.challenge});
+      });
+    };
   }
