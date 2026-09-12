@@ -31,6 +31,11 @@ const {seedSignedIn}=require('./seed_profile');
     await page.locator('[data-mode="typein"]').click();const score=await page.locator('#stat-session').textContent();
     await page.locator('#typein-input').fill('1a');await page.locator('#typein-submit').click();assert.equal(await page.locator('#stat-session').textContent(),score);assert(await page.locator('#typein-input').isEnabled());
     for(const digits of ['١٦','۱۶']){await page.locator('#skip-btn').click();const before=Number((await page.locator('#stat-session').textContent()).split('/')[1]);await page.locator('#typein-input').fill(digits);await page.locator('#typein-submit').click();assert.equal(Number((await page.locator('#stat-session').textContent()).split('/')[1]),before+1);}
+    await page.setViewportSize({width:390,height:360});await page.locator('#skip-btn').click();await page.locator('#typein-input').fill('16');await page.locator('#typein-submit').scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>{const r=document.querySelector('#typein-submit').getBoundingClientRect(),n=document.querySelector('.tabbar').getBoundingClientRect();return r.top>=0&&r.bottom<=n.top;},{},{timeout:3000});
+    const control=await page.locator('#typein-submit').evaluate(e=>({button:e.getBoundingClientRect().toJSON(),nav:document.querySelector('.tabbar').getBoundingClientRect().toJSON()}));
+    assert(control.button.top>=0&&control.button.bottom<=control.nav.top,engine.name()+' fixed navigation covers validation: '+JSON.stringify(control));
+
 
   }
   await page.close();

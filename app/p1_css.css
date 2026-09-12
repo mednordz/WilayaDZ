@@ -664,3 +664,5 @@
   footer{ margin-top:40px; padding-top:20px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:.8rem; }
 
 body.lesson-open{overflow:hidden;}
+/* Reserve the fixed navigation when focus or scrollIntoView reveals a control. */
+html{scroll-padding-block-end:calc(120px + env(safe-area-inset-bottom));}

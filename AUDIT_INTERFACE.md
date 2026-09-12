@@ -18,6 +18,8 @@ Branche : `codex/audit-css`. Corrections préparées sur la version publiée `92
 
 12. **Cartes indisponibles illisibles** : leur opacité de 50 % atténuait aussi les explications. Les textes conservent maintenant leur contraste ; une bordure pointillée et l’absence de relief indiquent leur indisponibilité.
 
+13. **Validation masquée par la navigation** : avec une hauteur réduite à 360 px, Chromium pouvait placer le champ et « Valider » sous la barre fixe. Le document réserve maintenant la hauteur nécessaire lors du défilement vers un contrôle. Un test vérifie la géométrie réelle sur les deux moteurs.
+
 ## Couverture
 
 Inspection de 66 états capturés : 11 écrans (accueil, atelier, quiz, guide, carte, registre, profil, réglages, affichage, fiche d’unité, leçon) × 3 configurations × 2 moteurs. Configurations : bilingue 320 px / texte 125 % / thème nuit, arabe 390 px / jour, français 768 px / jour. Animations actives. Débordements de page et débordements internes contrôlés ; les libellés réservés aux lecteurs d’écran sont exclus des faux positifs de largeur.
