@@ -214,7 +214,7 @@
     color:var(--ink-dim); opacity:.95;
   }
   .lesson-footer.wrong .lesson-footer-note,
-  .lesson-footer.correct .lesson-footer-note{ color:var(--ink-dim); }
+  .lesson-footer.correct .lesson-footer-note{ color:var(--ink); }
 
   /* ============================================================
      BILINGUE — la colonne vertébrale

@@ -15,6 +15,13 @@ function setup(){
  c.run=s=>vm.runInContext(s,c);c.queue=queue;return c;
 }
 (async()=>{
+ const legacyConfusion=setup();
+ legacyConfusion.run('p.data.confusions={"1":{"-1":3,"2":4,"1":2},"-1002":{"3":2}}');
+ const cleaned=legacyConfusion.run('packProfile(p)');
+ check(legacyConfusion.validPayload(cleaned),'legacy structural errors cannot block profile export');
+ check(JSON.stringify(cleaned.cf)===JSON.stringify({1:{2:4}}),'valid confusion evidence preserved');
+ check(legacyConfusion.run('p.data.confusions[1][-1]')===3,'export sanitization does not mutate the source profile');
+
  for(const silent of [false,true]){
   const c=setup();c.session.alive=true;const r=await c.run(`cloudSync(p,{silent:${silent}})`);
   check(r.ok&&r.changed,'scalar-only update reported');check(c.state.xp===900&&c.state.keyDone&&c.state.bestBlitz===12,'active scalars hydrated');

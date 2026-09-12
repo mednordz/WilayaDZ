@@ -186,11 +186,24 @@
       var r = d.progress[c] || {};
       packed[c] = [r.box||0, (r.due||0)/DAY, r.updatedAt||0];
     });
+    /* Les anciennes questions de blocs pouvaient produire des identifiants
+       négatifs. Ils ne doivent pas bloquer l'export d'un profil valide. */
+    var confusions = {};
+    function validWilayaKey(k){ return /^(?:[1-9]|[1-5][0-9]|6[0-9])$/.test(k); }
+    Object.keys(d.confusions||{}).forEach(function(a){
+      if(!validWilayaKey(a)) return;
+      var pairs = {};
+      Object.keys(d.confusions[a]||{}).forEach(function(b){
+        var count = d.confusions[a][b];
+        if(validWilayaKey(b) && a !== b && Number.isSafeInteger(count) && count >= 0) pairs[b] = count;
+      });
+      if(Object.keys(pairs).length) confusions[a] = pairs;
+    });
     return {
       v:1, sv:2, ra:d.resetAt||0, n:p.name, x:d.xp||0,
       sc:(d.streak&&d.streak.count)||0, sl:(d.streak&&d.streak.last)||null,
       k:d.keyDone?1:0, bb:d.bestBlitz||0,
-      cr:d.crowns||{}, p:packed, cf:d.confusions||{}, pn:d.photoNon?1:0,
+      cr:d.crowns||{}, p:packed, cf:confusions, pn:d.photoNon?1:0,
       /* L'avatar n'est pas cumulable comme une progression : c'est le
          plus récent qui gagne, d'où l'horodatage qui l'accompagne. */
       av:p.avatar||null, avt:p.avatarAt||0

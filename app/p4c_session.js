@@ -4,7 +4,6 @@
      Un seul runner pour tous les modes : leçon, révision,
      confusions, rafale et la leçon-découverte « La Clé ».
      ============================================================ */
-  var LESSON_LEN = 10;
   var session = {alive:false};
   var sessionPrevFocus = null;
 
@@ -23,25 +22,21 @@
   function buildLessonQueue(unit){
     var pool = poolForTier(Math.max(unit.tier, state.tier));
     var codes = unit.pool.map(function(w){ return w.c; });
-    var q = [], last = null;
-    for(var i=0;i<LESSON_LEN;i++){
-      var pick = weightedPick(codes, last);
-      last = pick;
-      q.push(exerciseFor(pick, pool, true));
-    }
-    var ch = exChain(unit.pool);
-    if(ch) q.splice(4 + Math.floor(Math.random()*3), 0, ch);
-    if(unit.pool.length >= 6 && Math.random() < 0.55){
-      var g = exGap(unit.pool);
-      if(g) q.splice(Math.max(1, q.length-2), 0, g);
-    }
+    /* Une première visite de chaque wilaya : aucune couverture laissée au hasard.
+       Le format sera choisi au moment de l'affichage, après les réponses précédentes. */
+    var q = shuffle(codes.slice()).map(function(code){
+      return {kind:"adaptive", code:code, pool:pool};
+    });
+    /* Les exercices de structure restent disponibles sans certifier une association. */
+    var chain = exChain(unit.pool);
+    if(chain) q.push(chain);
     return q;
   }
 
   function buildReviewQueue(unit){
     var pool = unit ? unit.pool : poolForTier(state.tier);
     var due = dueCodes(pool).slice(0, 15);
-    return due.map(function(w){ return exerciseFor(w.c, pool, false); });
+    return due.map(function(w){ return {kind:"adaptive", code:w.c, pool:pool}; });
   }
 
   function buildConfusionQueue(){
@@ -74,7 +69,8 @@
       gen: cfg.gen || null,
       index: 0,
       hearts: (cfg.hearts === undefined) ? 5 : cfg.hearts,
-      useHearts: cfg.hearts !== 0,
+      useHearts: cfg.hearts > 0 && cfg.kind === "blitz",
+      retries: {}, unresolved: {}, scheduledRetries: 0,
       correct: 0, answered: 0, blitzScore: 0, done: false,
       combo: 0, comboMax: 0,
       locked: false, current: null, qStart: 0, lastBlitz: null,
@@ -207,6 +203,7 @@
     var total = session.queue.length || 1;
     document.getElementById("lesson-bar-fill").style.width = Math.round((session.index/total)*100) + "%";
     var bar = document.getElementById("lesson-bar");
+    bar.setAttribute("aria-valuemax", total);
     bar.setAttribute("aria-valuenow", session.index);
     bar.setAttribute("aria-valuetext", TL("Question " + Math.min(session.index+1, total) + " sur " + total, "سؤال " + Math.min(session.index+1, total) + " من " + total));
   }
@@ -221,6 +218,11 @@
     }else{
       if(session.index >= session.queue.length){ finishSession(true); return; }
       spec = session.queue[session.index];
+      if(spec.kind === "adaptive"){
+        var planned = spec;
+        spec = exerciseFor(planned.code, planned.pool, false);
+        spec.relearning = !!planned.relearning;
+      }
     }
     session.current = spec;
     session.qStart = Date.now();
@@ -230,6 +232,15 @@
     else if(spec.kind === "chain") renderChain(spec, body);
     else if(spec.kind === "type") renderType(spec, body);
     else renderMCQ(spec, body);
+    if(session.kind !== "blitz" && (spec.kind === "type" || spec.kind === "mcq")){
+      var help = document.createElement("button");
+      help.className = "btn ghost";
+      help.id = "lesson-help";
+      help.style.marginTop = "18px";
+      help.innerHTML = T("Je ne sais pas · voir la réponse", "لا أعرف · أظهر الإجابة");
+      help.addEventListener("click", function(){ answer(false, null, help, spec); });
+      body.appendChild(help);
+    }
   }
 
   function renderTell(spec, body){
@@ -285,8 +296,10 @@
     var inp = document.getElementById("lesson-type-input");
     function submit(){
       if(session.locked) return;
-      var val = parseInt(inp.value, 10);
-      if(isNaN(val)) return;
+      var digits = inp.value.trim().replace(/[٠-٩]/g, function(c){return String(c.charCodeAt(0)-1632);})
+        .replace(/[۰-۹]/g, function(c){return String(c.charCodeAt(0)-1776);});
+      if(!/^\d{1,2}$/.test(digits)) return;
+      var val = Number(digits);
       answer(val === spec.code, val, null, spec);
     }
     document.getElementById("lesson-type-submit").addEventListener("click", submit);
@@ -347,9 +360,24 @@
     var ms = Date.now() - session.qStart;
     session.answered++;
 
-    if(spec.code > 0 && !spec.noRecord){
-      recordAnswer(spec.code, correct, ms, correct ? null : chosenCode, spec.fastLimit);
+    if(session.kind !== "blitz" && spec.code > 0 && !spec.noRecord){
+      recordAnswer(spec.code, correct, ms, correct ? null : chosenCode, spec.fastLimit, spec);
       persist();   /* écrit à chaque réponse : quitter en cours ne perd plus rien */
+    }
+    if(session.kind !== "blitz" && spec.code > 0 && !spec.noRecord){
+      if(correct) delete session.unresolved[spec.code];
+      else {
+        session.unresolved[spec.code] = true;
+        /* Une seule reprise par wilaya, six au maximum : pas de boucle punitive.
+           Deux autres questions passent d'abord lorsque la file le permet. */
+        if(!session.retries[spec.code] && session.scheduledRetries < 6){
+          session.retries[spec.code] = true;
+          session.scheduledRetries++;
+          var pool = session.unit ? session.unit.pool : poolForTier(state.tier);
+          var retry = {kind:"adaptive", code:spec.code, pool:pool, relearning:true};
+          session.queue.splice(Math.min(session.index+3, session.queue.length), 0, retry);
+        }
+      }
     }
     if(correct){
       session.correct++;
@@ -363,6 +391,8 @@
     Array.prototype.forEach.call(document.querySelectorAll(".chain-chip,.chain-slot"), function(b){ b.disabled = true; });
     var sb = document.getElementById("lesson-type-submit");
     if(sb) sb.disabled = true;
+    var help = document.getElementById("lesson-help");
+    if(help) help.disabled = true;
     if(el) el.classList.add(correct ? "correct" : "wrong");
     if(!correct && spec.kind === "mcq"){
       Array.prototype.forEach.call(document.querySelectorAll(".lesson-choice"), function(b){
@@ -399,13 +429,13 @@
                               "ليس تماما — " + numIf(spec.answerText)));
     var note = (!correct && spec.note)
       ? "<div class='lesson-footer-note'>" + T(spec.note, spec.noteAr || "") + "</div>" : "";
-    var slow = (correct && ms > (spec.fastLimit || FAST_MCQ))
-      ? "<div class='lesson-footer-note'>" + T("Juste, mais lent : à revoir.","صحيح لكن بطيء: تبقى للمراجعة.") + "</div>" : "";
+    var retryNote = !correct && session.retries[spec.code] && !spec.relearning
+      ? "<div class='lesson-footer-note'>" + T("Prends le temps de retenir cette association. Tu pourras la retenter dans cette séance.","خذ وقتك لتذكّر هذا الربط. ستتمكن من المحاولة مجددا في هذه الجلسة.") + "</div>" : "";
     var who = (session.unit && UNIT_MASCOT[session.unit.id]) || "fennec";
     var mascotLine = "<div class='lesson-footer-mascot'>" + mascotHtml(who, 46, correct ? "happy" : "sad") +
       "<span>" + pickLine(correct ? "correct" : "wrong") + "</span></div>";
     footer.innerHTML =
-      "<div class='lesson-footer-msg'>" + msg + "</div>" + note + slow + mascotLine +
+      "<div class='lesson-footer-msg'>" + msg + "</div>" + note + retryNote + mascotLine +
       "<button class='btn' id='lesson-continue-btn'>" + T("Continuer","تابع") + "</button>";
     document.getElementById("lesson-body").appendChild(footer);
     footer.scrollIntoView({behavior:prefersReducedMotion()?"auto":"smooth", block:"end"});
@@ -464,7 +494,7 @@
       xpGain = success ? (session.correct*10 + 15) : Math.round(session.correct*5);
       title = success ? T("Leçon terminée !","انتهى الدرس!") : NOHEART;
       var streakBefore = state.streak.count || 0;
-      if(success && session.unit){
+      if(success && session.unit && !Object.keys(session.unresolved).length){
         state.crowns[session.unit.id] = Math.min(5, (state.crowns[session.unit.id]||0)+1);
         bumpStreak();
       }
@@ -473,15 +503,21 @@
         : AGAIN;
     }
 
-    /* Leçon parfaite : aucun cœur perdu — comme le badge « Perfect » de Duolingo. */
-    var perfectEligible = success && session.useHearts && session.answered > 0 &&
+    var remaining = Object.keys(session.unresolved).length;
+    if(remaining && session.kind !== "blitz"){
+      sub = TS(remaining + " association(s) à reprendre. Tes réponses sont sauvegardées.",
+        remaining + " روابط تحتاج إلى مراجعة. تم حفظ إجاباتك.");
+    }
+
+    /* La première tentative compte : corriger ensuite n'efface pas l'erreur. */
+    var perfectEligible = success && session.answered > 0 &&
       (session.kind === "lesson" || session.kind === "review" || session.kind === "confuse");
-    var perfect = perfectEligible && session.hearts === 5;
+    var perfect = perfectEligible && session.correct === session.answered;
     var bonusXp = perfect ? 8 : 0;
     xpGain += bonusXp;
     if(perfect){
       title = T("Leçon parfaite !","درس مثالي!");
-      sub = TS("Aucun cœur perdu — bonus.","لم تفقد أي قلب — مكافأة.");
+      sub = TS("Toutes les réponses justes dès le premier essai — bonus.","كل الإجابات صحيحة من المحاولة الأولى — مكافأة.");
     }
 
     state.xp += xpGain;
@@ -575,7 +611,7 @@
     if(unit && !unitUnlocked(unit,UNITS.indexOf(unit)))return;
     var q = buildReviewQueue(unit);
     if(!q.length){ toast(TL("Rien à réviser pour l'instant.","لا شيء للمراجعة الآن.")); return; }
-    startSession({kind:"review", queue:q, label:unit?TL("Révision · "+unit.label,"مراجعة · "+unit.label):TL("Révision du jour","مراجعة اليوم"), trigger:trigger});
+    startSession({kind:"review", unit:unit || null, queue:q, label:unit?TL("Révision · "+unit.label,"مراجعة · "+unit.label):TL("Révision du jour","مراجعة اليوم"), trigger:trigger});
   }
   function startConfusion(trigger){
     var q = buildConfusionQueue();

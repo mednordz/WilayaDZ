@@ -33,7 +33,7 @@ for (let c = 1; c <= 10; c++) prog4[c] = { box: 4, due: 0, seen: 9, ok: 9, best:
   }
   console.log('Boîte 4 => saisie libre:', type, '| QCM:', mcq, '| chaîne:', chain);
 
-  // Fluence : bonne réponse LENTE ne doit pas promouvoir
+  // Une réponse lente reste correcte et bénéficie du premier intervalle.
   await seedSignedIn(p, URL, { settle: 600, data: {
     keyDone: true, progress: {}, confusions: {}, crowns: {}, xp: 0,
     streak: { count: 0, last: null } } });
@@ -45,10 +45,10 @@ for (let c = 1; c <= 10; c++) prog4[c] = { box: 4, due: 0, seen: 9, ok: 9, best:
   await correct.click();
   const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('wilaya-account-v1')).profiles[0].data.progress);
   assert(Object.keys(saved).length>0,'La réponse doit être enregistrée');
-  assert(Object.values(saved).every(r=>r.box===0),'Une réponse lente ne doit pas promouvoir la maîtrise');
+  assert(Object.values(saved).every(r=>r.box===1),'Une première réponse lente doit être reconnue comme correcte');
   assert(type>0,'La boîte 4 doit produire de la saisie libre');
   assert.deepEqual(errs,[]);
-  console.log('Saisie libre en boîte 4 et réponse juste lente sans promotion : validées');
+  console.log('Saisie libre en boîte 4 et réponse juste lente reconnue : validées');
   console.log('ERREURS:', errs.length ? errs.join('|') : 'aucune');
   await b.close();
 })().catch(e=>{console.error(e);process.exit(1);});
