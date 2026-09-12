@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const { seedSignedIn } = require('./seed_profile');
 const fs = require('fs');
 const URL = 'file:///tmp/wilayas/wilaya-v6.html';
-const axeSrc = fs.readFileSync('/tmp/wilayas/node_modules/axe-core/axe.min.js', 'utf8');
+const axeSrc = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const T = 8000;
 
 /* Un profil DEJA EN ROUTE, et non un profil vierge : sur un profil

@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8390/';
-const axeSrc = fs.readFileSync('/tmp/wilayas/node_modules/axe-core/axe.min.js', 'utf8');
+const axeSrc = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const PASSWORD = 'motdepassesolide';
 const T = 8000;
 
