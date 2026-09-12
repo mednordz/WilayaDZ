@@ -516,6 +516,16 @@
   var topstatStreakEl = document.getElementById("topstat-streak");
   if(topstatStreakEl) topstatStreakEl.addEventListener("click", openStreakSheet);
 
+  // Le compteur XP est une vraie action, avec un retour clavier à son bouton.
+  function openXpSheet(){
+    openSheet("<div class='xp-sheet ui1'><h2 id='sheet-title'>" + T("Tes points d'expérience","نقاط خبرتك") + "</h2>" +
+      "<p class='xp-total'>" + num(state.xp || 0) + " <span>XP</span></p>" +
+      "<p>" + TS("Chaque leçon et chaque révision font progresser ton total. Continue à apprendre pour gagner des points.","كل درس وكل مراجعة يزيدان رصيدك. واصل التعلم لكسب النقاط.") + "</p>" +
+      "<button class='btn primary' id='xp-sheet-close'>" + T("Continuer","تابع") + "</button></div>");
+    document.getElementById("xp-sheet-close").addEventListener("click", closeSheet);
+  }
+  document.getElementById("topstat-xp").addEventListener("click", openXpSheet);
+
   function renderSoundBtn(){
     var btn = document.getElementById("sound-btn");
     if(!btn) return;

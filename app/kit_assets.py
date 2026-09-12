@@ -27,11 +27,9 @@ import subprocess
 import sys
 import tempfile
 
-KIT = os.environ.get("WILAYA_KIT", os.path.expanduser(
-    "~/Documents/Codex/2026-09-12/referenced-chatgpt-conversation-this-is-an"
-    "/outputs/WilayaDZ-kit-developpeur 2"))
-
 ICI = os.path.dirname(os.path.abspath(__file__))
+KIT = os.environ.get("WILAYA_KIT", os.path.join(ICI, "assets", "kit"))
+
 SORTIE = os.path.join(ICI, "p4o_kit.js")
 
 # Largeur de reference 415 px (guide du kit) : on prepare le double pour
@@ -40,8 +38,7 @@ SORTIE = os.path.join(ICI, "p4o_kit.js")
 PIECES = [
     # (cle JS, fichier du kit, largeur cible en pixels, qualite)
     ("banniere", "01-illustrations/banniere-algerie-sans-texte.svg", 830, 88),
-    ("palmiers", "01-illustrations/decor-palmiers-gauche.svg",       151, 86),
-    ("village",  "01-illustrations/decor-village-droite.svg",        131, 86),
+    ("chemin", "01-illustrations/decor-parcours.svg", 768, 83),
 ]
 
 

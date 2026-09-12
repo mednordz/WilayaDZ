@@ -217,16 +217,18 @@
          redemandent du travail.
      ============================================================ */
 
-  /* Une jauge plutôt que cinq rosettes.
-     Les rosettes comptaient les couronnes — cinq crans, donc cinq
-     paliers. La jauge montre la MAÎTRISE réelle (la somme des boîtes
-     de Leitner de l'unité), qui bouge à chaque bonne réponse et pas
-     seulement une fois par leçon terminée. C'est la même information
-     que le reste de l'écran, mais continue. */
-  function jaugeHtml(pct, classe){
-    return "<span class='etape-jauge " + classe + "' aria-hidden='true'>" +
-      "<span class='etape-jauge-fill' style='width:" + Math.max(0, Math.min(100, pct)) + "%'></span>" +
-    "</span>";
+  /* Les cinq rosettes représentent les niveaux gagnés (couronnes).
+     La force Leitner, continue, reste dans le détail de l'unité. */
+  function niveauxHtml(crown, unlocked){
+    var n = unlocked ? Math.max(0, Math.min(5, crown)) : 0;
+    var label = !unlocked ? "" : n
+      ? T("Maîtrise " + num(n + "/5"), "الإتقان " + num(n + "/5"))
+      : T("Non commencée", "لم تبدأ بعد");
+    var chips = "";
+    for(var k=0;k<5;k++) chips += "<svg class='niveau-rose" + (k<n ? " on" : "") + "' viewBox='0 0 32 32' aria-hidden='true'><path d='M16 1 L21 5 L27 5 L27 11 L31 16 L27 21 L27 27 L21 27 L16 31 L11 27 L5 27 L5 21 L1 16 L5 11 L5 5 L11 5 Z'/></svg>";
+    return "<div class='etape-niveaux" + (n===5 ? " complete" : "") + "'>" +
+      (label ? "<p class='niveau-label'>" + label + "</p>" : "") +
+      "<div class='niveau-rosettes' aria-hidden='true'>" + chips + "</div></div>";
   }
 
   /* Le cadre à seize côtés du kit, repris tel quel. */
@@ -287,11 +289,6 @@
       ligne = T("À commencer","ابدأ");
     }
 
-    /* La jauge dit déjà « où j'en suis » ; la répéter en toutes lettres
-       sous elle n'ajoutait rien et allongeait chaque ligne d'un tiers.
-       Le détail chiffré reste, à un tap, dans la feuille de l'unité. */
-    var pct = unlocked ? unitStrength(u) : 0;
-
     return "<div class='etape' data-unite='" + u.id + "'>" +
       "<div class='etape-noeud'>" +
         /* Même la première étape porte sa liaison : elle la relie au
@@ -310,7 +307,7 @@
       "<div class='etape-corps'>" +
         "<h3>" + T("Unité " + (i+1), "الوحدة " + (i+1)) + "</h3>" +
         "<p class='etape-etat " + classe + "'>" + icone + "<span>" + ligne + "</span></p>" +
-        jaugeHtml(pct, classe) +
+        niveauxHtml(crown, unlocked) +
       "</div>" +
     "</div>";
   }
@@ -319,7 +316,7 @@
      démarrage, plutôt qu'à chaque rendu du chemin. */
   function poserImagesKit(){
     if(typeof KIT === "undefined") return;
-    var paires = [["banner-img","banniere"], ["decor-gauche","palmiers"], ["decor-droite","village"]];
+    var paires = [["banner-img","banniere"], ["decor-chemin","chemin"]];
     paires.forEach(function(pr){
       var el = document.getElementById(pr[0]);
       if(el && KIT[pr[1]]) el.src = KIT[pr[1]].src;
