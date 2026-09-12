@@ -24,17 +24,23 @@ Une première archive chiffrée réelle a été déposée sur Google Drive le 12
 présence, taille et accès privé sur Drive. Le reçu et la copie chiffrée sont dans
 `.local-ops/` sur le Mac. La clé privée est copiée sur ce Mac et sur bigpc.
 
-**Les sauvegardes automatiques restent inactives** : la connexion rclone
-`smncdrive` de bigpc renvoie `invalid_grant` et doit être reconnectée à Google.
-Le connecteur Drive de Codex fonctionne mais n'est pas une connexion permanente
-utilisable par un service sur bigpc. Aucune unité système n'est encore activée.
+**Sauvegardes automatiques actives depuis le 12 septembre 2026 à 14 h 24** :
+connexion rclone `smncdrive` renouvelée avec le périmètre `drive.file` ;
+dossier privé « WilayaDZ - Sauvegardes automatiques » créé par rclone et vérifié
+dans le même Drive que la première sauvegarde Codex. Ce dossier distinct évite
+d’élargir les permissions aux autres fichiers de l’utilisateur.
 
-Avant activation, reconnecter Google, vérifier l'accès au dossier choisi puis
-préparer `/etc/wilayadz/drive.json` contenant `remote`, `folder_id` et
-`rclone_config` (chemin d'une configuration OAuth dédiée, privée, en 0600).
-Ne pas placer les jetons OAuth dans Git. Les appels rclone sont limités au dossier
-identifié par `--drive-root-folder-id`, sans synchronisation destructive du Drive.
-L'installateur refuse l'activation tant que la configuration privée manque.
+La sauvegarde réelle a été envoyée, retéléchargée, comparée à l’archive source
+et restaurée avec succès, aussi via systemd. Les deux timers sont activés et
+le premier contrôle local de santé est vert. Les archives et rapports restent
+hors Git, comme la configuration privée `/etc/wilayadz/drive.json`.
+
+Cette configuration contient `remote`, `folder_id` et `rclone_config`
+(chemin de la configuration OAuth dédiée, privée, en 0600). Les appels rclone
+visent le dossier choisi avec `--drive-root-folder-id`, sans synchronisation
+destructive du Drive. Pour une réinstallation, reconnecter Google et vérifier
+ces éléments avant les commandes ci-dessous. Si Google demande de configurer
+un Shared Drive, répondre non : le stockage utilisé est Mon Drive.
 
 Sur bigpc, depuis le checkout validé :
 
