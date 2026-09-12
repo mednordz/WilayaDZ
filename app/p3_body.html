@@ -28,22 +28,7 @@
          a rien à proposer — voir renderInvitePhoto(). -->
     <div class="invite-photo ui1" id="invite-photo" hidden></div>
 
-    <div class="chemin-head ui1">
-      <h2><span class="bi"><span class="bf" lang="fr">Ton chemin</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">طريقك</span></span></h2>
-      <span class="compte" id="chemin-compte"></span>
-    </div>
-
-    <div class="chemin ui1">
-      <!-- Un seul paysage : pas de couture entre deux fragments. -->
-      <img class="chemin-paysage" id="decor-chemin" alt="" aria-hidden="true" />
-      <span class="chemin-angle ha" aria-hidden="true"></span>
-      <span class="chemin-angle hb" aria-hidden="true"></span>
-      <div class="path-track" id="path-track"></div>
-    </div>
-  </div>
-
-  <!-- ===== ENTRAÎNEMENT ===== -->
-  <div class="view" id="view-practice" role="tabpanel" aria-labelledby="tab-practice" tabindex="-1">
+<div class="learning-rooms"><details id="learning-workshop" class="ceramic-room"><summary id="tab-practice"><span class="bi"><span class="bf" lang="fr">Mon atelier</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">ورشتي</span></span><small><span class="bi"><span class="bf" lang="fr">Réviser, consolider, s’entraîner</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">مراجعة وتعزيز وتدريب</span></span></small></summary>  <div class="workshop-body" id="view-practice" role="region" aria-labelledby="tab-practice" tabindex="-1">
     <div class="page-intro">
     <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Entraînement</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">التدريب</span></span></h2>
     <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Quatre façons de travailler, selon ce dont ta mémoire a besoin maintenant.</span><span class="ba2" lang="ar" dir="rtl">أربع طرق للعمل، حسب ما تحتاجه ذاكرتك الآن.</span></span></p>
@@ -112,11 +97,7 @@
       </div>
     </section>
   </div>
-
-  <!-- ===== INFOS ===== -->
-  <div class="view" id="view-info" role="tabpanel" aria-labelledby="tab-info" tabindex="-1">
-
-    <section id="method-section">
+</details><details id="learning-guide" class="ceramic-room"><summary><span class="bi"><span class="bf" lang="fr">Les clés pour apprendre</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">مفاتيح التعلّم</span></span><small><span class="bi"><span class="bf" lang="fr">Comprendre les codes et leurs repères</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">فهم الرموز ومعالمها</span></span></small></summary>    <section id="method-section">
       <div class="page-intro">
       <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">La clé du système</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">مفتاح النظام</span></span></h2>
       <p><span class="bis"><span class="bf2" lang="fr">Les codes ne sont pas arbitraires. Les <b>31 premiers suivent l'ordre alphabétique arabe</b> — c'est le seul fait qu'il faut vraiment retenir, et il fait tomber la moitié du travail.</span><span class="ba2" lang="ar" dir="rtl">الرموز ليست اعتباطية. <b>الـ31 الأولى مرتّبة حسب الترتيب الأبجدي العربي</b> — هذه هي الحقيقة الوحيدة التي يجب حفظها فعلا، وهي تسقط نصف العمل.</span></span></p>
@@ -137,6 +118,24 @@
     </section>
 
     <!-- ===== PROFIL & SYNCHRONISATION ===== -->
+</details></div>
+    <div class="chemin-head ui1">
+      <h2><span class="bi"><span class="bf" lang="fr">Ton chemin</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">طريقك</span></span></h2>
+      <span class="compte" id="chemin-compte"></span>
+    </div>
+
+    <div class="chemin ui1">
+      <!-- Un seul paysage : pas de couture entre deux fragments. -->
+      <img class="chemin-paysage" id="decor-chemin" alt="" aria-hidden="true" />
+      <span class="chemin-angle ha" aria-hidden="true"></span>
+      <span class="chemin-angle hb" aria-hidden="true"></span>
+      <div class="path-track" id="path-track"></div>
+    </div>
+  </div>
+
+  <!-- ===== ENTRAÎNEMENT ===== -->
+  <div class="view" id="view-info" role="tabpanel" aria-labelledby="tab-info" tabindex="-1">
+
     <section id="sync-section">
       <h2 class="section-title"><span class="bi"><span class="bf" lang="fr">Profil &amp; synchronisation</span><span class="bs" aria-hidden="true"></span><span class="ba" lang="ar" dir="rtl">الملف والمزامنة</span></span></h2>
       <p class="section-note"><span class="bis"><span class="bf2" lang="fr">Un compte est nécessaire à la première connexion. Ensuite, tu peux apprendre hors ligne : ta progression se synchronise au retour du réseau. Le code ci-dessous permet aussi un transfert manuel. Les réponses et remises à zéro les plus récentes sont respectées.</span><span class="ba2" lang="ar" dir="rtl">تحتاج إلى حساب عند الاتصال لأول مرة. بعدها يمكنك التعلم دون اتصال، وتُزامَن بياناتك عند عودة الشبكة. يتيح الرمز أدناه النقل اليدوي أيضا، مع مراعاة أحدث الإجابات وإعادة الضبط.</span></span></p>
@@ -220,17 +219,13 @@
   <!-- ===== TAB BAR ===== -->
   <div class="tabbar ui1">
     <div class="tabbar-inner" role="tablist" aria-label="Sections — الأقسام">
-      <button class="tab-btn active" id="tab-path" role="tab" aria-selected="true" aria-controls="view-path" data-tab="path" aria-label="Parcours — المسار"><svg class="tab-arch" viewBox="0 0 112 82" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M2 80 V45 Q2 29 19 26 Q27 12 43 10 Q52 7 56 2 Q60 7 69 10 Q85 12 93 26 Q110 29 110 45 V80 Z"/></svg>
+      <button class="tab-btn active" id="tab-path" role="tab" aria-selected="true" aria-controls="view-path" data-tab="path" aria-label="Apprendre — تعلّم"><svg class="tab-arch" viewBox="0 0 112 82" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M2 80 V45 Q2 29 19 26 Q27 12 43 10 Q52 7 56 2 Q60 7 69 10 Q85 12 93 26 Q110 29 110 45 V80 Z"/></svg>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M6 17c0-6 12 0 12-6"/></svg>
-        <span class="tab-fr">Parcours</span><span class="tab-ar" lang="ar" dir="rtl">المسار</span>
+        <span class="tab-fr">Apprendre</span><span class="tab-ar" lang="ar" dir="rtl">تعلّم</span>
       </button>
-      <button class="tab-btn" id="tab-practice" role="tab" aria-selected="false" aria-controls="view-practice" data-tab="practice" aria-label="Entraînement — تدريب"><svg class="tab-arch" viewBox="0 0 112 82" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M2 80 V45 Q2 29 19 26 Q27 12 43 10 Q52 7 56 2 Q60 7 69 10 Q85 12 93 26 Q110 29 110 45 V80 Z"/></svg>
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
-        <span class="tab-fr">Entraînement</span><span class="tab-ar" lang="ar" dir="rtl">تدريب</span>
-      </button>
-      <button class="tab-btn" id="tab-info" role="tab" aria-selected="false" aria-controls="view-info" data-tab="info" aria-label="Infos — معلومات"><svg class="tab-arch" viewBox="0 0 112 82" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M2 80 V45 Q2 29 19 26 Q27 12 43 10 Q52 7 56 2 Q60 7 69 10 Q85 12 93 26 Q110 29 110 45 V80 Z"/></svg>
+      <button class="tab-btn" id="tab-info" role="tab" aria-selected="false" aria-controls="view-info" data-tab="info" aria-label="Explorer — استكشف"><svg class="tab-arch" viewBox="0 0 112 82" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M2 80 V45 Q2 29 19 26 Q27 12 43 10 Q52 7 56 2 Q60 7 69 10 Q85 12 93 26 Q110 29 110 45 V80 Z"/></svg>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.5l-1.4 4.4-4.4 1.4 1.4-4.4 4.4-1.4z"/></svg>
-        <span class="tab-fr">Infos</span><span class="tab-ar" lang="ar" dir="rtl">معلومات</span>
+        <span class="tab-fr">Explorer</span><span class="tab-ar" lang="ar" dir="rtl">استكشف</span>
       </button>
     </div>
   </div>

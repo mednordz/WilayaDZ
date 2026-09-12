@@ -14,7 +14,7 @@ run(sys.executable,'tests/test_google_link.py')
 # Quelques anciens tests utilisent ce chemin ; la copie est toujours reconstruite.
 legacy=pathlib.Path('/tmp/wilayas');legacy.mkdir(exist_ok=True)
 for name in ['wilaya-v6.html','sw.js']: shutil.copy2(ROOT/'app'/name,legacy/name)
-for test in ['test_pilot','test_pedagogie','test_parcours','test_header','test_connection_methods','test_google_browser','test_settings','test_map','test_design_pages','test_visual_parcours','test_ladder','test_rive']:
+for test in ['test_organisation','test_pilot','test_pedagogie','test_parcours','test_header','test_connection_methods','test_google_browser','test_settings','test_map','test_design_pages','test_visual_parcours','test_ladder','test_rive']:
     run('node',f'tests/{test}.js')
 with tempfile.TemporaryDirectory(prefix='wilayadz-checks-') as tmp:
     env=dict(os.environ,WILAYA_DB=tmp+'/test.sqlite3',BASE='http://127.0.0.1:8390/',APP_URL='http://127.0.0.1:8390')

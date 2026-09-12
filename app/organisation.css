@@ -1,0 +1,26 @@
+/* Learning rooms belong to the path. Explorer contains geographic references. */
+:root{--ceramique:url('CERAMIQUE_IMAGE');}
+.learning-rooms{display:grid;gap:12px;margin:12px 0 28px;}
+.ceramic-room{border:1px solid #ab9165;border-radius:24px;background:#fffcf5;overflow:clip;box-shadow:0 4px 12px #173f4310;scroll-margin-top:12px;}
+.ceramic-room>summary{position:relative;cursor:pointer;list-style:none;padding:18px 44px 18px 20px;min-height:72px;color:#173f43;background:linear-gradient(90deg,#fffcf5ed,#fffcf5dd),var(--ceramique) center/150px;font-weight:800;}
+.ceramic-room>summary::-webkit-details-marker{display:none;}
+.ceramic-room>summary::after{content:'+';position:absolute;inset-inline-end:16px;top:22px;font-size:1.4rem;}
+.ceramic-room[open]>summary::after{content:'−';}
+.ceramic-room>summary small{display:block;font-size:.8rem;font-weight:600;margin-top:6px;color:#49615d;}
+.ceramic-room[open]>summary{border-bottom:3px double #b7a782;}
+.ceramic-room>summary:focus-visible{outline:3px solid #17666b;outline-offset:-5px;}
+.workshop-body,#learning-guide>#method-section{padding:18px 14px;margin:0;}
+.workshop-body .page-intro{display:none;}
+.workshop-body #quiz-section{background:#fffcf5;scroll-margin-top:12px;}
+#learning-guide .page-intro{padding:16px;}
+#view-path .workshop-body{--wrong:#a8432a;--wrong-soft:#f0dcd3;--wrong-deep:#6e2716;--gold-soft:#f5e9c8;--gold-ink:#6b4e14;--teal-deep:#123f3d;--accent-soft:#e1eeea;}
+.app-shell .tabbar-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:560px;margin-inline:auto;}
+.app-shell .tab-btn{width:100%;}
+.action-card,.forecast,.quiz-card,.map-card,.pilot-tile,.settings-group{background-image:linear-gradient(100deg,color-mix(in srgb,var(--surface) 96%,transparent),color-mix(in srgb,var(--surface) 87%,transparent)),var(--ceramique);background-size:auto,155px;}
+#view-settings .settings-group{background-image:linear-gradient(100deg,#fff9eef2,#fff9eedd),var(--ceramique);}
+.ceramic-room>summary{padding-inline:20px 44px;}
+@media(max-width:350px){.workshop-body,#learning-guide>#method-section{padding:14px 10px}.workshop-body .action-grid{grid-template-columns:1fr}.workshop-body .action-card{min-height:82px}}
+@media(forced-colors:active){.ceramic-room>summary,.action-card,.forecast,.quiz-card,.map-card,.pilot-tile,.settings-group{background:Canvas;color:CanvasText}}
+.ceramic-room{border-inline:7px solid transparent;background:linear-gradient(#fffcf5,#fffcf5) padding-box,var(--ceramique) center/130px border-box;}
+.action-card::after{width:100%;height:7px;background:var(--ceramique) center/95px;opacity:.8;}
+#view-info .map-card{border-inline:6px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--ceramique) center/130px border-box;}

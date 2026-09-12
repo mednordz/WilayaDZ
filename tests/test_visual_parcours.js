@@ -40,7 +40,7 @@ const fs=require('fs');
   assert((await page.locator('.xp-total').innerText()).includes('298'));
   await page.keyboard.press('Escape');assert.equal(await page.locator('#topstat-xp').evaluate(e=>document.activeElement===e),true);
   for(const tab of ['practice','info','path']){
-   await page.locator('#tab-'+tab).click();assert.equal(await page.locator('#tab-'+tab).getAttribute('aria-selected'),'true');
+   await page.locator('#tab-'+tab).click();if(tab==='practice'){assert(await page.locator('#learning-workshop').evaluate(e=>e.open));assert.equal(await page.locator('#tab-path').getAttribute('aria-selected'),'true');assert(await page.locator('#act-free').isVisible());}else assert.equal(await page.locator('#tab-'+tab).getAttribute('aria-selected'),'true');
   }
   assert.deepEqual(errors,[]);
   summary.push({width,lang,theme,violations:0});await page.close();

@@ -485,6 +485,8 @@
 
   /* ---------------- Onglets ---------------- */
   function switchTab(name){
+    var workshop = name === "practice";
+    if(workshop)name = "path";
     document.querySelector(".app-shell").dataset.view=name;
     Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function(b){
       var active = b.getAttribute("data-tab") === name;
@@ -498,7 +500,8 @@
       if(active) target = v;
     });
     if(target){target.focus({preventScroll:true});window.scrollTo({top:0,behavior:"auto"});}
-    if(name === "practice") refreshPracticeCards();
+    if(name === "path") refreshPracticeCards();
+    if(workshop){var room=document.getElementById("learning-workshop");room.open=true;document.getElementById("tab-practice").focus({preventScroll:true});room.scrollIntoView({block:"start",behavior:"auto"});}
     if(name === "info") renderSyncPanel();
   }
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function(btn){
