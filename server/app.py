@@ -68,7 +68,10 @@ EMAIL_RE = re.compile(
     r"^[A-Za-z0-9!#$%&*+/=?^_`{|}~.-]+@[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?"
     r"(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$")
 MIN_PASSWORD = 8
-MAX_NAME = 18
+# Un pseudo, pas un prenom : on se choisit un nom dans cette
+# application, on ne decline pas son identite. 24 caracteres laissent la
+# place a un vrai pseudo sans qu'il deborde des avatars et des listes.
+MAX_NAME = 24
 
 # Le jeu de caracteres exact de secrets.token_urlsafe. Un jeton qui n'y
 # repond pas n'a pas pu etre emis ici : c'est un refus, pas une erreur —
@@ -681,6 +684,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._logout()
         if path == "/auth/password":
             return self._change_password(body)
+        if path == "/auth/name":
+            return self._change_name(body)
         if path == "/auth/google":
             return self._google(body)
         if path == "/auth/confirm":
@@ -972,6 +977,24 @@ class Handler(BaseHTTPRequestHandler):
         if not row:
             return self._fail(401, "unauthorized")
         self._send(200, {"account": self._public(row)})
+
+    def _change_name(self, body):
+        """Le pseudo se change : il est choisi, pas subi. Il vit dans la
+        base — c'est le compte qui le porte, pas l'appareil."""
+        if not isinstance(body, dict):
+            return self._fail(400, "bad_request")
+        row = self._account()
+        if not row:
+            return self._fail(401, "unauthorized")
+        if not limiter.allow("name:%d" % row["id"], 10, 3600):
+            return self._fail(429, "too_many")
+
+        name = clean_name(body.get("name"))
+        if not name:
+            return self._fail(400, "bad_name")
+        store.write("UPDATE accounts SET name = ? WHERE id = ?", (name, row["id"]))
+        acc = store.one("SELECT * FROM accounts WHERE id = ?", (row["id"],))
+        self._send(200, {"account": self._public(acc)})
 
     def _change_password(self, body):
         if not isinstance(body, dict):

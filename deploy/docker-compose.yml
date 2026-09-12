@@ -61,6 +61,13 @@ services:
       # DMARC) et finirait en indesirables.
       MAIL_FROM: "WilayaDZ <bigpc.alg@gmail.com>"
       APP_URL: "https://wilayadz.smnc.win"
+      # Identifiant client OAuth du projet Google « WilayaDZ ».
+      # Ce n'est PAS un secret : il est public par construction, visible
+      # dans l'URL de redirection. Ce qui protège, c'est que le service
+      # vérifie que le jeton a bien été émis POUR nous (champ `aud`).
+      # Le code secret du client, lui, n'est ni utilisé ni stocké : la
+      # redirection rapporte un jeton d'identité, pas un code à échanger.
+      GOOGLE_CLIENT_ID: "758547913613-jg0qtlsgi8ekb439diljg1e09ljsb5vk.apps.googleusercontent.com"
     # scrypt réserve ~16 Mio par mot de passe vérifié ; quelques requêtes
     # simultanées tiennent très largement dans 128 Mio.
     mem_limit: 128m

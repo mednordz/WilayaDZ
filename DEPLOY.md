@@ -221,17 +221,39 @@ Ce qui protège quoi :
   fonction que les codes de transfert (`mergeInto`) — pour chaque wilaya,
   la meilleure des deux mémoires gagne.
 
-### Se connecter avec Google (à activer)
+### Se connecter avec Google
 
-Le code est en place et n'attend qu'un identifiant client OAuth. Tant
-que `GOOGLE_CLIENT_ID` est vide, **le bouton n'apparaît simplement
-pas** : rien à reconstruire le jour où on le renseigne, l'application
-demande la configuration au démarrage (`GET /api/config`).
+**En place depuis le 2026-09-12.** Projet Google Cloud **`wilayadz`**
+(distinct de `youtube-auto-uploader-2` : l'écran de consentement est
+propre au projet, et c'est son nom que Google montre aux gens — voir
+« WilayaDZ » et non le nom d'une autre application).
 
-Pour l'activer :
+| | |
+|---|---|
+| Client OAuth | `WilayaDZ Web`, type Application Web |
+| Origines JavaScript | `https://wilayadz.smnc.win` et `https://69.smnc.win` |
+| URI de redirection | les mêmes **avec la barre oblique finale** |
+| État de publication | **Test** — voir la limite ci-dessous |
+
+⚠️ **L'ancien domaine est enregistré lui aussi** : `69.smnc.win` répond
+toujours, et sans ses deux URL quelqu'un qui ouvre l'app par ce lien
+verrait le bouton Google échouer.
+
+⚠️ **Tant que l'application est en état « Test », seuls les comptes
+listés dans Audience → Utilisateurs tests peuvent se connecter par
+Google** (100 maximum). Publier exige de fournir une **page de
+confidentialité** et des **conditions d'utilisation** publiques, que le
+site n'a pas encore. L'inscription par e-mail, elle, reste ouverte à
+tout le monde — rien n'est bloqué pour qui n'utilise pas Google.
+
+Le code secret du client n'est **ni utilisé ni stocké** : la redirection
+rapporte directement un jeton d'identité, il n'y a pas de code à
+échanger côté serveur. Il n'a donc pas à se trouver dans ce dépôt.
+
+Pour refaire la manipulation (autre domaine, autre projet) :
 
 1. [console.cloud.google.com](https://console.cloud.google.com/) → créer
-   un projet (ou en réutiliser un) ;
+   un projet **dédié** ;
 2. **APIs & Services → OAuth consent screen** : type « External »,
    renseigner le nom de l'app et l'adresse de contact ;
 3. **APIs & Services → Credentials → Create credentials → OAuth client

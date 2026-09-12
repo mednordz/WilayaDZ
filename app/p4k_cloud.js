@@ -70,7 +70,7 @@
   function cloudErrorText(code){
     switch(code){
       case "bad_email":       return TL("Cette adresse e-mail n'est pas valide.","هذا البريد الإلكتروني غير صالح.");
-      case "bad_name":        return TL("Écris un prénom (18 caractères au plus).","اكتب اسما (18 حرفا على الأكثر).");
+      case "bad_name":        return TL("Choisis un pseudo (24 caractères au plus).","اختر اسما مستعارا (24 حرفا على الأكثر).");
       case "weak_password":   return TL("Le mot de passe doit faire au moins 8 caractères.","كلمة السر 8 أحرف على الأقل.");
       case "email_taken":     return TL("Un compte existe déjà avec cette adresse.","يوجد حساب بهذا البريد الإلكتروني.");
       case "bad_credentials": return TL("Adresse ou mot de passe incorrect.","البريد أو كلمة السر غير صحيحة.");
@@ -251,7 +251,7 @@
   /* ---------------- Inscription en attente ---------------- */
 
   /* Entre l'inscription et la confirmation, il faut se souvenir de ce
-     qu'on attend : quelle adresse, sous quel prénom, et — si l'on
+     qu'on attend : quelle adresse, sous quel pseudo, et — si l'on
      rattachait un profil déjà garni — lequel. C'est rangé avec les
      profils, donc ça survit à la fermeture de l'application. */
   function setPending(email, name, lang, profileId){

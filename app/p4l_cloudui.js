@@ -37,6 +37,14 @@
   /* Un champ de mot de passe avec l'œil qui l'affiche. C'est ce qui
      évite le plus de fautes de frappe — davantage qu'un second champ à
      recopier, qu'on remplit souvent par copier-coller du premier. */
+  /* La contrainte est écrite SOUS le champ, jamais dedans : un texte
+     grisé disparaît dès la première lettre tapée, c'est-à-dire au
+     moment précis où l'on en a besoin. Et « 8 min. » se lisait
+     « 8 minutes ». */
+  function passwordRuleHtml(){
+    return "<p class='field-note'>" + TL("Au moins 8 caractères.","8 أحرف على الأقل.") + "</p>";
+  }
+
   function passwordFieldHtml(id, placeholder, autocomplete, label){
     return "<div class='pw-field'>" +
       "<label class='sr-only' for='" + id + "'>" + label + "</label>" +
@@ -68,22 +76,22 @@
   function cloudFieldsHtml(prefix, opts){
     opts = opts || {};
     return (opts.name
-        ? "<label class='sr-only' for='" + prefix + "-name'>" + TL("Ton prénom","اسمك") + "</label>" +
-          "<input class='gate-input' id='" + prefix + "-name' maxlength='18' autocomplete='given-name' " +
-          "placeholder='Prénom · الاسم' aria-label=\"" + TL("Ton prénom","اسمك") + "\" />"
+        ? "<label class='sr-only' for='" + prefix + "-name'>" + TL("Ton pseudo","اسمك المستعار") + "</label>" +
+          "<input class='gate-input' id='" + prefix + "-name' maxlength='24' autocomplete='nickname' " +
+          "placeholder='Pseudo · الاسم المستعار' aria-label=\"" + TL("Ton pseudo","اسمك المستعار") + "\" />"
         : "") +
       "<label class='sr-only' for='" + prefix + "-email'>" + TL("Adresse e-mail","البريد الإلكتروني") + "</label>" +
       "<input class='gate-input' id='" + prefix + "-email' type='email' inputmode='email' " +
         "autocomplete='email' autocapitalize='off' spellcheck='false' " +
         "placeholder='E-mail · البريد' aria-label=\"" + TL("Adresse e-mail","البريد الإلكتروني") + "\" />" +
-      passwordFieldHtml(prefix + "-pw",
-        opts.newPassword ? "Mot de passe (8 min.) · كلمة السر" : "Mot de passe · كلمة السر",
+      passwordFieldHtml(prefix + "-pw", "Mot de passe · كلمة السر",
         opts.newPassword ? "new-password" : "current-password",
         TL("Mot de passe","كلمة السر")) +
       (opts.confirm
         ? passwordFieldHtml(prefix + "-pw2", "Répéter le mot de passe · كرّر كلمة السر",
                             "new-password", TL("Répéter le mot de passe","كرّر كلمة السر"))
-        : "");
+        : "") +
+      (opts.newPassword ? passwordRuleHtml() : "");
   }
   function cloudReadFields(prefix){
     var nameEl = document.getElementById(prefix + "-name");
@@ -364,7 +372,8 @@
           "placeholder='Mot de passe actuel · الحالية' aria-label=\"" + TL("Mot de passe actuel","كلمة السر الحالية") + "\" />" +
         "<label class='sr-only' for='cpw-new'>" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "</label>" +
         "<input class='gate-input' id='cpw-new' type='password' autocomplete='new-password' " +
-          "placeholder='Nouveau (8 min.) · الجديدة' aria-label=\"" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "\" />" +
+          "placeholder='Nouveau mot de passe · الجديدة' aria-label=\"" + TL("Nouveau mot de passe","كلمة السر الجديدة") + "\" />" +
+        passwordRuleHtml() +
         cloudRecoveryNote() +
         "<p class='gate-err' id='cpw-err' role='alert'></p>" +
         "<button class='btn' id='cpw-go'>" + T("Changer","غيّر") + "</button>" +

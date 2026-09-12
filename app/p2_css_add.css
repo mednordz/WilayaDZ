@@ -337,6 +337,10 @@
   .pw-eye .icon{ width:21px; height:21px; }
   .pw-eye:active{ background:var(--surface-2); }
   .pw-eye[aria-pressed="true"]{ color:var(--accent); }
+  .field-note{
+    margin:-4px 0 10px; font-size:.78rem; color:var(--ink-faint); text-align:left;
+  }
+  [dir="rtl"] .field-note{ text-align:right; }
 
   /* ---- Continuer avec Google ---- */
   .google-btn{

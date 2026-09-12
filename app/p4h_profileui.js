@@ -388,10 +388,11 @@
           "<h2 id='gate-title'>" + T("Nouveau mot de passe","كلمة سر جديدة") + "</h2>" +
           "<p class='gate-sub'>" + TS("Choisis-en un nouveau : tu seras connecté dans la foulée.",
                                       "اختر كلمة سر جديدة: ستدخل مباشرة بعدها.") + "</p>" +
-          passwordFieldHtml("gres-pw", "Mot de passe (8 min.) · كلمة السر",
+          passwordFieldHtml("gres-pw", "Mot de passe · كلمة السر",
                             "new-password", TL("Nouveau mot de passe","كلمة السر الجديدة")) +
           passwordFieldHtml("gres-pw2", "Répéter le mot de passe · كرّر كلمة السر",
                             "new-password", TL("Répéter le mot de passe","كرّر كلمة السر")) +
+          passwordRuleHtml() +
           "<p class='gate-note'>" + TS("Tous les appareils déjà connectés à ce compte devront se reconnecter.",
                                        "ستحتاج كل الأجهزة المتصلة بهذا الحساب إلى إعادة الاتصال.") + "</p>" +
           "<p class='gate-err' id='gres-err' role='alert'></p>" +
@@ -468,7 +469,7 @@
       function doCreate(){
         var f = cloudReadFields("gate");
         cloudErrInto("gate-err", "");
-        if(!f.name){ cloudErrInto("gate-err", TL("Écris un prénom.","اكتب اسما.")); nameInp.focus(); return; }
+        if(!f.name){ cloudErrInto("gate-err", TL("Choisis un pseudo.","اختر اسما مستعارا.")); nameInp.focus(); return; }
         if(!f.email){ cloudErrInto("gate-err", cloudErrorText("bad_email")); return; }
         var souci = passwordProblem(f.pw, f.pw2);
         if(souci){ cloudErrInto("gate-err", souci); return; }
