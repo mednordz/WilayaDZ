@@ -4,7 +4,6 @@
      Un seul runner pour tous les modes : leçon, révision,
      confusions, rafale et la leçon-découverte « La Clé ».
      ============================================================ */
-  var LESSON_LEN = 10;
   var session = {alive:false};
   var sessionPrevFocus = null;
 
@@ -23,25 +22,28 @@
   function buildLessonQueue(unit){
     var pool = poolForTier(Math.max(unit.tier, state.tier));
     var codes = unit.pool.map(function(w){ return w.c; });
-    var q = [], last = null;
-    for(var i=0;i<LESSON_LEN;i++){
-      var pick = weightedPick(codes, last);
-      last = pick;
-      q.push(exerciseFor(pick, pool, true));
-    }
-    var ch = exChain(unit.pool);
-    if(ch) q.splice(4 + Math.floor(Math.random()*3), 0, ch);
-    if(unit.pool.length >= 6 && Math.random() < 0.55){
-      var g = exGap(unit.pool);
-      if(g) q.splice(Math.max(1, q.length-2), 0, g);
-    }
+    /* Une première visite de chaque wilaya : aucune couverture laissée au hasard.
+       Le format sera choisi au moment de l'affichage, après les réponses précédentes. */
+    var q = shuffle(codes.slice()).map(function(code){
+      return {kind:"adaptive", code:code, pool:pool};
+    });
+    /* Les exercices de structure restent disponibles sans certifier une association. */
+    var chain = exChain(unit.pool);
+    if(chain) q.push(chain);
     return q;
   }
 
-  function buildReviewQueue(){
-    var pool = poolForTier(state.tier);
-    var due = dueCodes(pool).slice(0, 15);
-    return due.map(function(w){ return exerciseFor(w.c, pool, false); });
+  function buildReviewQueue(unit){
+    var pool = unit ? unit.pool : poolForTier(state.tier);
+    var due = dueCodes(pool).filter(function(w){return !((state.learning||{})[w.c]);});
+    var q=due.map(function(w){ return {kind:"adaptive", code:w.c, pool:pool, due:state.progress[w.c].due||0}; });
+    pool.forEach(function(w){
+      var p=(state.learning||{})[w.c];if(!p)return;
+      ['n','c'].forEach(function(k){if(p[k][3]&&p[k][2]<=Date.now()){
+        var step=pilotStep(w.c,k);step.due=p[k][2];q.push(step);
+      }});
+    });
+    return q.sort(function(a,b){return a.due-b.due;}).slice(0,15);
   }
 
   function buildConfusionQueue(){
@@ -74,7 +76,8 @@
       gen: cfg.gen || null,
       index: 0,
       hearts: (cfg.hearts === undefined) ? 5 : cfg.hearts,
-      useHearts: cfg.hearts !== 0,
+      useHearts: cfg.hearts > 0 && cfg.kind === "blitz",
+      retries: {}, unresolved: {}, scheduledRetries: 0,
       correct: 0, answered: 0, blitzScore: 0, done: false,
       combo: 0, comboMax: 0,
       locked: false, current: null, qStart: 0, lastBlitz: null,
@@ -130,16 +133,18 @@
     stopTimer();
     session.alive = false;
     document.getElementById("lesson-overlay").classList.remove("active");
+    var returnIndex=sessionPrevFocus&&sessionPrevFocus.getAttribute("data-i");
     renderPath();
+    if(returnIndex!==null && /^\d+$/.test(returnIndex||""))sessionPrevFocus=document.querySelector('.noeud[data-i="'+returnIndex+'"]');
     refreshTopStats();
     refreshStats();
     refreshPracticeCards();
     buildLedger();
     renderSyncPanel();   /* le code de transfert doit toujours refléter l'état réel */
     if(sessionPrevFocus && typeof sessionPrevFocus.focus === "function" && document.body.contains(sessionPrevFocus)){
-      sessionPrevFocus.focus();
+      sessionPrevFocus.focus({preventScroll:true});
     }else{
-      document.getElementById("hero-card").focus();
+      document.getElementById("hero-card").focus({preventScroll:true});
     }
     sessionPrevFocus = null;
   }
@@ -205,6 +210,7 @@
     var total = session.queue.length || 1;
     document.getElementById("lesson-bar-fill").style.width = Math.round((session.index/total)*100) + "%";
     var bar = document.getElementById("lesson-bar");
+    bar.setAttribute("aria-valuemax", total);
     bar.setAttribute("aria-valuenow", session.index);
     bar.setAttribute("aria-valuetext", TL("Question " + Math.min(session.index+1, total) + " sur " + total, "سؤال " + Math.min(session.index+1, total) + " من " + total));
   }
@@ -219,6 +225,15 @@
     }else{
       if(session.index >= session.queue.length){ finishSession(true); return; }
       spec = session.queue[session.index];
+      if(spec.kind === "pilot-step"){
+        var plannedPilot=spec;
+        spec=pilotExercise(spec.code,spec.pilotSkill);spec.relearning=plannedPilot.relearning;
+      }
+      if(spec.kind === "adaptive"){
+        var planned = spec;
+        spec = exerciseFor(planned.code, planned.pool, false);
+        spec.relearning = !!planned.relearning;
+      }
     }
     session.current = spec;
     session.qStart = Date.now();
@@ -228,6 +243,15 @@
     else if(spec.kind === "chain") renderChain(spec, body);
     else if(spec.kind === "type") renderType(spec, body);
     else renderMCQ(spec, body);
+    if(session.kind !== "blitz" && (spec.kind === "type" || spec.kind === "mcq")){
+      var help = document.createElement("button");
+      help.className = "btn ghost";
+      help.id = "lesson-help";
+      help.style.marginTop = "18px";
+      help.innerHTML = T("Je ne sais pas · voir la réponse", "لا أعرف · أظهر الإجابة");
+      help.addEventListener("click", function(){ answer(false, null, help, spec); });
+      body.appendChild(help);
+    }
   }
 
   function renderTell(spec, body){
@@ -237,6 +261,7 @@
     if(typeof spec.after === "function") spec.after(body);
     var btn = document.getElementById("tell-next");
     btn.addEventListener("click", function(){
+      if(spec.onContinue)spec.onContinue();
       session.index++;
       renderStep();
     });
@@ -277,14 +302,20 @@
       "<p class='lesson-prompt' id='lesson-prompt-focus' tabindex='-1'>" + spec.promptHtml + "</p>" +
       "<div class='lesson-type-row'>" +
         "<label class='sr-only' for='lesson-type-input'>" + labelTxt + "</label>" +
-        "<input type='text' inputmode='numeric' id='lesson-type-input' maxlength='2' placeholder='ex. 16' autocomplete='off' aria-label=\"" + labelTxt + "\" />" +
+        "<input type='text' inputmode='" + (spec.answerMode==='name'?'text':'numeric') + "' id='lesson-type-input' maxlength='" + (spec.answerMode==='name'?80:2) + "' placeholder='" + (spec.answerMode==='name'?'':'16') + "' autocomplete='off' aria-label=\"" + labelTxt + "\" />" +
         "<button class='btn' style='width:auto;' id='lesson-type-submit'>" + T("Valider","تحقّق") + "</button>" +
       "</div>";
     var inp = document.getElementById("lesson-type-input");
     function submit(){
       if(session.locked) return;
-      var val = parseInt(inp.value, 10);
-      if(isNaN(val)) return;
+      if(spec.answerMode === 'name'){
+        if(!inp.value.trim())return;
+        answer(pilotMatchesName(spec.code,inp.value),null,null,spec);return;
+      }
+      var digits = inp.value.trim().replace(/[٠-٩]/g, function(c){return String(c.charCodeAt(0)-1632);})
+        .replace(/[۰-۹]/g, function(c){return String(c.charCodeAt(0)-1776);});
+      if(!/^\d{1,2}$/.test(digits)) return;
+      var val = Number(digits);
       answer(val === spec.code, val, null, spec);
     }
     document.getElementById("lesson-type-submit").addEventListener("click", submit);
@@ -345,9 +376,30 @@
     var ms = Date.now() - session.qStart;
     session.answered++;
 
-    if(spec.code > 0 && !spec.noRecord){
-      recordAnswer(spec.code, correct, ms, correct ? null : chosenCode, spec.fastLimit);
+    if(session.kind !== "blitz" && spec.code > 0 && !spec.noRecord){
+      recordAnswer(spec.code, correct, ms, correct ? null : chosenCode, spec.fastLimit, spec);
       persist();   /* écrit à chaque réponse : quitter en cours ne perd plus rien */
+    }
+    if(spec.pilotSkill){
+      pilotRecord(spec,correct);
+      if(pilotLevel()>=2)state.crowns.u1=Math.max(state.crowns.u1||0,1);
+      persist();
+    }
+    if(session.kind !== "blitz" && spec.code > 0 && (!spec.noRecord || spec.pilotSkill)){
+      var evidenceKey=spec.pilotSkill ? spec.code+':'+spec.pilotSkill : spec.code;
+      if(correct) delete session.unresolved[evidenceKey];
+      else {
+        session.unresolved[evidenceKey] = true;
+        /* Une seule reprise par wilaya, six au maximum : pas de boucle punitive.
+           Deux autres questions passent d'abord lorsque la file le permet. */
+        if(!session.retries[evidenceKey] && session.scheduledRetries < 6){
+          session.retries[evidenceKey] = true;
+          session.scheduledRetries++;
+          var pool = session.unit ? session.unit.pool : poolForTier(state.tier);
+          var retry = spec.pilotSkill ? pilotStep(spec.code,spec.pilotSkill,true) : {kind:"adaptive", code:spec.code, pool:pool, relearning:true};
+          session.queue.splice(Math.min(session.index+3, session.queue.length), 0, retry);
+        }
+      }
     }
     if(correct){
       session.correct++;
@@ -361,6 +413,8 @@
     Array.prototype.forEach.call(document.querySelectorAll(".chain-chip,.chain-slot"), function(b){ b.disabled = true; });
     var sb = document.getElementById("lesson-type-submit");
     if(sb) sb.disabled = true;
+    var help = document.getElementById("lesson-help");
+    if(help) help.disabled = true;
     if(el) el.classList.add(correct ? "correct" : "wrong");
     if(!correct && spec.kind === "mcq"){
       Array.prototype.forEach.call(document.querySelectorAll(".lesson-choice"), function(b){
@@ -397,13 +451,13 @@
                               "ليس تماما — " + numIf(spec.answerText)));
     var note = (!correct && spec.note)
       ? "<div class='lesson-footer-note'>" + T(spec.note, spec.noteAr || "") + "</div>" : "";
-    var slow = (correct && ms > (spec.fastLimit || FAST_MCQ))
-      ? "<div class='lesson-footer-note'>" + T("Juste, mais lent : à revoir.","صحيح لكن بطيء: تبقى للمراجعة.") + "</div>" : "";
+    var retryNote = !correct && session.retries[spec.pilotSkill ? spec.code+':'+spec.pilotSkill : spec.code] && !spec.relearning
+      ? "<div class='lesson-footer-note'>" + T("Prends le temps de retenir cette association. Tu pourras la retenter dans cette séance.","خذ وقتك لتذكّر هذا الربط. ستتمكن من المحاولة مجددا في هذه الجلسة.") + "</div>" : "";
     var who = (session.unit && UNIT_MASCOT[session.unit.id]) || "fennec";
     var mascotLine = "<div class='lesson-footer-mascot'>" + mascotHtml(who, 46, correct ? "happy" : "sad") +
       "<span>" + pickLine(correct ? "correct" : "wrong") + "</span></div>";
     footer.innerHTML =
-      "<div class='lesson-footer-msg'>" + msg + "</div>" + note + slow + mascotLine +
+      "<div class='lesson-footer-msg'>" + msg + "</div>" + note + retryNote + mascotLine +
       "<button class='btn' id='lesson-continue-btn'>" + T("Continuer","تابع") + "</button>";
     document.getElementById("lesson-body").appendChild(footer);
     footer.scrollIntoView({behavior:prefersReducedMotion()?"auto":"smooth", block:"end"});
@@ -462,7 +516,7 @@
       xpGain = success ? (session.correct*10 + 15) : Math.round(session.correct*5);
       title = success ? T("Leçon terminée !","انتهى الدرس!") : NOHEART;
       var streakBefore = state.streak.count || 0;
-      if(success && session.unit){
+      if(success && session.kind !== "pilot" && session.unit && !Object.keys(session.unresolved).length){
         state.crowns[session.unit.id] = Math.min(5, (state.crowns[session.unit.id]||0)+1);
         bumpStreak();
       }
@@ -471,15 +525,22 @@
         : AGAIN;
     }
 
-    /* Leçon parfaite : aucun cœur perdu — comme le badge « Perfect » de Duolingo. */
-    var perfectEligible = success && session.useHearts && session.answered > 0 &&
+    if(session.kind === "pilot"){extra=pilotSummary();if(session.correct)bumpStreak();}
+    var remaining = Object.keys(session.unresolved).length;
+    if(remaining && session.kind !== "blitz"){
+      sub = TS(remaining + " association(s) à reprendre. Tes réponses sont sauvegardées.",
+        remaining + " روابط تحتاج إلى مراجعة. تم حفظ إجاباتك.");
+    }
+
+    /* La première tentative compte : corriger ensuite n'efface pas l'erreur. */
+    var perfectEligible = success && session.answered > 0 &&
       (session.kind === "lesson" || session.kind === "review" || session.kind === "confuse");
-    var perfect = perfectEligible && session.hearts === 5;
+    var perfect = perfectEligible && session.correct === session.answered;
     var bonusXp = perfect ? 8 : 0;
     xpGain += bonusXp;
     if(perfect){
       title = T("Leçon parfaite !","درس مثالي!");
-      sub = TS("Aucun cœur perdu — bonus.","لم تفقد أي قلب — مكافأة.");
+      sub = TS("Toutes les réponses justes dès le premier essai — bonus.","كل الإجابات صحيحة من المحاولة الأولى — مكافأة.");
     }
 
     state.xp += xpGain;
@@ -566,13 +627,16 @@
 
   /* ---------------- Lanceurs ---------------- */
   function startLesson(unit, trigger){
+    if(unit.id === "u1"){startPilot(trigger);return;}
     startSession({kind:"lesson", unit:unit, queue:buildLessonQueue(unit),
                   label:TL("Leçon " + unit.label, "درس " + unit.label), trigger:trigger});
   }
-  function startReview(trigger){
-    var q = buildReviewQueue();
+  function startReview(trigger,unit){
+    if(unit && unit.id === "u1"){startPilot(trigger);return;}
+    if(unit && !unitUnlocked(unit,UNITS.indexOf(unit)))return;
+    var q = buildReviewQueue(unit);
     if(!q.length){ toast(TL("Rien à réviser pour l'instant.","لا شيء للمراجعة الآن.")); return; }
-    startSession({kind:"review", queue:q, label:TL("Révision du jour","مراجعة اليوم"), trigger:trigger});
+    startSession({kind:"review", unit:unit || null, queue:q, label:unit?TL("Révision · "+unit.label,"مراجعة · "+unit.label):TL("Révision du jour","مراجعة اليوم"), trigger:trigger});
   }
   function startConfusion(trigger){
     var q = buildConfusionQueue();

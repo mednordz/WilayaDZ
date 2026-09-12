@@ -97,7 +97,7 @@
     return true;
   }
 
-  /* ---------------- Ordonnanceur : Leitner + fluence ---------------- */
+  /* ---------------- Ordonnanceur : rappel espacé ---------------- */
   function rec(code){
     var p = state.progress[code];
     if(!p){ p = {box:0, due:0, seen:0, ok:0, best:0}; state.progress[code] = p; }
@@ -109,25 +109,32 @@
   function getBox(code){ var p = state.progress[code]; return p ? (p.box||0) : 0; }
   function isDue(code){ var p = state.progress[code]; if(!p) return true; return (p.due||0) <= Date.now(); }
 
-  /* Une bonne réponse lente ne fait PAS monter la boîte : savoir n'est pas
-     su tant que ce n'est pas rapide. Une erreur fait redescendre de deux crans. */
-  function recordAnswer(code, correct, ms, wrongCode, fastLimit){
-    var p = rec(code);
-    p.updatedAt = Math.max(Date.now(),(p.updatedAt||0)+1);
+  /* L'échéance, déjà synchronisée, protège l'espacement entre preuves.
+     Une reprise après correction ou un entraînement anticipé ne la repousse pas.
+     Aucun seuil de vitesse ne décide de la mémorisation. */
+  function recordAnswer(code, correct, ms, wrongCode, fastLimit, evidence){
+    if(!byCode(code) || (evidence && evidence.noRecord)) return;
+    var p = rec(code), now = Date.now();
+    var eligible = (p.due||0) <= now && !(evidence && evidence.relearning);
+    p.updatedAt = Math.max(now,(p.updatedAt||0)+1);
     p.seen++;
     if(correct){
       p.ok++;
-      var fast = !ms || ms <= (fastLimit || FAST_MCQ);
-      if(fast) p.box = Math.min((p.box||0)+1, 5);
-      if(ms && (!p.best || ms < p.best)) p.best = ms;
+      if(ms > 0 && (!p.best || ms < p.best)) p.best = ms;
+      if(eligible){
+        /* Un QCM prépare le rappel : il ne certifie pas les niveaux longs. */
+        var ceiling = evidence && evidence.kind === "mcq" ? 2 : 5;
+        if((p.box||0) < ceiling) p.box = Math.min((p.box||0)+1, ceiling);
+        p.due = now + INTERVALS[Math.min(p.box, ceiling)];
+      }
     }else{
-      p.box = Math.max((p.box||0)-2, 0);
-      if(wrongCode && wrongCode !== code){
+      p.box = Math.max((p.box||0)-1, 0);
+      p.due = now + INTERVALS[0];
+      if(wrongCode && wrongCode !== code && byCode(wrongCode)){
         if(!state.confusions[code]) state.confusions[code] = {};
         state.confusions[code][wrongCode] = (state.confusions[code][wrongCode]||0) + 1;
       }
     }
-    p.due = Date.now() + INTERVALS[p.box];
   }
 
   function poolForTier(tier){ return DATA.filter(function(w){ return w.t <= tier; }); }
@@ -140,7 +147,7 @@
     Object.keys(state.confusions).forEach(function(k){
       var m = state.confusions[k];
       Object.keys(m).forEach(function(w){
-        if(m[w] >= 2) out.push({a:parseInt(k,10), b:parseInt(w,10), n:m[w]});
+        if(byCode(Number(k)) && byCode(Number(w)) && k !== w && m[w] >= 2) out.push({a:parseInt(k,10), b:parseInt(w,10), n:m[w]});
       });
     });
     return out.sort(function(x,y){ return y.n - x.n; });
@@ -152,8 +159,7 @@
     var b = getBox(code);
     if(b <= 0) return "mcq4";
     if(b === 1) return "mcq4";
-    if(b === 2) return "mcq6";
-    if(b === 3) return "mcq6";
+    /* Le rappel sans choix commence dès que la reconnaissance est établie. */
     return "type";
   }
 
@@ -429,7 +435,9 @@
 
   /* ---------------- Feuille de détail accessible ---------------- */
   var sheetPrevFocus = null;
+  var sheetInert = [];
   function openSheet(html){
+    if(document.getElementById("sheet-box"))closeSheet();
     sheetPrevFocus = document.activeElement;
     var root = document.getElementById("sheet-root");
     root.innerHTML =
@@ -443,30 +451,42 @@
       if(e.target.id === "sheet-backdrop") closeSheet();
     });
     document.addEventListener("keydown", sheetKey, true);
+    sheetInert=Array.prototype.filter.call(root.parentElement.children,function(el){return el!==root&&el.id!=="confirm-root"&&el.id!=="toast-root"&&!el.inert;});
+    sheetInert.forEach(function(el){el.inert=true;});
+    document.body.classList.add("sheet-open");
     box.focus();
   }
   function sheetKey(e){
+    if(document.querySelector("#confirm-root .confirm-box"))return;
     if(!document.getElementById("sheet-box")) return;
     if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeSheet(); return; }
     if(e.key === "Tab"){
       var box = document.getElementById("sheet-box");
       var f = Array.prototype.filter.call(box.querySelectorAll("button,[href],input,select,textarea,summary,[tabindex]:not([tabindex='-1'])"),
         function(el){ return el.offsetParent !== null && !el.disabled; });
-      if(!f.length) return;
+      if(!f.length){e.preventDefault();box.focus();return;}
       var first = f[0], last = f[f.length-1];
-      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      if(document.activeElement===box || !box.contains(document.activeElement)){e.preventDefault();(e.shiftKey?last:first).focus();}
+      else if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
       else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
     }
   }
   function closeSheet(){
     document.getElementById("sheet-root").innerHTML = "";
     document.removeEventListener("keydown", sheetKey, true);
-    if(sheetPrevFocus && sheetPrevFocus.focus) sheetPrevFocus.focus();
+    sheetInert.forEach(function(el){el.inert=false;});sheetInert=[];
+    document.body.classList.remove("sheet-open");
+    if(sheetPrevFocus && sheetPrevFocus.isConnected){
+      if(sheetPrevFocus.hasAttribute("aria-expanded"))sheetPrevFocus.setAttribute("aria-expanded","false");
+      sheetPrevFocus.focus({preventScroll:true});
+    }
     sheetPrevFocus = null;
   }
 
   /* ---------------- Onglets ---------------- */
   function switchTab(name){
+    var workshop = name === "practice";
+    if(workshop)name = "path";
     document.querySelector(".app-shell").dataset.view=name;
     Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function(b){
       var active = b.getAttribute("data-tab") === name;
@@ -480,7 +500,8 @@
       if(active) target = v;
     });
     if(target){target.focus({preventScroll:true});window.scrollTo({top:0,behavior:"auto"});}
-    if(name === "practice") refreshPracticeCards();
+    if(name === "path") refreshPracticeCards();
+    if(workshop){var room=document.getElementById("learning-workshop");room.open=true;document.getElementById("tab-practice").focus({preventScroll:true});room.scrollIntoView({block:"start",behavior:"auto"});}
     if(name === "info") renderSyncPanel();
   }
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function(btn){

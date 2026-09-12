@@ -1,36 +1,20 @@
 
-  /* ============================================================
-     IDENTITÉ « DUNE »
-     Langage de jeu : formes grasses et arrondies, aplats saturés,
-     boutons en relief (inchangé). Palette redéfinie sur les tons du
-     désert façon Dune : sable, épice-orange, teal profond, bronze-or,
-     rouille, gris-pierre — la même grammaire de tokens est conservée.
-
-     Chaque teinte existe en deux versions :
-       · le ton VIF        → aplats, cercles, remplissages
-       · le ton « -ink »   → texte sur fond clair (contraste AA)
-       · le ton « -deep »  → l'ombre dure sous les boutons en relief
-     Sans cette séparation, une teinte assez lumineuse pour être
-     joyeuse devient illisible dès qu'elle sert de couleur de texte.
-     Chaque valeur ci-dessous est vérifiée ≥4.5:1 (WCAG AA) partout où
-     elle sert de couleur de texte (contre --bg ET --surface, le cas
-     le plus dur des deux) — ne pas réintroduire une teinte plus vive
-     sans revérifier ces ratios.
-     ============================================================ */
+  /* Algérie blanche : enduit, encre méditerranéenne, faïence et laiton.
+     Les variantes jour/nuit partagent les mêmes composants sémantiques. */
   :root{
-    --bg:#F2E4CE;
-    --surface:#FBF6EA;
-    --surface-2:#E5DDC7;
-    --ink:#2A1F14;
-    --ink-dim:#6E5E48;
-    --ink-faint:#6A5A44;
-    --line:#E3D5B8;
-    --border-strong:#C9BFA8;
-    --accent:#9C5015;
-    --accent-bright:#DC8A4A;
-    --accent-ink:#FBF6EA;
-    --accent-soft:#F5E3CE;
-    --accent-deep:#6B3A0C;
+    --bg:#F5F1E8;
+    --surface:#FFFCF5;
+    --surface-2:#E8EDE5;
+    --ink:#173F43;
+    --ink-dim:#49615D;
+    --ink-faint:#52655E;
+    --line:#DCD7C5;
+    --border-strong:#B7A782;
+    --accent:#17666B;
+    --accent-bright:#368783;
+    --accent-ink:#FFFCF5;
+    --accent-soft:#E1EEEA;
+    --accent-deep:#10474C;
     --teal:#1F6B68;
     --teal-soft:#DCEBE9;
     --teal-deep:#123F3D;
@@ -62,30 +46,29 @@
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      /* Valeurs alignées sur tokens.json du kit graphique : la palette
-         du kit était déjà celle de ce thème, en plus assumé. */
-      --bg:#201A15;
-      --surface:#302318;
-      --surface-2:#3C2C1E;
-      --ink:#FFF4DF;
-      --ink-dim:#C3AE8D;
-      --ink-faint:#9C8A6E;
-      --line:#4A3625;
-      --border-strong:#725036;
-      --accent:#F4944C;
-      --accent-bright:#F0A870;
-      --accent-ink:#2A1607;
-      --accent-soft:#4A2F14;
-      --accent-deep:#C4732E;
-      --teal:#5FA39E;
-      --teal-soft:#1A3330;
-      --teal-deep:#3F8580;
+      /* Nuit méditerranéenne : même hiérarchie, surfaces bleu-vert. */
+      --bg:#102B31;
+      --surface:#193B41;
+      --surface-2:#24494E;
+      --ink:#FFF8E9;
+      --ink-dim:#C3D5CF;
+      --ink-faint:#ACC5BD;
+      --line:#385B5D;
+      --border-strong:#788C7F;
+      --accent:#96D5C8;
+      --accent-bright:#A6E0D3;
+      --accent-ink:#102D31;
+      --accent-soft:#294D50;
+      --accent-deep:#5EAFA4;
+      --teal:#96D5C8;
+      --teal-soft:#234C4A;
+      --teal-deep:#5EAFA4;
       --wrong:#D9846E;
       --wrong-soft:#3D251E;
       --wrong-deep:#B8654E;
       --gold:#E0C179;
       --gold-ink:#E0C179;
-      --gold-soft:#3D2F14;
+      --gold-soft:#4C4933;
       --gold-deep:#C4A15C;
       --slate:#7FAEC2;
       --slate-ink:#7FAEC2;
@@ -97,30 +80,29 @@
     }
   }
   :root[data-theme="dark"]{
-      /* Valeurs alignées sur tokens.json du kit graphique : la palette
-         du kit était déjà celle de ce thème, en plus assumé. */
-      --bg:#201A15;
-      --surface:#302318;
-      --surface-2:#3C2C1E;
-      --ink:#FFF4DF;
-      --ink-dim:#C3AE8D;
-      --ink-faint:#9C8A6E;
-      --line:#4A3625;
-      --border-strong:#725036;
-      --accent:#F4944C;
-      --accent-bright:#F0A870;
-      --accent-ink:#2A1607;
-      --accent-soft:#4A2F14;
-      --accent-deep:#C4732E;
-      --teal:#5FA39E;
-      --teal-soft:#1A3330;
-      --teal-deep:#3F8580;
+      /* Nuit méditerranéenne : même hiérarchie, surfaces bleu-vert. */
+      --bg:#102B31;
+      --surface:#193B41;
+      --surface-2:#24494E;
+      --ink:#FFF8E9;
+      --ink-dim:#C3D5CF;
+      --ink-faint:#ACC5BD;
+      --line:#385B5D;
+      --border-strong:#788C7F;
+      --accent:#96D5C8;
+      --accent-bright:#A6E0D3;
+      --accent-ink:#102D31;
+      --accent-soft:#294D50;
+      --accent-deep:#5EAFA4;
+      --teal:#96D5C8;
+      --teal-soft:#234C4A;
+      --teal-deep:#5EAFA4;
       --wrong:#D9846E;
       --wrong-soft:#3D251E;
       --wrong-deep:#B8654E;
       --gold:#E0C179;
       --gold-ink:#E0C179;
-      --gold-soft:#3D2F14;
+      --gold-soft:#4C4933;
       --gold-deep:#C4A15C;
       --slate:#7FAEC2;
       --slate-ink:#7FAEC2;

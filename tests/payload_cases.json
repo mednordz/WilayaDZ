@@ -8,12 +8,17 @@
  {"name":"padded code","valid":false,"payload":{"v":1,"p":{"01":[1,100]}}},
  {"name":"boolean xp","valid":false,"payload":{"v":1,"p":{},"x":true}},
  {"name":"negative box","valid":false,"payload":{"v":1,"p":{"1":[-1,100]}}},
- {"name":"future schema","valid":false,"payload":{"v":1,"sv":3,"p":{}}},
+ {"name":"future schema","valid":false,"payload":{"v":1,"sv":4,"p":{}}},
  {"name":"unknown top field","valid":false,"payload":{"v":1,"p":{},"constructor":{}}},
  {"name":"invalid date","valid":false,"payload":{"v":1,"p":{},"sl":"2026-02-30"}},
  {"name":"year zero","valid":false,"payload":{"v":1,"p":{},"sl":"0000-01-01"}},
  {"name":"valid leap date","valid":true,"payload":{"v":1,"p":{},"sl":"2024-02-29"}},
  {"name":"bad avatar","valid":false,"payload":{"v":1,"p":{},"av":{"k":"p","v":"https://example.com/image"}}},
  {"name":"mascot","valid":true,"payload":{"v":1,"p":{},"av":{"k":"m","v":"fennec"}}},
- {"name":"svg avatar","valid":false,"payload":{"v":1,"p":{},"av":{"k":"p","v":"data:image/svg+xml;base64,AAAA"}}}
+ {"name":"svg avatar","valid":false,"payload":{"v":1,"p":{},"av":{"k":"p","v":"data:image/svg+xml;base64,AAAA"}}},
+ {"name":"pilot schema","valid":true,"payload":{"v":1,"sv":3,"p":{},"lr":{"1":{"d":1,"r":2,"n":[1,3,86400003,3,1],"c":[0,0,0,0,0]}}}},
+ {"name":"pilot missing map","valid":false,"payload":{"v":1,"sv":3,"p":{}}},
+ {"name":"pilot wrong unit","valid":false,"payload":{"v":1,"sv":3,"p":{},"lr":{"11":{"d":1,"r":2,"n":[1,3,86400003,3,1],"c":[0,0,0,0,0]}}}},
+ {"name":"pilot old schema","valid":false,"payload":{"v":1,"sv":2,"p":{},"lr":{}}},
+ {"name":"pilot corrupt direction","valid":false,"payload":{"v":1,"sv":3,"p":{},"lr":{"1":{"d":1,"r":2,"n":[4,0,0,0,1],"c":[0,0,0,0,0]}}}}
 ]

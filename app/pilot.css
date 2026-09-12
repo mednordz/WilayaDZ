@@ -1,0 +1,13 @@
+.pilot-study{display:grid;gap:16px;margin:24px 0}
+.pilot-tile{display:flex;align-items:center;gap:18px;padding:20px;border:1px solid var(--gold);border-radius:22px;background:var(--surface);color:var(--ink)}
+.pilot-tile>bdi{font-size:2rem;color:var(--teal);font-weight:800;min-width:2ch}
+.pilot-tile>strong{flex:1;min-width:0}
+.pilot-summary{padding:16px;border:1px solid var(--gold);border-radius:18px;margin:16px 0;color:var(--ink)}
+.pilot-summary ol{padding-inline-start:22px}.pilot-summary li{margin:10px 0}.pilot-summary li>bdi{display:inline-block;margin-inline-start:8px;font-weight:700}
+.pilot-summary p{font-size:.9rem;line-height:1.6}
+
+.key-step .pilot-heading{color:var(--ink)}
+.pilot-summary{font-size:.9rem;line-height:1.35}
+.pilot-summary ol{list-style:none;padding:0}
+.pilot-summary li{display:flex;align-items:center;gap:8px}
+.pilot-step-label{flex:1;min-width:0}.pilot-summary li>bdi{white-space:nowrap;margin:0}

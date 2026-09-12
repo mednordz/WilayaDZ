@@ -21,12 +21,15 @@ map_bundle += "var WILAYA_REVISION=" + json.dumps(os.environ.get("APP_REVISION",
 patio_css = R('patio.css')
 for asset in sorted(['architecture','logo','frise','medaillon','carte','enduit','flamme','diamant','musique','reglages','carte-icone'], key=len, reverse=True):
     patio_css = patio_css.replace('PATIO_'+asset.upper().replace('-','_'), 'data:image/webp;base64,'+B('assets/patio/'+asset+'.webp'))
+parcours_css = R('parcours.css').replace('PARCOURS_MEDAILLON', 'data:image/webp;base64,'+B('assets/patio/noeud-faience.webp'))
+blanche_css = R('algerie-blanche.css').replace('BLANCHE_PATIO', 'data:image/webp;base64,'+B('assets/algerie-blanche/patio-jasmine.webp')).replace('BLANCHE_FRISE', 'data:image/webp;base64,'+B('assets/patio/frise.webp'))
+organisation_css = R('organisation.css').replace('CERAMIQUE_IMAGE', 'data:image/webp;base64,'+B('assets/illustrations/ceramique-algeroise.webp'))
 # The old banner remains in source assets, but is no longer loaded by this design.
 kit_bundle = re.sub(r'^    banniere:.*\n', '', R('p4o_kit.js'), flags=re.M)
-out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), patio_css, "\n</style>\n\n",
+out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), patio_css, parcours_css, R('pilot.css'), blanche_css, organisation_css, "\n</style>\n\n",
   R('p3_body.html'), "\n\n<script>\n(function(){\n  \"use strict\";\n",
   rive_bundle, R('part_data.js'), R('p4i_mascots.js'), R('qr_lib.js'), R('preferences.js'), R('p4a_core.js'), R('p4f_i18n.js'), R('p4g_account.js'),
-  R('p4b_exercises.js'), R('p4c_session.js'), R('p4d_path.js'), R('p4h_profileui.js'),
+  R('p4b_exercises.js'), R('pilot.js'), R('p4c_session.js'), R('p4d_path.js'), R('p4h_profileui.js'),
   kit_bundle, R('p4k_cloud.js'), R('p4m_google.js'), R('p4n_avatar.js'), R('p4l_cloudui.js'),
   R('p4q_rive.js'), R('p4p_musique.js'), map_bundle, R('p4r_map.js'), R('settings.js'), R('connection_methods.js'), R('patio.js'), R('p4e_practice.js'), R('p4j_pwa.js'), "\n})();\n</script>\n"])
 target = sys.argv[1] if len(sys.argv) > 1 else 'wilaya-v6.html'

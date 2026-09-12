@@ -19,8 +19,9 @@ const fs=require('fs');
   await seedSignedIn(page,url,{name:'Med',lang,data});
   await page.evaluate(theme=>document.documentElement.setAttribute('data-theme',theme),theme);
   const rows=page.locator('.etape');assert.equal(await rows.count(),8);
-  for(let i=0;i<8;i++)assert.equal(await rows.nth(i).locator('.niveau-rose').count(),5);
-  assert.equal(await rows.nth(0).locator('.niveau-rose.on').count(),5);
+  for(let i=0;i<3;i++)assert.equal(await rows.nth(i).locator('.niveau-rose').count(),5);
+  for(let i=3;i<8;i++)assert.equal(await rows.nth(i).locator('.node-lock').count(),1);
+  assert.equal(await rows.nth(0).locator('.niveau-rose.on').count(),0);
   assert.equal(await rows.nth(1).locator('.niveau-rose.on').count(),3);
   assert.equal(await rows.nth(2).locator('.niveau-rose.on').count(),0);
   assert.equal(await page.locator('.topbar-orn').count(),0,'One arch only, embedded in the banner');
@@ -39,7 +40,7 @@ const fs=require('fs');
   assert((await page.locator('.xp-total').innerText()).includes('298'));
   await page.keyboard.press('Escape');assert.equal(await page.locator('#topstat-xp').evaluate(e=>document.activeElement===e),true);
   for(const tab of ['practice','info','path']){
-   await page.locator('#tab-'+tab).click();assert.equal(await page.locator('#tab-'+tab).getAttribute('aria-selected'),'true');
+   await page.locator('#tab-'+tab).click();if(tab==='practice'){assert(await page.locator('#learning-workshop').evaluate(e=>e.open));assert.equal(await page.locator('#tab-path').getAttribute('aria-selected'),'true');assert(await page.locator('#act-free').isVisible());}else assert.equal(await page.locator('#tab-'+tab).getAttribute('aria-selected'),'true');
   }
   assert.deepEqual(errors,[]);
   summary.push({width,lang,theme,violations:0});await page.close();

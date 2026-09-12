@@ -43,7 +43,7 @@ function openSettings(page){
    html+='<h2>'+TL('Ton compte','حسابك')+'</h2><p class="settings-note" role="status">'+(!c||!c.token?TL('Reconnecte-toi pour synchroniser.','أعد تسجيل الدخول للمزامنة.'):c.lastError?TL('Synchronisation en attente. Ta progression reste sur cet appareil.','المزامنة معلقة. يبقى تقدّمك على هذا الجهاز.'):TL('Dernière synchronisation : '+ago.fr,'آخر مزامنة: '+ago.ar))+'</p><div class="settings-group">'+settingsLink('Synchroniser maintenant','المزامنة الآن','Voir le résultat et les éventuelles erreurs','عرض النتيجة والأخطاء المحتملة','syncnow')+'</div>';
    renderSyncPanel();
   }
-  if(settingsPage==='about') html+='<h2>WilayaDZ</h2><p class="settings-note" id="settings-version">'+TL('Version installée : ','النسخة المثبتة: ')+esc(WILAYA_REVISION==='development'?TL('développement — Casbah 1','تطوير — القصبة 1'):WILAYA_REVISION.slice(0,8))+'</p><div class="settings-group">'+settingsLink('Aide à l’apprentissage','مساعدة في التعلم','Méthode et carte d’Algérie','المنهج وخريطة الجزائر','info')+'</div><p class="settings-note">'+TL('Cet appareil conserve ton profil, ta progression et tes préférences. Ton compte en ligne permet de retrouver ta progression ailleurs. Les transferts manuels contiennent des données personnelles : partage-les seulement avec tes propres appareils.','يحتفظ هذا الجهاز بملفك وتقدّمك وتفضيلاتك. يتيح حسابك استرجاع التقدّم على جهاز آخر. تحتوي النسخ اليدوية على بيانات شخصية: شاركها مع أجهزتك فقط.')+'</p>';
+  if(settingsPage==='about') html+='<h2>WilayaDZ</h2><p class="settings-note" id="settings-version">'+TL('Version installée : ','النسخة المثبتة: ')+esc(WILAYA_REVISION==='development'?TL('développement — Casbah 1','تطوير — القصبة 1'):WILAYA_REVISION.slice(0,8))+'</p><div class="settings-group">'+settingsLink('Aide à l’apprentissage','مساعدة في التعلم','Méthode et repères des codes','المنهج ومعالم الرموز','info')+'</div><p class="settings-note">'+TL('Cet appareil conserve ton profil, ta progression et tes préférences. Ton compte en ligne permet de retrouver ta progression ailleurs. Les transferts manuels contiennent des données personnelles : partage-les seulement avec tes propres appareils.','يحتفظ هذا الجهاز بملفك وتقدّمك وتفضيلاتك. يتيح حسابك استرجاع التقدّم على جهاز آخر. تحتوي النسخ اليدوية على بيانات شخصية: شاركها مع أجهزتك فقط.')+'</p>';
   html+='</div>';
  }
  settingsRoot.innerHTML=html;
@@ -68,7 +68,7 @@ function settingsAction(page){
  if(page==='cloud') return openCloudSheet();
  if(page==='google') return openGoogleLinkSheet();
  if(page==='pin') return openPinSheet();
- if(page==='info') return switchTab('info');
+ if(page==='info'){switchTab('path');var guide=document.getElementById('learning-guide');guide.open=true;guide.querySelector('summary').focus({preventScroll:true});guide.scrollIntoView({block:'start',behavior:'auto'});return;}
  if(page==='syncnow'){
   var p=activeProfile(), c=cloudOf(p);if(!c||!c.token) return openCloudSheet();
   var b=settingsRoot.querySelector('[data-settings="syncnow"]');b.disabled=true;

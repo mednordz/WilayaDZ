@@ -15,3 +15,12 @@ Le logo illustré reste bilingue-indépendant et son bouton possède un nom acce
 L’accueil garde sa palette ivoire et faïence dans les thèmes clair/sombre ;
 les autres pages conservent le thème choisi. Les contenus pédagogiques et leurs
 ressources restent disponibles ; la carte d’accueil emploie le livre de la maquette.
+
+## Médaillon du parcours
+
+`noeud-faience.webp` : cadre transparent généré avec imagegen à partir de la
+maquette parcours V3, puis réduit en WebP à 360 px. Prompt : médaillon de
+faïence algéroise sarcelle à huit lobes, double filet ivoire/laiton, minuscules
+fleurs aux pointes, centre sombre entièrement vide, aucun texte ni symbole,
+fond transparent. Codes, niveau acquis et cinq marques sont des éléments HTML
+dynamiques. Le fond verrouillé est atténué par CSS, avec contraste du texte adapté.

@@ -22,7 +22,7 @@
     return "p" + Date.now().toString(36) + Math.floor(Math.random()*1e6).toString(36);
   }
   function blankData(){
-    return { progress:{}, confusions:{}, crowns:{}, xp:0,
+    return { learning:{}, progress:{}, confusions:{}, crowns:{}, xp:0,
              streak:{count:0,last:null}, keyDone:false, bestBlitz:0,
              /* L'invitation à mettre une photo a été écartée. Rangé
                 avec la progression, donc synchronisé : refusée sur le
@@ -117,6 +117,7 @@
     applyProgressState(p ? p.data : blankData());
   }
   function applyProgressState(d){
+    state.learning   = d.learning || {};
     state.progress   = d.progress || {};
     state.confusions = d.confusions || {};
     state.crowns     = d.crowns || {};
@@ -137,7 +138,7 @@
        réelle par un état de travail vide. */
     if(p.id !== loadedProfileId) return;
     p.data = {
-      progress:state.progress, confusions:state.confusions, crowns:state.crowns,
+      learning:state.learning||{}, progress:state.progress, confusions:state.confusions, crowns:state.crowns,
       xp:state.xp, streak:state.streak, keyDone:state.keyDone, bestBlitz:state.bestBlitz,
       photoNon:state.photoNon, resetAt:state.resetAt||0
     };
@@ -155,8 +156,15 @@
   }
   function profileStats(p){
     var d = p.data || blankData();
-    var tracked = Object.keys(d.progress||{}).length;
-    var anchored = Object.keys(d.progress||{}).filter(function(c){ return (d.progress[c].box||0) >= 5; }).length;
+    var codes=Object.keys(d.progress||{});
+    Object.keys(d.learning||{}).forEach(function(c){
+      var r=d.learning[c];if((r.d||r.r||r.n[3]||r.c[3])&&codes.indexOf(c)<0)codes.push(c);
+    });
+    var tracked = codes.length;
+    var anchored = codes.filter(function(c){
+      var r=(d.learning||{})[c];
+      return (((d.progress||{})[c]||{}).box||0)>=5 || !!(r&&r.n[0]>=2&&r.c[0]>=2);
+    }).length;
     return { tracked:tracked, anchored:anchored, xp:d.xp||0, streak:(d.streak&&d.streak.count)||0 };
   }
 
@@ -186,11 +194,24 @@
       var r = d.progress[c] || {};
       packed[c] = [r.box||0, (r.due||0)/DAY, r.updatedAt||0];
     });
+    /* Les anciennes questions de blocs pouvaient produire des identifiants
+       négatifs. Ils ne doivent pas bloquer l'export d'un profil valide. */
+    var confusions = {};
+    function validWilayaKey(k){ return /^(?:[1-9]|[1-5][0-9]|6[0-9])$/.test(k); }
+    Object.keys(d.confusions||{}).forEach(function(a){
+      if(!validWilayaKey(a)) return;
+      var pairs = {};
+      Object.keys(d.confusions[a]||{}).forEach(function(b){
+        var count = d.confusions[a][b];
+        if(validWilayaKey(b) && a !== b && Number.isSafeInteger(count) && count >= 0) pairs[b] = count;
+      });
+      if(Object.keys(pairs).length) confusions[a] = pairs;
+    });
     return {
-      v:1, sv:2, ra:d.resetAt||0, n:p.name, x:d.xp||0,
+      v:1, sv:3, lr:JSON.parse(JSON.stringify(d.learning||{})), ra:d.resetAt||0, n:p.name, x:d.xp||0,
       sc:(d.streak&&d.streak.count)||0, sl:(d.streak&&d.streak.last)||null,
       k:d.keyDone?1:0, bb:d.bestBlitz||0,
-      cr:d.crowns||{}, p:packed, cf:d.confusions||{}, pn:d.photoNon?1:0,
+      cr:d.crowns||{}, p:packed, cf:confusions, pn:d.photoNon?1:0,
       /* L'avatar n'est pas cumulable comme une progression : c'est le
          plus récent qui gagne, d'où l'horodatage qui l'accompagne. */
       av:p.avatar||null, avt:p.avatarAt||0
@@ -226,9 +247,15 @@
     function code(k){ return /^(?:[1-9]|[1-5][0-9]|6[0-9])$/.test(k); }
     function keys(x, key, value){ return dict(x) && Object.keys(x).every(function(k){ return key(k) && value(x[k]); }); }
     if(!dict(o) || o.v !== 1 || !dict(o.p)) return false;
-    var allowed = ['v','sv','ra','n','x','sc','sl','k','bb','cr','p','cf','pn','av','avt'];
+    var allowed = ['v','sv','lr','ra','n','x','sc','sl','k','bb','cr','p','cf','pn','av','avt'];
     if(Object.keys(o).some(function(k){ return allowed.indexOf(k) < 0; })) return false;
-    if(o.sv !== undefined && o.sv !== 2) return false;
+    if(o.sv !== undefined && o.sv !== 2 && o.sv !== 3) return false;
+    if(o.sv === 3){
+      if(!keys(o.lr,function(k){return /^(?:[1-9]|10)$/.test(k);},function(p){
+        function evidence(r){return Array.isArray(r)&&r.length===5&&integer(r[0],3)&&integer(r[4],1)&&r[1]<=r[3]&&r.slice(1,4).every(function(n){return integer(n,Number.MAX_SAFE_INTEGER);});}
+        return dict(p)&&Object.keys(p).sort().join(',')==='c,d,n,r'&&integer(p.d,Number.MAX_SAFE_INTEGER)&&integer(p.r,Number.MAX_SAFE_INTEGER)&&evidence(p.n)&&evidence(p.c);
+      }))return false;
+    }else if(o.lr !== undefined)return false;
     if(o.n !== undefined && (typeof o.n !== 'string' || o.n.length > 100)) return false;
     if(!['x','sc','bb','ra','avt'].every(function(k){ return o[k] === undefined || integer(o[k],Number.MAX_SAFE_INTEGER); })) return false;
     if(!['k','pn'].every(function(k){ return o[k] === undefined || o[k] === 0 || o[k] === 1; })) return false;
@@ -268,6 +295,18 @@
         (inc[0] < cur.box || (inc[0] === cur.box && due < cur.due)) :
         (inc[0] > cur.box || (inc[0] === cur.box && due > cur.due))));
       if(newer){ cur.box=inc[0]; cur.due=due; cur.updatedAt=at; improved++; }
+    });
+    d.learning=d.learning||{};
+    Object.keys(obj.lr||{}).forEach(function(code){
+      var inc=obj.lr[code], cur=d.learning[code];
+      if(!cur){d.learning[code]=JSON.parse(JSON.stringify(inc));return;}
+      cur.d=Math.max(cur.d,inc.d);cur.r=Math.max(cur.r,inc.r);
+      ['n','c'].forEach(function(k){
+        var a=inc[k],b=cur[k];
+        // Les étapes gagnées restent acquises ; l'entretien suit la dernière observation.
+        var latest=a[3]>b[3] || (a[3]===b[3] && (a[4]<b[4] || (a[4]===b[4]&&a[2]<b[2]))) ? a : b;
+        cur[k]=[Math.max(a[0],b[0]),Math.max(a[1],b[1]),latest[2],latest[3],latest[4]];
+      });
     });
     d.xp = Math.max(d.xp||0, obj.x||0);
     d.bestBlitz = Math.max(d.bestBlitz||0, obj.bb||0);

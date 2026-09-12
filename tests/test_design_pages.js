@@ -18,7 +18,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
   async function capture(name){
    await page.addScriptTag({content:axe});
-   const issues=await page.evaluate(async()=>(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})));
+   const issues=await page.evaluate(async()=>(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})));
    if(issues.length) console.log(name,lang,theme,JSON.stringify(issues));
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' overflow');
    await page.screenshot({path:path.join(out,`${name}-${lang}-${theme}.png`),fullPage:false});
@@ -28,7 +28,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   for(const tab of ['practice','info']){await page.locator('#tab-'+tab).click();await capture(tab);}
   await page.locator('#profile-btn').click();await capture('profil');
   await page.locator('#prof-avatar').click();await capture('avatars');await page.keyboard.press('Escape');
-  await page.locator('#tab-path').click();await page.locator('.noeud').first().click();await capture('lecon');
+  await page.locator('#tab-path').click();await page.locator('.noeud').first().click();await page.locator('#sheet-start').click();await capture('lecon');
   assert.deepEqual(errors,[]);await page.close();
  }
  // Every character must keep two nonempty, equally sized image layers.

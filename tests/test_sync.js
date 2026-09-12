@@ -15,6 +15,28 @@ function setup(){
  c.run=s=>vm.runInContext(s,c);c.queue=queue;return c;
 }
 (async()=>{
+ const pilot=setup();
+ pilot.run('p.data.learning={"1":{d:1,r:2,n:[2,20,100,20,1],c:[1,10,40,10,1]}}');
+ const remotePilot={v:1,sv:3,p:{},lr:{1:{d:1,r:2,n:[1,10,35,30,0],c:[2,25,80,25,1]}}};
+ pilot.mergeInto(pilot.p,remotePilot);
+ check(pilot.p.data.learning[1].n[0]===2&&pilot.p.data.learning[1].n[4]===0,'latest lapse preserves earned step');
+ check(pilot.p.data.learning[1].c[0]===2,'other direction merges independently');
+ check(pilot.profileStats(pilot.p).tracked===1&&pilot.profileStats(pilot.p).anchored===1,'profile summary includes the pilot without legacy box conversion');
+ const once=JSON.stringify(pilot.packProfile(pilot.p));pilot.mergeInto(pilot.p,remotePilot);
+ check(JSON.stringify(pilot.packProfile(pilot.p))===once,'pilot import is idempotent');
+ const snapshot=pilot.packProfile(pilot.p);pilot.p.data.learning[1].n[4]=1;
+ check(snapshot.lr[1].n[4]===0,'sent pilot snapshot cannot change during a request');
+ pilot.mergeInto(pilot.p,{v:1,p:{}});check(!!pilot.p.data.learning[1],'legacy import preserves pilot evidence');
+ pilot.mergeInto(pilot.p,{v:1,sv:3,ra:100,p:{},lr:{}});check(!Object.keys(pilot.p.data.learning).length,'reset clears pilot evidence');
+ pilot.mergeInto(pilot.p,remotePilot);check(!Object.keys(pilot.p.data.learning).length,'old generation cannot restore pilot evidence');
+
+ const legacyConfusion=setup();
+ legacyConfusion.run('p.data.confusions={"1":{"-1":3,"2":4,"1":2},"-1002":{"3":2}}');
+ const cleaned=legacyConfusion.run('packProfile(p)');
+ check(legacyConfusion.validPayload(cleaned),'legacy structural errors cannot block profile export');
+ check(JSON.stringify(cleaned.cf)===JSON.stringify({1:{2:4}}),'valid confusion evidence preserved');
+ check(legacyConfusion.run('p.data.confusions[1][-1]')===3,'export sanitization does not mutate the source profile');
+
  for(const silent of [false,true]){
   const c=setup();c.session.alive=true;const r=await c.run(`cloudSync(p,{silent:${silent}})`);
   check(r.ok&&r.changed,'scalar-only update reported');check(c.state.xp===900&&c.state.keyDone&&c.state.bestBlitz===12,'active scalars hydrated');

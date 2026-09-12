@@ -389,6 +389,13 @@ def main():
             code,res=api.call("PUT","/sync",{"base_version":6,"data":case["payload"]},token=token)
             check("payload rejeté : "+case["name"],code==400,res)
 
+        pilot=dict(progress(**{"16":5,"31":3}),sv=3,ra=100,lr={"1":{"d":1,"r":2,"n":[1,3,86400003,3,1],"c":[0,0,0,0,0]}})
+        code,res=api.call("PUT","/sync",{"base_version":6,"data":pilot},token=token)
+        check("preuves du pilote acceptées",code==200,res)
+        code,res=api.call("PUT","/sync",{"base_version":7,"data":dict(progress(),sv=2,ra=100)},token=token)
+        check("ancien client ne supprime pas les preuves",code==409 and res["error"]=="client_update_required",res)
+        check("autre appareil reçoit les deux directions",api.call("GET","/sync",token=second)[1]["data"]["lr"]==pilot["lr"])
+
         print("\nCharges utiles refusees")
         code, res = api.call("PUT", "/sync",
                              {"base_version": 3, "data": {"nimporte": "quoi"}}, token=token)
@@ -482,7 +489,7 @@ def main():
         print("\nLa progression survit a tout cela")
         code, res = api.call("GET", "/sync", token=token)
         check("la progression est intacte",
-              code == 200 and res["version"] == 6 and res["data"]["p"]["16"][0] == 5, res)
+              code == 200 and res["version"] == 7 and res["data"]["p"]["16"][0] == 5, res)
 
         print("\nMot de passe oublie")
         before = len(sink.messages)

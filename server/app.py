@@ -1278,7 +1278,7 @@ class Handler(BaseHTTPRequestHandler):
         # deux appareils actifs le meme jour s'effaceraient l'un l'autre.
         current = json.loads(row["data"]) if row["data"] else {}
         incoming = body["data"]
-        obsolete = current.get("sv") == 2 and incoming.get("sv") != 2
+        obsolete = current.get("sv", 1) > incoming.get("sv", 1)
         reset_stale = incoming.get("ra", 0) < current.get("ra", 0)
         if base != row["version"] or obsolete or reset_stale:
             return self._send(409, {
