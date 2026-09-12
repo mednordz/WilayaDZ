@@ -38,8 +38,8 @@
     return q;
   }
 
-  function buildReviewQueue(){
-    var pool = poolForTier(state.tier);
+  function buildReviewQueue(unit){
+    var pool = unit ? unit.pool : poolForTier(state.tier);
     var due = dueCodes(pool).slice(0, 15);
     return due.map(function(w){ return exerciseFor(w.c, pool, false); });
   }
@@ -130,16 +130,18 @@
     stopTimer();
     session.alive = false;
     document.getElementById("lesson-overlay").classList.remove("active");
+    var returnIndex=sessionPrevFocus&&sessionPrevFocus.getAttribute("data-i");
     renderPath();
+    if(returnIndex!==null && /^\d+$/.test(returnIndex||""))sessionPrevFocus=document.querySelector('.noeud[data-i="'+returnIndex+'"]');
     refreshTopStats();
     refreshStats();
     refreshPracticeCards();
     buildLedger();
     renderSyncPanel();   /* le code de transfert doit toujours refléter l'état réel */
     if(sessionPrevFocus && typeof sessionPrevFocus.focus === "function" && document.body.contains(sessionPrevFocus)){
-      sessionPrevFocus.focus();
+      sessionPrevFocus.focus({preventScroll:true});
     }else{
-      document.getElementById("hero-card").focus();
+      document.getElementById("hero-card").focus({preventScroll:true});
     }
     sessionPrevFocus = null;
   }
@@ -569,10 +571,11 @@
     startSession({kind:"lesson", unit:unit, queue:buildLessonQueue(unit),
                   label:TL("Leçon " + unit.label, "درس " + unit.label), trigger:trigger});
   }
-  function startReview(trigger){
-    var q = buildReviewQueue();
+  function startReview(trigger,unit){
+    if(unit && !unitUnlocked(unit,UNITS.indexOf(unit)))return;
+    var q = buildReviewQueue(unit);
     if(!q.length){ toast(TL("Rien à réviser pour l'instant.","لا شيء للمراجعة الآن.")); return; }
-    startSession({kind:"review", queue:q, label:TL("Révision du jour","مراجعة اليوم"), trigger:trigger});
+    startSession({kind:"review", queue:q, label:unit?TL("Révision · "+unit.label,"مراجعة · "+unit.label):TL("Révision du jour","مراجعة اليوم"), trigger:trigger});
   }
   function startConfusion(trigger){
     var q = buildConfusionQueue();

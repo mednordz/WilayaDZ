@@ -21,9 +21,10 @@ map_bundle += "var WILAYA_REVISION=" + json.dumps(os.environ.get("APP_REVISION",
 patio_css = R('patio.css')
 for asset in sorted(['architecture','logo','frise','medaillon','carte','enduit','flamme','diamant','musique','reglages','carte-icone'], key=len, reverse=True):
     patio_css = patio_css.replace('PATIO_'+asset.upper().replace('-','_'), 'data:image/webp;base64,'+B('assets/patio/'+asset+'.webp'))
+parcours_css = R('parcours.css').replace('PARCOURS_MEDAILLON', 'data:image/webp;base64,'+B('assets/patio/noeud-faience.webp'))
 # The old banner remains in source assets, but is no longer loaded by this design.
 kit_bundle = re.sub(r'^    banniere:.*\n', '', R('p4o_kit.js'), flags=re.M)
-out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), patio_css, "\n</style>\n\n",
+out = "".join([R('p0_head.html'), "<style>\n", face, R('p1_css.css'), R('p2_css_add.css'), R('settings.css').replace('PATIO_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/patio-casbah.webp')).replace('TILE_IMAGE', 'data:image/webp;base64,' + B('assets/illustrations/ceramique-algeroise.webp')), patio_css, parcours_css, "\n</style>\n\n",
   R('p3_body.html'), "\n\n<script>\n(function(){\n  \"use strict\";\n",
   rive_bundle, R('part_data.js'), R('p4i_mascots.js'), R('qr_lib.js'), R('preferences.js'), R('p4a_core.js'), R('p4f_i18n.js'), R('p4g_account.js'),
   R('p4b_exercises.js'), R('p4c_session.js'), R('p4d_path.js'), R('p4h_profileui.js'),

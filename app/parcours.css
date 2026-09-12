@@ -1,0 +1,49 @@
+/* Journey components: geometry and data stay independent of the ceramic asset. */
+#view-path .chemin{background:transparent;overflow:visible;}
+#view-path .chemin-paysage,#view-path .chemin-decor,#view-path .chemin-angle{display:none;}
+#path-track{padding:12px 0 24px;display:block;}
+#path-track .etape{position:relative;display:grid;grid-template-columns:44% 56%;align-items:center;min-height:205px;gap:0;padding:24px 0;isolation:isolate;}
+#path-track .etape:nth-of-type(even){grid-template-columns:56% 44%;}
+#path-track .etape:nth-of-type(even) .etape-noeud{grid-column:2;grid-row:1;}
+#path-track .etape:nth-of-type(even) .etape-corps{grid-column:1;grid-row:1;text-align:end;}
+#path-track .etape-noeud{position:relative;width:100%;align-self:center;display:flex;align-items:center;justify-content:center;}
+#path-track .noeud{position:relative;display:block;flex:none;width:132px;height:132px;max-width:none;padding:0;margin:0;border:0;background:transparent;box-shadow:none;border-radius:28%;filter:none;cursor:pointer;color:#fffaf0;font-family:Georgia,serif;}
+#path-track .noeud-surface{position:absolute;inset:0;background:url('PARCOURS_MEDAILLON') center/contain no-repeat;pointer-events:none;}
+#path-track .noeud-content{position:absolute;inset:26% 20%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;pointer-events:none;}
+#path-track .node-codes{font-size:21px;line-height:1.1;font-weight:700;white-space:nowrap;}
+#path-track .node-level{font-size:16px;line-height:1.1;font-weight:700;}
+#path-track .niveau-rosettes{display:flex;gap:4px;margin:0;}
+#path-track .niveau-rose{display:block;width:8px;height:8px;border:1px solid #fff4db;border-radius:2px;transform:rotate(45deg);background:transparent;}
+#path-track .niveau-rose.on{background:#fff4db;}
+#path-track .node-lock .icon{width:24px;height:24px;}
+#path-track .node-locked{color:#073c43;}
+#path-track .node-locked .noeud-surface{filter:saturate(.12);opacity:.28;}
+#path-track .noeud:focus-visible{outline:3px solid #17666b;outline-offset:3px;}
+#path-track .noeud:active{transform:translateY(2px);}
+#path-track .noeud[aria-expanded="true"]{outline:2px solid #17666b;outline-offset:3px;}
+#path-track .step-recommendation{position:absolute;bottom:calc(100% + 4px);font-size:.72rem;line-height:1.2;color:#073c43;background:#fffaf0;border:1px solid #9c8050;border-radius:12px;padding:3px 7px;white-space:nowrap;}
+#path-track .etape-corps{min-width:0;padding:0 8px;border:0;border-radius:0;background:none;box-shadow:none;}
+#path-track .etape-corps h3{font-family:Georgia,serif;color:#073c43;font-size:1.18rem;line-height:1.25;margin:0 0 6px;}
+#path-track .etape-etat{display:block;color:#395853;font-size:.85rem;line-height:1.4;margin:0;}
+.step-review{display:flex;align-items:center;gap:5px;color:#865019;font-size:.83rem;line-height:1.4;margin:7px 0 0;}
+.step-review .icon{width:18px;height:18px;flex:none;}
+#path-track .etape:nth-of-type(even) .step-review{justify-content:flex-end;}
+#path-track .step-link{position:absolute;top:50%;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;overflow:visible;}
+#path-track .step-link path{fill:none;stroke:#b5c6ba;stroke-width:1.2;vector-effect:non-scaling-stroke;}
+[dir="rtl"] #path-track .step-link{transform:scaleX(-1);}
+#path-track .cle-badge{margin:0 auto 12px;display:flex;width:max-content;max-width:100%;font-size:.85rem;min-height:44px;}
+.path-complete{padding:16px;text-align:center;border:1px solid #b5c6ba;border-radius:16px;color:#073c43;}
+#sheet-box.parcours-sheet{position:relative;--font-display:Georgia,serif;--ink:#073c43;--ink-dim:#395853;--bg:#fff8eb;--surface:#fff8eb;--accent:#236d69;--accent-ink:#fffaf0;background:#fff8eb;color:#073c43;border:1px solid #ab9165;border-radius:30px 30px 0 0;box-shadow:inset 0 0 0 5px #f0e4cc;padding:28px 22px max(24px,env(safe-area-inset-bottom));font-family:Georgia,serif;}
+.parcours-sheet h2{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;border:0;padding-inline-end:42px;font-size:1.3rem;color:#073c43;}
+.parcours-sheet h2 .bi{width:auto;}
+.parcours-sheet .sub{color:#395853;line-height:1.55;}
+.parcours-sheet .earned-level{font-size:1.15rem;font-weight:700;}
+.parcours-sheet .btn{border-radius:28px;font-family:Georgia,serif;font-weight:700;text-align:center;min-height:52px;margin-top:14px;background:#236d69;color:#fffaf0;border-color:#236d69;box-shadow:none;}
+.parcours-sheet .btn .bi{justify-content:center;}
+.parcours-sheet .btn .bi>.bf,.parcours-sheet .btn .bi>.ba{flex:initial;text-align:center;}
+.parcours-sheet .btn::before,.parcours-sheet .btn::after{content:none;}
+.parcours-sheet .btn.ghost{background:transparent;color:#195651;border-color:#a79573;}
+.parcours-sheet .sheet-dismiss{position:absolute;top:12px;inset-inline-end:12px;width:44px;height:44px;background:#fff8eb;border:1px solid #ab9165;border-radius:50%;color:#073c43;font-size:28px;cursor:pointer;}
+@media(max-width:350px){#path-track .noeud{width:120px;height:120px;}#path-track .node-codes{font-size:19px;}#path-track .node-level{font-size:15px;}#path-track .etape-corps{padding-inline:5px;}#path-track .etape-corps h3{font-size:1rem;}}
+@media(forced-colors:active){#path-track .noeud{border:2px solid ButtonText;color:ButtonText;}#path-track .noeud-surface{display:none;}#path-track .niveau-rose{border-color:ButtonText;}#path-track .niveau-rose.on{background:ButtonText;}}
+body.sheet-open{overflow:hidden;}

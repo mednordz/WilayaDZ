@@ -28,7 +28,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   for(const tab of ['practice','info']){await page.locator('#tab-'+tab).click();await capture(tab);}
   await page.locator('#profile-btn').click();await capture('profil');
   await page.locator('#prof-avatar').click();await capture('avatars');await page.keyboard.press('Escape');
-  await page.locator('#tab-path').click();await page.locator('.noeud').first().click();await capture('lecon');
+  await page.locator('#tab-path').click();await page.locator('.noeud').first().click();await page.locator('#sheet-start').click();await capture('lecon');
   assert.deepEqual(errors,[]);await page.close();
  }
  // Every character must keep two nonempty, equally sized image layers.

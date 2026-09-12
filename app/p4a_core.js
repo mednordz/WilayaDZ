@@ -429,7 +429,9 @@
 
   /* ---------------- Feuille de détail accessible ---------------- */
   var sheetPrevFocus = null;
+  var sheetInert = [];
   function openSheet(html){
+    if(document.getElementById("sheet-box"))closeSheet();
     sheetPrevFocus = document.activeElement;
     var root = document.getElementById("sheet-root");
     root.innerHTML =
@@ -443,25 +445,35 @@
       if(e.target.id === "sheet-backdrop") closeSheet();
     });
     document.addEventListener("keydown", sheetKey, true);
+    sheetInert=Array.prototype.filter.call(root.parentElement.children,function(el){return el!==root&&el.id!=="confirm-root"&&el.id!=="toast-root"&&!el.inert;});
+    sheetInert.forEach(function(el){el.inert=true;});
+    document.body.classList.add("sheet-open");
     box.focus();
   }
   function sheetKey(e){
+    if(document.querySelector("#confirm-root .confirm-box"))return;
     if(!document.getElementById("sheet-box")) return;
     if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeSheet(); return; }
     if(e.key === "Tab"){
       var box = document.getElementById("sheet-box");
       var f = Array.prototype.filter.call(box.querySelectorAll("button,[href],input,select,textarea,summary,[tabindex]:not([tabindex='-1'])"),
         function(el){ return el.offsetParent !== null && !el.disabled; });
-      if(!f.length) return;
+      if(!f.length){e.preventDefault();box.focus();return;}
       var first = f[0], last = f[f.length-1];
-      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      if(document.activeElement===box || !box.contains(document.activeElement)){e.preventDefault();(e.shiftKey?last:first).focus();}
+      else if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
       else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
     }
   }
   function closeSheet(){
     document.getElementById("sheet-root").innerHTML = "";
     document.removeEventListener("keydown", sheetKey, true);
-    if(sheetPrevFocus && sheetPrevFocus.focus) sheetPrevFocus.focus();
+    sheetInert.forEach(function(el){el.inert=false;});sheetInert=[];
+    document.body.classList.remove("sheet-open");
+    if(sheetPrevFocus && sheetPrevFocus.isConnected){
+      if(sheetPrevFocus.hasAttribute("aria-expanded"))sheetPrevFocus.setAttribute("aria-expanded","false");
+      sheetPrevFocus.focus({preventScroll:true});
+    }
     sheetPrevFocus = null;
   }
 

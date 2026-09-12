@@ -19,7 +19,7 @@ for (let c = 1; c <= 10; c++) prog4[c] = { box: 4, due: 0, seen: 9, ok: 9, best:
     keyDone: true, progress: prog4, confusions: {}, crowns: { u1: 2 },
     xp: 100, streak: { count: 1, last: null } } });
 
-  await p.locator('.noeud').nth(0).click(); await p.waitForTimeout(300);
+  await p.locator('.noeud').nth(0).click(); await p.locator(await p.locator('#sheet-train').count()?'#sheet-train':'#sheet-start').click(); await p.waitForTimeout(300);
   let type = 0, mcq = 0, chain = 0;
   for (let i = 0; i < 14; i++) {
     if (await p.locator('#result-heading').count()) break;
@@ -37,7 +37,7 @@ for (let c = 1; c <= 10; c++) prog4[c] = { box: 4, due: 0, seen: 9, ok: 9, best:
   await seedSignedIn(p, URL, { settle: 600, data: {
     keyDone: true, progress: {}, confusions: {}, crowns: {}, xp: 0,
     streak: { count: 0, last: null } } });
-  await p.locator('.noeud').nth(0).click(); await p.waitForTimeout(250);
+  await p.locator('.noeud').nth(0).click(); await p.locator(await p.locator('#sheet-train').count()?'#sheet-train':'#sheet-start').click(); await p.waitForTimeout(250);
 
   const correct = p.locator('.lesson-choice[data-correct="1"]');
   assert.equal(await correct.count(),1,'Une réponse correcte doit être disponible');
