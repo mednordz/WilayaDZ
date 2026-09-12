@@ -366,6 +366,10 @@
   buildMap();
   buildLedger();
   poserImagesKit();
+  /* Reprend la musique là où le réglage l'avait laissée. Si le
+     navigateur refuse (aucun geste depuis l'ouverture), elle se réarme
+     toute seule sur le premier clic — voir musiqueArmerGeste(). */
+  musiqueAppliquer();
   initSyncPanel();
 
   /* Un lien de réinitialisation reçu par courriel passe avant tout le

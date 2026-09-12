@@ -13,6 +13,7 @@ app/          fichiers source de l'application (assemblés par build.py)
 mascots/      images sources et rig des 4 mascottes (fennec, chameau, cigogne, palmier)
 android/      projet APK (manifest, resources, keystore, dernier APK signé)
 deploy/       Dockerfile + nginx + docker-compose pour l'hébergement web (voir DEPLOY.md)
+deploy/media/ la musique de fond, servie en flux — JAMAIS dans index.html
 server/       service de comptes et de synchronisation (Python stdlib + SQLite)
 tests/        suite Playwright + tests du service de comptes (test_api.py, test_cloud_e2e.js)
 AUDIT.md      rapport d'audit sécurité/accessibilité déjà réalisé
@@ -340,6 +341,55 @@ bascule, habillage compris. Les deux langues restent dans le DOM, et les
 Porteurs de `ui1` aujourd'hui : `.topbar`, `.tabbar`, `.banner-text`,
 `.statstrip`, `#hero-card` (reposée à chaque rendu par `heroCarte`, qui
 réécrit `className`), `.chemin-head`, `.chemin`.
+
+## Musique de fond : à côté de l'app, jamais dedans
+
+Tout le reste de WilayaDZ est en base64 dans l'unique fichier HTML —
+c'est ce qui le fait s'ouvrir en 0,7 Mo sur un réseau mobile algérien.
+Quarante minutes de musique pèsent vingt fois ce fichier. Elle est donc
+servie **en flux** depuis `/media/`, et l'app n'a grossi que de 7,5 Ko
+(le code du lecteur, `app/p4p_musique.js`).
+
+Les fichiers sont dans `deploy/media/`, embarqués dans l'image par le
+Dockerfile. Deux encodages, un seul téléchargé par visiteur :
+
+  · `musique.opus` — Opus 48 kbps, 13,4 Mo. Android, Chrome, Safari ≥ 17.4 ;
+  · `musique.m4a` — AAC-LC 64 kbps, 18,7 Mo. Le filet pour les iPhone d'avant.
+
+Ré-encodés depuis le MP3 d'origine avec une normalisation **−13,5 → −20
+LUFS** : la piste était masterisée fort pour YouTube et serait passée
+devant les sons de l'application.
+
+Quatre règles la tiennent à distance, et chacune a sa raison :
+
+  · l'élément `<audio>` n'est créé qu'au premier allumage — sinon le
+    navigateur ouvre une connexion pour tout le monde ;
+  · `sw.js` laisse passer `/media/` sans y toucher (`NO_CACHE_PREFIX`).
+    La Cache API exige un corps entier : le service worker
+    téléchargerait les quarante minutes avant la première note, ferait
+    exploser le quota, et avalerait les requêtes **Range** dont la
+    lecture dépend pour avancer ;
+  · nginx sert `/media/` en `immutable` — l'`add_header` du `location`
+    REMPLACE celui du `server` (`no-cache`), c'est voulu et c'est le
+    seul endroit où on le fait ;
+  · le réglage est **local** (`localStorage`, `wilaya-musique-v1`),
+    jamais synchronisé : ce qu'on veut dans le bus n'est pas ce qu'on
+    veut dans le salon, et cela coûte des données.
+
+Deux comportements à ne pas « simplifier » plus tard :
+
+  · **couper le son coupe la musique.** Un bouton de sourdine qui laisse
+    quelque chose sonner n'est pas un bouton de sourdine ;
+  · un navigateur refuse de jouer un son que personne n'a demandé. Au
+    premier allumage le clic EST le geste ; à la visite suivante, avec
+    le réglage déjà sur « oui », `play()` est rejeté — `musiqueArmerGeste()`
+    réarme la lecture sur le premier clic venu, une seule fois.
+
+En `file://` (l'APK) la ligne n'apparaît pas : il n'y a pas de serveur
+derrière, la proposer serait promettre l'impossible.
+
+`tests/serve_test.py` sert `/media/` avec les requêtes Range, comme
+nginx — sans quoi `tests/test_musique.js` ne prouverait rien du flux.
 
 ## Inviter à mettre une photo
 

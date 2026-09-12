@@ -27,6 +27,12 @@ from test_api import MailSink  # noqa: E402  (voisin, pas une dependance)
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8390
 PAGE = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "app", "wilaya-v6.html")
 SW = os.path.join(os.path.dirname(PAGE), "sw.js")
+# La musique de fond, servie comme nginx la sert : depuis un dossier a
+# part, avec les requetes Range. Sans elles, un navigateur ne peut pas
+# avancer dans une piste de quarante minutes sans la telecharger en
+# entier — et c'est precisement ce qu'on veut eprouver.
+MEDIA = os.path.join(ROOT, "deploy", "media")
+MEDIA_TYPES = {".opus": "audio/ogg", ".m4a": "audio/mp4", ".mp3": "audio/mpeg"}
 
 
 def _free_port():
@@ -94,6 +100,45 @@ class Combined(api.Handler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _media(self):
+        """Sert /media/<nom>, en honorant l'en-tete Range."""
+        nom = os.path.basename(self.path.split("?")[0])
+        chemin = os.path.join(MEDIA, nom)
+        ext = os.path.splitext(nom)[1]
+        if ext not in MEDIA_TYPES or not os.path.isfile(chemin):
+            return self._send(404, {"error": "not_found"})
+        taille = os.path.getsize(chemin)
+        debut, fin = 0, taille - 1
+        plage = self.headers.get("Range", "")
+        partiel = False
+        trouve = re.match(r"bytes=(\d*)-(\d*)$", plage.strip())
+        if trouve:
+            g, d = trouve.group(1), trouve.group(2)
+            if g:
+                debut = int(g)
+                if d:
+                    fin = min(int(d), taille - 1)
+            elif d:                      # bytes=-N : les N derniers octets
+                debut = max(0, taille - int(d))
+            if debut > fin or debut >= taille:
+                self.send_response(416)
+                self.send_header("Content-Range", "bytes */%d" % taille)
+                self.end_headers()
+                return
+            partiel = True
+        with open(chemin, "rb") as fh:
+            fh.seek(debut)
+            corps = fh.read(fin - debut + 1)
+        self.send_response(206 if partiel else 200)
+        self.send_header("Content-Type", MEDIA_TYPES[ext])
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(len(corps)))
+        if partiel:
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (debut, fin, taille))
+        self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        self.end_headers()
+        self.wfile.write(corps)
+
     def do_GET(self):
         # Reserve aux essais : jamais servi par nginx en production, qui
         # ne relaie que /api/ vers le service et sert des fichiers pour
@@ -103,11 +148,15 @@ class Combined(api.Handler):
             return self._send(200, {"lien": dernier_lien(genre)})
         if self._is_api():
             return api.Handler.do_GET(self)
+        if self.path.split("?")[0].startswith("/media/"):
+            return self._media()
         self._static()
 
     def do_HEAD(self):
         if self._is_api():
             return api.Handler.do_HEAD(self)
+        if self.path.split("?")[0].startswith("/media/"):
+            return self._media()
         self._static()
 
 

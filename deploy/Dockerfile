@@ -14,4 +14,9 @@ COPY --from=build /out/index.html /out/sw.js /usr/share/nginx/html/
 # connexion Google a tout le monde, mais elles se justifient d'elles-memes
 # des lors qu'on garde des adresses e-mail.
 COPY deploy/pages/ /usr/share/nginx/html/
+# La musique de fond. Elle vit A COTE de l'application, jamais dedans :
+# index.html doit rester le fichier unique de 0,7 Mo qui s'ouvre sur un
+# reseau mobile. Rien n'est telecharge tant que personne n'allume la
+# musique, et ce qui l'est se lit en flux.
+COPY deploy/media/ /usr/share/nginx/html/media/
 EXPOSE 8080

@@ -635,6 +635,10 @@
         "</span>" +
       "</button>" +
       "<p class='sub' style='margin:18px 0 8px;'>" + TL("Sur cet appareil","على هذا الجهاز") + "</p>" +
+      /* La musique est un réglage d'APPAREIL, pas de compte : elle coûte
+         des données, et ce qu'on veut dans le bus n'est pas ce qu'on
+         veut dans le salon. */
+      musiqueRowHtml() +
       "<button class='profile-row' id='prof-pin'>" +
         "<span class='cloud-row-icon'>" + LOCKSM_ICON + "</span>" +
         "<span class='gate-profile-body'>" +
@@ -676,6 +680,7 @@
     if(cloudRow) cloudRow.addEventListener("click", function(){ openCloudSheet(); });
     document.getElementById("prof-name").addEventListener("click", openRenameSheet);
     document.getElementById("prof-avatar").addEventListener("click", openAvatarSheet);
+    wireMusiqueRow(function(){ openProfileSheet(); });
     document.getElementById("prof-pin").addEventListener("click", openPinSheet);
     document.getElementById("prof-new").addEventListener("click", function(){ closeSheet(); showGate("create"); });
     document.getElementById("prof-sync").addEventListener("click", function(){
