@@ -6,6 +6,7 @@
      ============================================================ */
   var session = {alive:false};
   var sessionPrevFocus = null;
+  var sessionInert = [];
 
   function weightedPick(codes, last){
     var cands = codes.filter(function(c){ return c !== last; });
@@ -67,7 +68,9 @@
 
   /* ---------------- Cycle de vie ---------------- */
   function startSession(cfg){
-    sessionPrevFocus = cfg.trigger || document.activeElement;
+    var reopening=document.getElementById("lesson-overlay").classList.contains("active");
+    if(!reopening)sessionPrevFocus = cfg.trigger || document.activeElement;
+    stopTimer();
     session = {
       alive: true,
       kind: cfg.kind,
@@ -87,6 +90,9 @@
 
     var overlay = document.getElementById("lesson-overlay");
     overlay.classList.add("active");
+    if(!reopening)sessionInert=Array.prototype.filter.call(overlay.parentElement.children,function(el){return el!==overlay&&el.id!=='confirm-root'&&el.id!=='toast-root'&&el.id!=='sheet-root'&&!el.inert;});
+    sessionInert.forEach(function(el){el.inert=true;});
+    document.body.classList.add('lesson-open');
     overlay.setAttribute("aria-label", session.label);
 
     var isBlitz = session.kind === "blitz";
@@ -133,6 +139,8 @@
     stopTimer();
     session.alive = false;
     document.getElementById("lesson-overlay").classList.remove("active");
+    sessionInert.forEach(function(el){el.inert=false;});sessionInert=[];
+    document.body.classList.remove('lesson-open');
     var returnIndex=sessionPrevFocus&&sessionPrevFocus.getAttribute("data-i");
     renderPath();
     if(returnIndex!==null && /^\d+$/.test(returnIndex||""))sessionPrevFocus=document.querySelector('.noeud[data-i="'+returnIndex+'"]');
@@ -152,7 +160,7 @@
   function requestCloseSession(){
     if(!session.alive) return;
     if(session.answered === 0){ closeSession(); return; }
-    confirmDialog(TS("Quitter ? Ta progression sur cette session sera perdue.","تريد الخروج؟ سيضيع تقدّمك في هذه الجلسة."), TL("Quitter","اخرج")).then(function(ok){
+    confirmDialog(TS("Quitter la séance ? Tes réponses enregistrées restent conservées, mais la séance ne sera pas terminée.","تريد الخروج؟ ستبقى إجاباتك المسجّلة محفوظة، لكن الجلسة لن تكتمل."), TL("Quitter","اخرج")).then(function(ok){
       if(ok) closeSession();
     });
   }
@@ -167,7 +175,7 @@
     if(e.key === "Tab"){
       var f = Array.prototype.filter.call(
         overlay.querySelectorAll("button,[href],input,[tabindex]:not([tabindex='-1'])"),
-        function(el){ return el.offsetParent !== null; });
+        function(el){ return el.offsetParent !== null && !el.disabled; });
       if(!f.length) return;
       var first = f[0], last = f[f.length-1];
       if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }

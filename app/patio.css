@@ -84,3 +84,10 @@ body:has(.app-shell[data-view="path"]){background:#f5efe3;}
 [dir="rtl"] #view-path .patio-card .hero-corps,[dir="rtl"] #view-path .patio-card .hero-go{direction:rtl;text-align:right;}
 /* Connection details remain in Profile; the portrait keeps the approved clean rim. */
 .topbar.patio .profile-btn::after{content:none;}
+
+/* Keep the action below the copy when two columns cannot fit the unit names. */
+@media(max-width:420px){
+ #view-path .patio-card{grid-template-columns:minmax(0,1fr);row-gap:12px;}
+ #view-path .patio-card .hero-go{grid-column:1;grid-row:2;justify-self:end;max-width:100%;}
+ #view-path .patio-card .hero-corps{overflow-wrap:anywhere;}
+}

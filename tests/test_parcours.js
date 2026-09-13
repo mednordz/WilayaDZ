@@ -30,7 +30,7 @@ const {signedInProfile}=require('./seed_profile');
   assert.equal(await page.locator('.noeud').nth(2).getAttribute('aria-expanded'),'false');
   await page.locator('.noeud').nth(3).click();assert.equal(await page.locator('#sheet-start').count(),0);assert.equal(await page.locator('#sheet-previous').count(),1);await page.keyboard.press('Escape');
   await page.locator('.noeud').first().click();assert.equal(await page.locator('.etape-current').getAttribute('data-unite'),'u3');await page.keyboard.press('Escape');
-  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('.noeud').nth(1).click();await page.locator('#sheet-start').click();assert(await page.locator('#lesson-overlay').evaluate(e=>e.classList.contains('active')));assert.equal(await page.locator('#view-path').evaluate(e=>e.inert),false);await page.locator('#lesson-close').click();assert.equal(await page.evaluate(()=>document.activeElement.dataset.i),'1');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('.noeud').nth(1).click();await page.locator('#sheet-start').click();assert(await page.locator('#lesson-overlay').evaluate(e=>e.classList.contains('active')));assert.equal(await page.locator('#view-path').evaluate(e=>e.inert),true);await page.locator('#lesson-close').click();assert.equal(await page.locator('#view-path').evaluate(e=>e.inert),false);assert.equal(await page.evaluate(()=>document.activeElement.dataset.i),'1');
   assert.deepEqual(errors,[]);await page.close();
  }
  const page=await browser.newPage();await page.route('**/*',r=>r.fulfill({contentType:'text/html',body:html}));

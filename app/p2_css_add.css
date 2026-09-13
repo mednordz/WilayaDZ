@@ -175,7 +175,7 @@
   .action-card.teal .icon{ color:var(--teal); }
   .action-card.gold .icon-chip{ background:var(--gold-soft); }
   .action-card.gold .icon{ color:var(--gold); }
-  .action-card[aria-disabled="true"]{ opacity:.5; }
+  .action-card[aria-disabled="true"]{ opacity:1; cursor:default; border-style:dashed; box-shadow:none; }
 
   /* ---- Barre de force par wilaya (registre) ---- */
   .mini-bar{
